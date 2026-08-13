@@ -1,4 +1,5 @@
 #include<iostream>
+#include <cstdlib>
 using namespace std ;
 
     class Move {
@@ -60,6 +61,12 @@ using namespace std ;
             void takeinput() ;
             void makeMove(Move move) ;
             bool isValid(Move move) ;
+            bool isValidPawnMove(Move move) ;
+            bool isValidKnightMove(Move move) ;
+            bool isValidBishopMove(Move move) ;
+            bool isValidRookMove(Move move) ;
+            bool isValidQueenMove(Move move) ;
+
 
 
     } ;
@@ -106,7 +113,9 @@ using namespace std ;
         makeMove(move) ;
 
         else 
-        cout<<"Invalid move! No piece at starting position." << endl;
+        {
+        cout<<"Invalid move!" << endl;
+        }
         
     }
 
@@ -168,8 +177,429 @@ using namespace std ;
 
         }
 
+
+        if(startPiece == 'P' || startPiece == 'p')
+        {
+        return isValidPawnMove(move);
+        }
+
+
+        if(startPiece == 'N' || startPiece == 'n')
+        {
+            return isValidKnightMove(move) ;
+        }
+
+
+        if(startPiece == 'B' || startPiece == 'b')
+        {
+            return isValidBishopMove(move) ;
+        }
+
+
+        if(startPiece == 'R' || startPiece == 'r')
+        {
+            return isValidRookMove(move) ;
+        }
+
         return true ;
     }
+
+    bool Board :: isValidPawnMove(Move move)
+    {
+        int startRow = move.getStartRow() ;
+        int startCol = move.getStartCol() ;
+        int endRow = move.getEndRow() ;
+        int endCol = move.getEndCol() ;
+
+        char startPiece = board[startRow][startCol] ;
+        char endPiece = board[endRow][endCol] ;
+
+        
+            // White pawn
+            if(startPiece == 'P')
+            {
+                // One square forward
+                if(startRow - endRow == 1 && startCol == endCol && endPiece == '.')
+                {
+                    return true;
+                }
+
+                // Two squares forward from starting position
+                if(startRow == 6 && startRow - endRow == 2 && startCol == endCol && endPiece=='.' && board[endRow-1][endCol] == '.')
+                {
+                    return true;
+                }
+
+                // Capture the black piece :
+                if(startRow - endRow == 1 && abs(startCol-endCol) == 1 && endPiece >='a' && endPiece <= 'z')
+                {
+                    return true ;
+                }
+
+            }
+
+            // Black pawn
+            if(startPiece == 'p')
+            {
+                // One square forward
+                if(endRow - startRow == 1 && startCol == endCol && endPiece == '.')
+                {
+                    return true;
+                }
+
+                // Two squares forward from starting position
+                if(startRow == 1 && endRow - startRow == 2 && startCol == endCol && endPiece=='.' && board[endRow-1][endCol] == '.')
+                {
+                    return true;
+                }
+
+
+                // Capture the white piece :
+                if(endRow - startRow == 1 && abs(startCol-endCol) == 1 && endPiece >='A' && endPiece <= 'Z')
+                {
+                    return true ;
+                }
+            }
+
+        return false ;
+
+    }
+
+
+
+    bool Board :: isValidKnightMove(Move move)
+    {
+
+        int startRow = move.getStartRow() ;
+        int startCol = move.getStartCol() ;
+        int endRow = move.getEndRow() ;
+        int endCol = move.getEndCol() ;
+
+        char startPiece = board[startRow][startCol] ;
+        char endPiece = board[endRow][endCol] ;
+
+        // White Move :
+        if(startPiece == 'N')
+        {
+            if(((abs(startRow - endRow) == 1 && abs(startCol - endCol) == 2) || 
+            (abs(startRow - endRow) == 2 && abs(startCol - endCol) == 1)) && 
+            (endPiece == '.' || (endPiece >= 'a' && endPiece <= 'z')))
+            {
+                return true ;
+            }
+
+        }
+
+        if(startPiece == 'n')
+        {
+            if(((abs(startRow - endRow) == 1 && abs(startCol - endCol) == 2) || 
+            (abs(startRow - endRow) == 2 && abs(startCol - endCol) == 1)) && 
+            (endPiece == '.' || (endPiece >= 'A' && endPiece <= 'Z')))
+            {
+                return true ;
+            }
+
+        }
+
+        return false ;
+
+    }
+
+    
+    bool Board :: isValidBishopMove(Move move)
+    {
+
+        int startRow = move.getStartRow() ;
+        int startCol = move.getStartCol() ;
+        int endRow = move.getEndRow() ;
+        int endCol = move.getEndCol() ;
+
+        char startPiece = board[startRow][startCol] ;
+        char endPiece = board[endRow][endCol] ;
+
+        int rowStep = 0 ;
+        int colStep = 0 ;
+
+        // White Piece :
+
+        if(startPiece == 'B')
+        {
+            if((abs(startRow - endRow) == abs(startCol - endCol)) &&
+             (endPiece == '.' || (endPiece >='a' && endPiece <= 'z')))
+            {   
+
+    
+                if(endRow > startRow)
+                {
+                    rowStep = 1 ;
+                }
+
+                else
+                {
+                    rowStep = -1 ;
+                }
+
+                if(endCol > startCol)
+                {
+                    colStep = 1 ;
+                }
+
+                else
+                {
+                    colStep = -1 ;
+                }
+                
+                int moverow = startRow + rowStep;
+                int movecol = startCol + colStep;
+
+                while(moverow != endRow && movecol != endCol)
+                {
+                    if(board[moverow][movecol] == '.')
+                    {
+                        moverow = moverow + rowStep ;
+                        movecol = movecol + colStep ;
+                    }
+
+                    else
+                    {
+                        if(board[moverow][movecol] != '.')
+                        {
+                            return false ;
+                        }
+                    }
+                }
+
+                return true ;
+            
+            }
+
+            return false ;
+        }
+
+        // Black Piece :
+
+        if(startPiece == 'b')
+        {
+            if((abs(startRow - endRow) == abs(startCol - endCol)) &&
+             (endPiece == '.' || (endPiece >='A' && endPiece <= 'Z')))
+            {   
+
+    
+                if(endRow > startRow)
+                {
+                    rowStep = 1 ;
+                }
+
+                else
+                {
+                    rowStep = -1 ;
+                }
+
+                if(endCol > startCol)
+                {
+                    colStep = 1 ;
+                }
+
+                else
+                {
+                    colStep = -1 ;
+                }
+                
+                int moverow = startRow + rowStep;
+                int movecol = startCol + colStep;
+
+                while(moverow != endRow && movecol != endCol)
+                {
+                    if(board[moverow][movecol] == '.')
+                    {
+                        moverow = moverow + rowStep ;
+                        movecol = movecol + colStep ;
+                    }
+
+                    else
+                    {
+                        if(board[moverow][movecol] != '.')
+                        {
+                            return false ;
+                        }
+                    }
+                }
+
+                return true ;
+            
+            }
+
+            return false ;
+        }
+
+        return false ;
+    }
+
+
+    bool Board :: isValidRookMove(Move move)
+    {
+
+        int startRow = move.getStartRow() ;
+        int startCol = move.getStartCol() ;
+        int endRow = move.getEndRow() ;
+        int endCol = move.getEndCol() ;
+
+        char startPiece = board[startRow][startCol] ;
+        char endPiece = board[endRow][endCol] ;
+
+        int rowstep = 0 ;
+        int colstep = 0 ;
+        
+        // White Piece :
+
+
+        if(startPiece == 'R')
+        {
+            if(startRow - endRow == 0 && 
+            ((endPiece == '.') || 
+            (endPiece >= 'a' && endPiece <= 'z')))
+            {
+
+                if(endCol > startCol)
+                {
+                    colstep = 1 ;
+                }
+
+                else
+                {
+                    colstep = -1 ;
+                }
+
+
+                int movecol = startCol + colstep ;
+                while(movecol != endCol)
+                {
+                    if(board[startRow][movecol] == '.')
+                    {
+                        movecol = movecol + colstep ;
+                    }
+                    
+                    else
+                    {
+                        return false ;
+                    }
+                }
+                return true ;
+            }
+
+            else if(startCol - endCol == 0 && 
+                ((endPiece == '.') ||
+                 (endPiece >= 'a' && endPiece <= 'z')))
+            {   
+
+                if(endRow > startRow)
+                {
+                    rowstep = 1 ;
+                }
+
+                else
+                {
+                    rowstep = -1 ;
+                }
+
+
+                int moverow = startRow + rowstep ;
+                while(moverow != endRow )
+                {
+                    if(board[moverow][startCol] == '.')
+                    {
+                        moverow = moverow + rowstep ;
+                    }
+
+                    else
+                    {
+                        return false ;
+                    }
+                }
+                return true ;
+            }
+
+            return false ;
+        }
+
+
+        // Black Piece :
+
+        if(startPiece == 'r')
+        {
+            if(startRow - endRow == 0 && 
+            ((endPiece == '.') || 
+            (endPiece >= 'A' && endPiece <= 'Z')))
+            {   
+
+                if(endCol > startCol)
+                {
+                    colstep = 1 ;
+                }
+
+                else
+                {
+                    colstep = -1 ;
+                }
+                
+                int movecol = startCol + colstep ;
+                while(movecol != endCol)
+                {
+                    if(board[startRow][movecol] == '.')
+                    {
+                        movecol = movecol + colstep ;
+                    }
+                    
+                    else
+                    {
+                        return false ;
+                    }
+                }
+                return true ;
+            }
+
+            else if(startCol - endCol == 0 && 
+                ((endPiece == '.') ||
+                 (endPiece >= 'A' && endPiece <= 'Z')))
+            {   
+                
+                if(endRow > startRow)
+                {
+                    rowstep = 1 ;
+                }
+
+                else
+                {
+                    rowstep = -1 ;
+                }
+
+                int moverow = startRow + rowstep ;
+                while(moverow != endRow )
+                {
+                    if(board[moverow][startCol] == '.')
+                    {
+                        moverow = moverow + rowstep ;
+                    }
+
+                    else
+                    {
+                        return false ;
+                    }
+                }
+                return true ;
+            }
+
+            return false ;
+        }
+        
+    }
+
+
+    bool Board :: isValidQueenMove(Move move)
+    {
+        
+    }
+
 
 int main(){
 
