@@ -164,6 +164,11 @@ bool Board :: isValid(Move move)
         return queen.isValidQueenMove(move, board);
     }
 
+    // King 
+    if(startPiece == 'K' || startPiece == 'k')
+    {
+        return king.isValidKingMove(move, board);
+    }
 
     return false;
 }

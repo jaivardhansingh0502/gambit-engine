@@ -7,6 +7,7 @@
 #include "Bishop.h"
 #include "Rook.h"
 #include "Queen.h"
+#include "King.h"
 
 class Board {
 private:
@@ -17,6 +18,7 @@ private:
     Bishop bishop;
     Rook rook;
     Queen queen;
+    King king ;
 
 public:
     void initializeBoard();
