@@ -8,6 +8,7 @@
 #include "Rook.h"
 #include "Queen.h"
 #include "King.h"
+#include <string>
 
 class Board {
 private:
@@ -19,6 +20,9 @@ private:
     Rook rook;
     Queen queen;
     King king ;
+
+    string getPieceSymbol(char piece);
+
 
 public:
     void initializeBoard();

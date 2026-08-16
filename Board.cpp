@@ -2,8 +2,36 @@
 #include <iostream>
 #include <cstdlib>
 #include <string>
+#include <windows.h>
+
 
 using namespace std;
+
+const string RESET = "\033[0m";
+const string LIGHT = "\033[48;5;255m";
+const string DARK  = "\033[48;5;22m";
+
+string Board::getPieceSymbol(char piece)
+{
+    switch(piece)
+    {
+        case 'K': return "♔";
+        case 'Q': return "♕";
+        case 'R': return "♖";
+        case 'B': return "♗";
+        case 'N': return "♘";
+        case 'P': return "♙";
+
+        case 'k': return "♚";
+        case 'q': return "♛";
+        case 'r': return "♜";
+        case 'b': return "♝";
+        case 'n': return "♞";
+        case 'p': return "♟";
+
+        default: return " ";
+    }
+}
 
 void Board :: initializeBoard()
 {
@@ -46,6 +74,7 @@ void Board :: takeinput()
 
     cout << "Enter end position: ";
     cin >> to;
+    cout << endl ;
 
     Move move(from, to);
 
@@ -61,7 +90,7 @@ void Board :: takeinput()
 }
 
 
-void Board :: displayBoard()
+void Board::displayBoard()
 {
     for(int i = 0; i < 8; i++)
     {
@@ -69,15 +98,24 @@ void Board :: displayBoard()
 
         for(int j = 0; j < 8; j++)
         {
-            cout << board[i][j] << ' ';
+            if((i + j) % 2 == 0)
+            {
+                cout << LIGHT ;
+            }
+            else
+            {
+                cout << DARK ;
+            }
+
+            cout << " " << getPieceSymbol(board[i][j]) << " ";
+            cout << RESET ;
         }
 
         cout << endl;
     }
 
-    cout << "  a b c d e f g h" << endl;
+    cout << "    a  b  c  d  e  f  g  h" << endl;
 }
-
 
 void Board :: makeMove(Move move)
 {
