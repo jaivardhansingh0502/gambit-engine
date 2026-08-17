@@ -22,9 +22,11 @@ private:
     King king ;
 
     string getPieceSymbol(char piece);
+    bool whiteTurn ;
 
 
 public:
+
     void initializeBoard();
     void displayBoard();
     void takeinput();

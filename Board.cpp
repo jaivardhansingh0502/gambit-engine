@@ -58,6 +58,8 @@ void Board :: initializeBoard()
                 board[i][j] = '.';
         }
     }
+
+    whiteTurn = true ;
 }
 
 
@@ -128,6 +130,8 @@ void Board :: makeMove(Move move)
     board[endRow][endCol] = board[startRow][startCol];
 
     board[startRow][startCol] = '.';
+
+    whiteTurn = !whiteTurn ;
 }
 
 
@@ -148,10 +152,30 @@ bool Board :: isValid(Move move)
     char startPiece = board[startRow][startCol];
     char endPiece = board[endRow][endCol];
 
+    // Agar white ki turn hai to vhi move kr skta hai :
+
+    if(whiteTurn)
+    {
+        if(startPiece >= 'a' && startPiece <= 'z')
+        {
+            return false ;
+        }
+    }
+    
+    // BlackTurn me only black piece can move :
+
+    else
+    {
+        if(startPiece >= 'A' && startPiece <= 'Z')
+        {
+            return false ;
+        }
+    }
 
     // Cannot capture your own piece
     if(endPiece != '.')
     {
+        
         // Black piece trying to capture black piece
         if(startPiece >= 'a' && startPiece <= 'z' &&
            endPiece >= 'a' && endPiece <= 'z')
