@@ -234,3 +234,107 @@ bool Board :: isValid(Move move)
 
     return false;
 }
+
+
+    bool Board :: isKinginCheck(bool whiteTurn)
+    {
+       
+        char king ;
+
+        if(whiteTurn)
+        {
+            king = 'K' ;
+        }
+
+        else
+        {
+            king = 'k' ;
+        }
+
+        int kingRow = -1 ;
+        int kingCol = -1 ;
+
+        for(int i = 0 ;i < 8 ;i++)
+        {
+            for(int j = 0 ; j < 8 ;j++)
+            {
+                if(board[i][j] == king)
+                {
+                    kingRow = i ;
+                    kingCol = j ;
+                    break ;
+                }
+            }
+            if(kingRow != -1)
+            break;
+        }
+
+        // PAWN
+
+
+        char opponentPiece ;
+
+        if(whiteTurn)
+        {
+            opponentPiece = 'p' ;
+        }
+
+        else
+        {
+            opponentPiece = 'P' ;
+        }
+
+        for(int i = 0 ; i < 8 ;i++)
+        {
+            for(int j = 0 ; j < 8 ;j++)
+            {
+                if(board[i][j] == opponentPiece) 
+                {
+                    
+                    if(whiteTurn)
+                    {
+                        if(i + 1 < 8)
+                        {
+                            
+                            // Left Diagonal :
+
+                            if( j-1 >= 0 && kingRow == i + 1 && kingCol == j-1)
+                            {
+                                return true ;
+                            }
+
+                            // Right Diagonal :
+
+                            else if( j + 1 <8 && kingRow == i + 1 && kingCol == j+1)
+                            {
+                                return true ;
+                            }
+                        }
+                    }
+
+                    else 
+                    {
+                        if( i - 1 >= 0)
+                        {
+
+                            // Left Diagonal :
+
+                            if(j-1 >= 0 && kingRow == i - 1 && kingCol == j-1)
+                            {
+                                return true ;
+                            }
+
+                            // Right Diagonal :
+
+                            else if( j + 1 < 8 && kingRow == i - 1 && kingCol == j+1)
+                            {
+                                return true ;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+    }

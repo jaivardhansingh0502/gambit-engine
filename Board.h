@@ -33,6 +33,7 @@ public:
     void makeMove(Move move);
 
     bool isValid(Move move);
+    bool isKinginCheck(bool whiteTurn) ;
 };
 
 #endif
