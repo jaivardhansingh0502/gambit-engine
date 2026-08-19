@@ -337,4 +337,78 @@ bool Board :: isValid(Move move)
         }
 
 
+        // Knight :
+
+        if(whiteTurn)
+        {
+            opponentPiece = 'n' ;
+        }
+
+        else
+        {
+            opponentPiece = 'N' ;
+        }
+
+
+        for(int i = 0 ; i < 8 ;i++)
+        {
+            for(int j = 0 ; j < 8 ; j++)
+            {
+                if(board[i][j] ==  opponentPiece)
+                {
+                    
+                        // cosidering left + upward movement (2 step row ++ and 1 col --)
+                        if( i + 2 < 8 && j - 1 >=0 && i + 2 == kingRow && j - 1 == kingCol)
+                        {
+                            return true ;
+                        }
+
+                        // Considering left + downward movement (2 step row -- and 1 step col --)
+                        else if(i - 2 >=0 && j - 1 >=0 && i - 2 == kingRow && j - 1 == kingCol)
+                        {
+                            return true ;
+                        }
+
+                        // Considering right + upward movement (2 step row ++ and 1 step col ++)
+                        else if( i + 2 < 8 && j + 1 < 8 && i + 2 == kingRow && j + 1 == kingCol)
+                        {
+                            return true ;
+                        }
+
+                        // Considering right + downward movement (2 step row -- and 1 step col ++)
+                        else if(i - 2 >= 0 && j + 1 < 8 && i - 2 == kingRow && j + 1 == kingCol)
+                        {
+                            return true ;
+                        }
+
+                        // cosidering left + upward movement (1 step row ++ and 2 col --)
+                        if( i + 1 < 8 && j - 2 >=0 && i + 1 == kingRow && j - 2 == kingCol)
+                        {
+                            return true ;
+                        }
+
+                        // Considering left + downward movement (1 step row -- and 2 step col --)
+                        else if(i - 1 >=0 && j - 2 >=0 && i - 1 == kingRow && j - 2 == kingCol)
+                        {
+                            return true ;
+                        }
+
+                        // Considering right + upward movement (1 step row ++ and 2 step col ++)
+                        else if( i + 1 < 8 && j + 2 < 8 && i + 1 == kingRow && j + 2 == kingCol)
+                        {
+                            return true ;
+                        }
+
+                        // Considering right + downward movement (1 step row -- and 2 step col ++)
+                        else if(i - 1 >= 0 && j + 2 < 8 && i - 1 == kingRow && j + 2 == kingCol)
+                        {
+                            return true ;
+                        }
+                    
+                }
+            }
+        }
+
+
+
     }
