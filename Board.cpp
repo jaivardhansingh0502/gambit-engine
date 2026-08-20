@@ -414,12 +414,12 @@ bool Board :: isValid(Move move)
 
         if(whiteTurn)
         {
-            opponentPiece = 'B' ;
+            opponentPiece = 'b' ;
         }
 
         else 
         {
-            opponentPiece = 'b' ;
+            opponentPiece = 'B' ;
         }
 
         for(int i = 0 ; i < 8 ; i++)
@@ -538,12 +538,12 @@ bool Board :: isValid(Move move)
 
         if(whiteTurn)
         {
-            opponentPiece = 'R' ;
+            opponentPiece = 'r' ;
         }
 
         else
         {
-            opponentPiece = 'r' ;
+            opponentPiece = 'R' ;
         }
 
 
@@ -643,4 +643,8 @@ bool Board :: isValid(Move move)
                 }
             }
         }
+
+        // Queen 
+
+        
     }
