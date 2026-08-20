@@ -423,6 +423,7 @@ bool Board :: isValid(Move move)
         }
 
         for(int i = 0 ; i < 8 ; i++)
+        
         {
             for(int j = 0 ; j < 8 ;j++)
             {
@@ -532,4 +533,114 @@ bool Board :: isValid(Move move)
             }
         }
 
+
+        // Rook 
+
+        if(whiteTurn)
+        {
+            opponentPiece = 'R' ;
+        }
+
+        else
+        {
+            opponentPiece = 'r' ;
+        }
+
+
+        for(int i = 0 ; i < 8 ; i++)
+        {
+            for(int j = 0 ; j < 8 ; j++)
+            {
+                if(board[i][j] == opponentPiece)
+                {
+
+                    int currentRow  ;
+                    int currentCol ;
+
+                    // Upward Moving 
+                    
+                    currentRow = i + 1 ;
+
+                    while(currentRow < 8)
+                    {
+                        if(currentRow == kingRow && j == kingCol)
+                        {
+                            return true;
+                        }
+
+                        // Different Piece → Rook block
+                        if(board[currentRow][j] != ' ')
+                        {
+                            break;
+                        }
+
+                        currentRow++ ;
+                    }
+
+                    // Downward Moving 
+
+                    currentRow = i - 1 ;
+                    
+
+                    while(currentRow >= 0)
+                    {
+                        if(currentRow == kingRow && j == kingCol)
+                        {
+                            return true;
+                        }
+
+                        // Different Piece → Rook block
+                        if(board[currentRow][j] != ' ')
+                        {
+                            break;
+                        }
+
+                        currentRow-- ;
+                    }
+
+                    // Left Movement 
+
+                    currentCol = j - 1 ;
+                    
+
+                    while(currentCol >= 0)
+                    {
+                        if(i == kingRow && currentCol == kingCol)
+                        {
+                            return true;
+                        }
+
+                        // Different Piece → Rook block
+                        if(board[i][currentCol] != ' ')
+                        {
+                            break;
+                        }
+
+                        currentCol-- ;
+                    }
+
+
+                    // Right Movement 
+
+                    currentCol = j + 1 ;
+                    
+
+                    while(currentCol < 8)
+                    {
+                        if(i == kingRow && currentCol == kingCol)
+                        {
+                            return true;
+                        }
+
+                        // Different Piece → Rook block
+                        if(board[i][currentCol] != ' ')
+                        {
+                            break;
+                        }
+
+                        currentCol++ ;
+                    }
+                }
+            }
+        }
     }
