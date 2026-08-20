@@ -646,5 +646,203 @@ bool Board :: isValid(Move move)
 
         // Queen 
 
-        
+        if(whiteTurn)
+        {
+            opponentPiece = 'q' ;
+        }
+
+        else
+        {
+            opponentPiece = 'Q' ;
+        }
+
+        for(int i = 0 ; i < 8 ; i ++)
+        {
+            for(int j = 0 ; j < 8 ; j ++)
+            {
+                if(board[i][j] == opponentPiece)
+                {
+                    // Left upwards diagonally 
+
+                    int currentRow = i + 1;
+                    int currentCol = j - 1;
+
+                    while(currentRow < 8 && currentCol >= 0)
+                    {
+                        // King mil gaya
+                        if(currentRow == kingRow && currentCol == kingCol)
+                        {
+                            return true;
+                        }
+
+                        // Koi piece mil gaya → Bishop block
+                        if(board[currentRow][currentCol] != ' ')
+                        {
+                            break;
+                        }
+
+                        // Next diagonal square
+                        currentRow++;
+                        currentCol--;
+                    }
+
+                    // Left Downwards Diagonally
+
+                    currentRow = i - 1 ;
+                    currentCol = j - 1 ;
+
+                    while(currentRow >= 0 && currentCol >= 0)
+                    {
+                        // King Found
+                        if(currentRow == kingRow && currentCol == kingCol)
+                        {
+                            return true;
+                        }
+
+                        // Different Piece → Bishop block
+                        if(board[currentRow][currentCol] != ' ')
+                        {
+                            break;
+                        }
+
+                        // Next diagonal square
+                        currentRow--;
+                        currentCol--;
+                    }
+
+
+                    // Right Downwards 
+
+                    currentRow = i - 1 ;
+                    currentCol = j + 1 ;
+
+                    while(currentRow >= 0 && currentCol < 8)
+                    {
+                        // King Found
+                        if(currentRow == kingRow && currentCol == kingCol)
+                        {
+                            return true;
+                        }
+
+                        // Different Piece → Bishop block
+                        if(board[currentRow][currentCol] != ' ')
+                        {
+                            break;
+                        }
+
+                        // Next diagonal square
+                        currentRow--;
+                        currentCol++;
+                    }
+
+                    
+                    // Right Upwards 
+
+                    currentRow = i + 1 ;
+                    currentCol = j + 1 ;
+
+                    while(currentRow < 8 && currentCol < 8)
+                    {
+                        // King Found
+                        if(currentRow == kingRow && currentCol == kingCol)
+                        {
+                            return true;
+                        }
+
+                        // Different Piece → Bishop block
+                        if(board[currentRow][currentCol] != ' ')
+                        {
+                            break;
+                        }
+
+                        // Next diagonal square
+                        currentRow++;
+                        currentCol++;
+                    }
+
+                    currentRow = i + 1 ;
+
+                    while(currentRow < 8)
+                    {
+                        if(currentRow == kingRow && j == kingCol)
+                        {
+                            return true;
+                        }
+
+                        // Different Piece → Rook block
+                        if(board[currentRow][j] != ' ')
+                        {
+                            break;
+                        }
+
+                        currentRow++ ;
+                    }
+
+                    // Downward Moving 
+
+                    currentRow = i - 1 ;
+                    
+
+                    while(currentRow >= 0)
+                    {
+                        if(currentRow == kingRow && j == kingCol)
+                        {
+                            return true;
+                        }
+
+                        // Different Piece → Rook block
+                        if(board[currentRow][j] != ' ')
+                        {
+                            break;
+                        }
+
+                        currentRow-- ;
+                    }
+
+                    // Left Movement 
+
+                    currentCol = j - 1 ;
+                    
+
+                    while(currentCol >= 0)
+                    {
+                        if(i == kingRow && currentCol == kingCol)
+                        {
+                            return true;
+                        }
+
+                        // Different Piece → Rook block
+                        if(board[i][currentCol] != ' ')
+                        {
+                            break;
+                        }
+
+                        currentCol-- ;
+                    }
+
+
+                    // Right Movement 
+
+                    currentCol = j + 1 ;
+                    
+
+                    while(currentCol < 8)
+                    {
+                        if(i == kingRow && currentCol == kingCol)
+                        {
+                            return true;
+                        }
+
+                        // Different Piece → Rook block
+                        if(board[i][currentCol] != ' ')
+                        {
+                            break;
+                        }
+
+                        currentCol++ ;
+                    }
+
+                }
+            }
+        }
     }
