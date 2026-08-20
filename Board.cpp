@@ -845,4 +845,67 @@ bool Board :: isValid(Move move)
                 }
             }
         }
+
+        // King 
+
+        if(whiteTurn)
+        {
+            opponentPiece = 'k' ;
+        }
+
+        else
+        {
+            opponentPiece = 'K' ;
+        }
+
+
+        for(int i = 0 ; i < 8 ; i++)
+        {
+            for(int j = 0 ; j < 8 ; j++)
+            {
+
+                if(board[i][j] == opponentPiece)
+                {
+                    if(i+1 == kingRow && j == kingCol)
+                    {
+                        return true ;
+                    }
+
+                    if(i == kingRow && j + 1 == kingCol)
+                    {
+                        return true ;
+                    }
+
+                    if(i + 1 == kingRow && j + 1 == kingCol)
+                    {
+                        return true ;
+                    }
+
+                    if(i-1 == kingRow && j == kingCol)
+                    {
+                        return true ;
+                    }
+
+                    if(i == kingRow && j - 1 == kingCol)
+                    {
+                        return true ;
+                    }
+
+                    if(i + 1 == kingRow && j - 1 == kingCol)
+                    {
+                        return true ;
+                    }
+
+                    if(i - 1 == kingRow && j + 1 == kingCol)
+                    {
+                        return true ;
+                    }
+
+                    if( i - 1 == kingRow && j - 1 == kingCol)
+                    {
+                        return true ;
+                    }
+                }
+            }
+        }
     }
