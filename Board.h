@@ -34,6 +34,7 @@ public:
 
     bool isValid(Move move);
     bool isKinginCheck(bool whiteTurn) ;
+    bool canKingEscape(bool whiteTurn) ;
 };
 
 #endif

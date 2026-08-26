@@ -909,3 +909,94 @@ bool Board :: isValid(Move move)
             }
         }
     }
+
+    bool Board ::canKingEscape(bool whiteTurn)
+    {
+        char king ; 
+
+        if(whiteTurn)
+        {
+            king = 'K' ;
+        }
+        
+        else
+        {
+            king = 'k' ;
+        }
+
+        int kingRow = -1 ;
+        int kingCol = -1 ;
+
+
+        for(int i = 0 ; i < 8 ; i ++)
+        {
+            for(int j = 0 ; j < 8 ; j++ )
+            {
+                if(board[i][j] == king)
+                {
+                    kingRow = i ; 
+                    kingCol = j ;
+                    break ;
+                }
+            }
+        }
+
+        for(int rowChange = -1 ; rowChange <= 1 ; rowChange++)
+        {
+            for(int colChange = -1 ; colChange <= 1 ; colChange++)
+            {
+
+                // Current Position of King :
+                if(rowChange == 0 && colChange == 0) 
+                {
+                    continue ;
+                }
+
+
+                // Declare new row and new col for further use :
+                int newRow = kingRow + rowChange ;
+                int newCol = kingCol + colChange ;
+
+
+                // Outside Board Check :
+                if(newRow < 0 || newRow >= 8 || newCol < 0 || newCol >= 8)
+                {
+                    continue ;
+                }
+                
+
+
+                if(whiteTurn)
+                {
+                    if(board[newRow][newCol] >= 'A' &&
+                    board[newRow][newCol] <= 'Z')
+                        continue;
+                }
+                else
+                {
+                    if(board[newRow][newCol] >= 'a' &&
+                    board[newRow][newCol] <= 'z')
+                        continue;
+                }
+
+
+                char destination = board[newRow][newCol];
+
+                    // Temporary move
+                    board[kingRow][kingCol] = ' ';
+                    board[newRow][newCol] = king;
+
+                    // Check the NEW board position
+                    bool stillInCheck = isKinginCheck(whiteTurn);
+
+                    // Undo temporary move
+                    board[kingRow][kingCol] = king;
+                    board[newRow][newCol] = destination;
+
+                    // Safe square found
+                    if(!stillInCheck)
+                        return true;
+            }
+        }
+
+    }
