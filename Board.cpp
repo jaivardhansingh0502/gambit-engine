@@ -15,6 +15,7 @@ string Board::getPieceSymbol(char piece)
 {
     switch(piece)
     {
+        // White pieces
         case 'K': return "♔";
         case 'Q': return "♕";
         case 'R': return "♖";
@@ -22,6 +23,7 @@ string Board::getPieceSymbol(char piece)
         case 'N': return "♘";
         case 'P': return "♙";
 
+        // Black pieces
         case 'k': return "♚";
         case 'q': return "♛";
         case 'r': return "♜";
@@ -94,30 +96,184 @@ void Board :: takeinput()
 
 void Board::displayBoard()
 {
+    // const string RESET = "\033[0m";
+
+    // // Board colors
+    // const string LIGHT = "\033[48;5;255m";
+    // const string DARK  = "\033[48;5;22m";
+
+    // // Piece colors
+    // const string WHITE_PIECE = "\033[38;5;16m";
+    // const string BLACK_PIECE = "\033[38;5;255m";
+
+    // cout << "\n";
+
+    // // Column labels
+    // cout << "       a       b       c       d       e       f       g       h\n";
+
+    // // Top border
+    // cout << "    +-------+-------+-------+-------+-------+-------+-------+-------+\n";
+
+    // for(int i = 0; i < 8; i++)
+    // {
+    //     // Each chess square is 7 characters wide × 5 lines high
+    //     for(int line = 0; line < 5; line++)
+    //     {
+    //         // Print rank number only in the middle
+    //         if(line == 2)
+    //         {
+    //             cout << " " << 8 - i << "  ";
+    //         }
+    //         else
+    //         {
+    //             cout << "    ";
+    //         }
+
+    //         for(int j = 0; j < 8; j++)
+    //         {
+    //             // Choose square color
+    //             string background;
+
+    //             if((i + j) % 2 == 0)
+    //             {
+    //                 background = LIGHT;
+    //             }
+    //             else
+    //             {
+    //                 background = DARK;
+    //             }
+
+    //             char pieceChar = board[i][j];
+
+    //             // Start background color
+    //             cout << background;
+
+    //             // Empty square
+    //             if(pieceChar == ' ')
+    //             {
+    //                 cout << "       ";
+    //             }
+    //             else
+    //             {
+    //                 string piece = getPieceSymbol(pieceChar);
+
+    //                 // White pieces
+    //                 if(pieceChar >= 'A' && pieceChar <= 'Z')
+    //                 {
+    //                     if(line == 2)
+    //                     {
+    //                         cout << "   "
+    //                              << WHITE_PIECE
+    //                              << piece
+    //                              << background
+    //                              << "   ";
+    //                     }
+    //                     else
+    //                     {
+    //                         cout << "       ";
+    //                     }
+    //                 }
+
+    //                 // Black pieces
+    //                 else
+    //                 {
+    //                     if(line == 2)
+    //                     {
+    //                         cout << "   "
+    //                              << BLACK_PIECE
+    //                              << piece
+    //                              << background
+    //                              << "   ";
+    //                     }
+    //                     else
+    //                     {
+    //                         cout << "       ";
+    //                     }
+    //                 }
+    //             }
+
+    //             // Reset after the COMPLETE square
+    //             cout << RESET;
+    //         }
+
+    //         cout << "\n";
+    //     }
+
+    //     // Separator between rows
+    //     if(i != 7)
+    //     {
+    //         cout << "    +-------+-------+-------+-------+-------+-------+-------+-------+\n";
+    //     }
+    // }
+
+    // // Bottom border
+    // cout << "    +-------+-------+-------+-------+-------+-------+-------+-------+\n";
+
+    // // Column labels
+    // cout << "       a       b       c       d       e       f       g       h\n";
+
+    // cout << "\n";
+
+    cout << "\n";
+
+    cout << "       a       b       c       d       e       f       g       h\n";
+
+    cout << "    ┌───────┬───────┬───────┬───────┬───────┬───────┬───────┬───────┐\n";
+
     for(int i = 0; i < 8; i++)
     {
-        cout << 8 - i << " ";
+        // Top empty line
+        cout << "    ";
 
         for(int j = 0; j < 8; j++)
         {
-            if((i + j) % 2 == 0)
-            {
-                cout << LIGHT ;
-            }
-            else
-            {
-                cout << DARK ;
-            }
-
-            cout << " " << getPieceSymbol(board[i][j]) << " ";
-            cout << RESET ;
+            cout << "│       ";
         }
 
-        cout << endl;
+        cout << "│\n";
+
+        // Piece / empty space
+        cout << " " << 8 - i << "  ";
+
+        for(int j = 0; j < 8; j++)
+        {
+            cout << "│   ";
+
+            if(board[i][j] == ' ')
+                cout << " ";
+            else
+                cout << board[i][j];
+
+            cout << "   ";
+        }
+
+        cout << "│\n";
+
+        // Bottom empty line
+        cout << "    ";
+
+        for(int j = 0; j < 8; j++)
+        {
+            cout << "│       ";
+        }
+
+        cout << "│\n";
+
+        // Horizontal separator
+        if(i != 7)
+        {
+            cout << "    ├───────┼───────┼───────┼───────┼───────┼───────┼───────┼───────┤\n";
+        }
     }
 
-    cout << "    a  b  c  d  e  f  g  h" << endl;
+    // Bottom border
+    cout << "    └───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┘\n";
+
+    cout << "       a       b       c       d       e       f       g       h\n";
+
+    cout << "\n";
 }
+
 
 void Board :: makeMove(Move move)
 {
