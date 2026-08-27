@@ -36,6 +36,7 @@ public:
     bool isKinginCheck(bool whiteTurn) ;
     bool canKingEscape(bool whiteTurn) ;
     bool canRookSaveKing(bool whiteTurn) ;
+    bool canBishopSaveKing(bool whiteTurn) ;
 };
 
 #endif

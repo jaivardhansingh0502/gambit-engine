@@ -1483,3 +1483,327 @@ bool Board :: isValid(Move move)
             }
         }
     }
+
+
+
+    bool Board :: canBishopSaveKing(bool whiteTurn)
+    {
+        char bishop ;
+        char king ;
+
+        if(whiteTurn)
+        {
+            bishop = 'B' ;
+            king = 'K' ;
+        }
+
+        else
+        {
+            bishop = 'b' ;
+            king = 'k' ;
+        }
+
+        for(int i = 0 ; i < 8 ; i++)
+        {
+            for(int j = 0 ; j < 8 ; j++)
+            {
+                if(board[i][j] == bishop)
+                {
+                    for(int rowChange = -7 ; rowChange < 8 ; rowChange++)
+                    {
+                        for(int colChange = -7 ; colChange < 8 ; colChange++)
+                        {
+                            
+                            // If rowdiff and coldiff not equal skip 
+                            if( abs(rowChange) != abs(colChange) )
+                            {
+                                continue ;
+                            }
+
+                            // Same Square :
+                            if(rowChange == 0 && colChange == 0)
+                            {
+                                continue ;
+                            }
+
+                            int newRow = i + rowChange;
+                            int newCol = j + colChange;
+
+                            // Boundary
+                            if(newRow < 0 || newRow >= 8 ||
+                            newCol < 0 || newCol >= 8)
+                            {
+                                continue;
+                            }
+
+                            // Right Upside Diagonal ;
+
+                            int currentRow = i + 1 ;
+                            int currentCol = j + 1 ;
+
+                            while(currentRow < 8 && currentCol < 8)
+                            {
+                                
+                                // Empty Space ;
+                                if(board[currentRow][currentCol] == ' ')
+                                {
+
+                                    // Temporary Move 
+
+                                    board[i][j] = ' ' ;
+                                    board[currentRow][currentCol] = bishop ;
+
+                                    if(!isKinginCheck(whiteTurn))
+                                    {
+                                        return true ;
+                                    }
+
+                                    // Undo 
+                                    board[i][j] = bishop ;
+                                    board[currentRow][currentCol] = ' ' ;
+                                }
+
+                                else
+                                {
+
+                                    // White Turn and Black Piece in Between : 
+                                    
+                                    if ((whiteTurn && board[currentRow][currentCol] >= 'a' &&
+                                    board[currentRow][currentCol] <= 'z') ||
+                                    (!whiteTurn && board[currentRow][currentCol] >= 'A' &&
+                                    board[currentRow][currentCol] <= 'Z'))
+                                    {
+
+                                        char capturedPiece = board[currentRow][currentCol] ;
+
+                                        // Temporary Move ;
+
+                                        board[currentRow][currentCol] = bishop ;
+                                        board[i][j] = ' ' ;
+
+                                        if(!isKinginCheck(whiteTurn))
+                                        {
+                                            return true ;
+                                        }
+
+                                        // Undo 
+
+                                        board[currentRow][currentCol] = capturedPiece ;
+                                        board[i][j] = bishop ;
+                                        
+                                    }
+
+                                    // If any other move then break the loop 
+                                    break ;
+                                }
+
+                                currentCol ++ ;
+                                currentRow ++ ;
+                            }
+
+
+                            
+                            // Right Downside Diagonal ;
+
+                             currentRow = i - 1 ;
+                             currentCol = j + 1 ;
+
+                            while(currentRow >= 0 && currentCol < 8)
+                            {
+                                
+                                // Empty Space ;
+                                if(board[currentRow][currentCol] == ' ')
+                                {
+
+                                    // Temporary Move 
+
+                                    board[i][j] = ' ' ;
+                                    board[currentRow][currentCol] = bishop ;
+
+                                    if(!isKinginCheck(whiteTurn))
+                                    {
+                                        return true ;
+                                    }
+
+                                    // Undo 
+                                    board[i][j] = bishop ;
+                                    board[currentRow][currentCol] = ' ' ;
+                                }
+
+                                else
+                                {
+
+                                    // White Turn and Black Piece in Between : 
+                                    
+                                    if ((whiteTurn && board[currentRow][currentCol] >= 'a' &&
+                                    board[currentRow][currentCol] <= 'z') ||
+                                    (!whiteTurn && board[currentRow][currentCol] >= 'A' &&
+                                    board[currentRow][currentCol] <= 'Z'))
+                                    {
+
+                                        char capturedPiece = board[currentRow][currentCol] ;
+
+                                        // Temporary Move ;
+
+                                        board[currentRow][currentCol] = bishop ;
+                                        board[i][j] = ' ' ;
+
+                                        if(!isKinginCheck(whiteTurn))
+                                        {
+                                            return true ;
+                                        }
+
+                                        // Undo 
+
+                                        board[currentRow][currentCol] = capturedPiece ;
+                                        board[i][j] = bishop ;
+                                        
+                                    }
+
+                                    // If any other move then break the loop 
+                                    break ;
+                                }
+
+                                currentCol ++ ;
+                                currentRow -- ;
+                            }
+
+
+
+                            // Left Downside Diagonal ;
+
+                             currentRow = i - 1 ;
+                             currentCol = j - 1 ;
+
+                            while(currentRow >= 0 && currentCol >= 0)
+                            {
+                                
+                                // Empty Space ;
+                                if(board[currentRow][currentCol] == ' ')
+                                {
+
+                                    // Temporary Move 
+
+                                    board[i][j] = ' ' ;
+                                    board[currentRow][currentCol] = bishop ;
+
+                                    if(!isKinginCheck(whiteTurn))
+                                    {
+                                        return true ;
+                                    }
+
+                                    // Undo 
+                                    board[i][j] = bishop ;
+                                    board[currentRow][currentCol] = ' ' ;
+                                }
+
+                                else
+                                {
+
+                                    // White Turn and Black Piece in Between : 
+                                    
+                                    if ((whiteTurn && board[currentRow][currentCol] >= 'a' &&
+                                    board[currentRow][currentCol] <= 'z') ||
+                                    (!whiteTurn && board[currentRow][currentCol] >= 'A' &&
+                                    board[currentRow][currentCol] <= 'Z'))
+                                    {
+
+                                        char capturedPiece = board[currentRow][currentCol] ;
+
+                                        // Temporary Move ;
+
+                                        board[currentRow][currentCol] = bishop ;
+                                        board[i][j] = ' ' ;
+
+                                        if(!isKinginCheck(whiteTurn))
+                                        {
+                                            return true ;
+                                        }
+
+                                        // Undo 
+
+                                        board[currentRow][currentCol] = capturedPiece ;
+                                        board[i][j] = bishop ;
+                                        
+                                    }
+
+                                    // If any other move then break the loop 
+                                    break ;
+                                }
+
+                                currentCol -- ;
+                                currentRow -- ;
+                            }
+
+
+
+                            // left Upside Diagonal ;
+
+                             currentRow = i + 1 ;
+                             currentCol = j - 1 ;
+
+                            while(currentRow < 8 && currentCol >= 0)
+                            {
+                                
+                                // Empty Space ;
+                                if(board[currentRow][currentCol] == ' ')
+                                {
+
+                                    // Temporary Move 
+
+                                    board[i][j] = ' ' ;
+                                    board[currentRow][currentCol] = bishop ;
+
+                                    if(!isKinginCheck(whiteTurn))
+                                    {
+                                        return true ;
+                                    }
+
+                                    // Undo 
+                                    board[i][j] = bishop ;
+                                    board[currentRow][currentCol] = ' ' ;
+                                }
+
+                                else
+                                {
+
+                                    // White Turn and Black Piece in Between : 
+                                    
+                                    if ((whiteTurn && board[currentRow][currentCol] >= 'a' &&
+                                    board[currentRow][currentCol] <= 'z') ||
+                                    (!whiteTurn && board[currentRow][currentCol] >= 'A' &&
+                                    board[currentRow][currentCol] <= 'Z'))
+                                    {
+
+                                        char capturedPiece = board[currentRow][currentCol] ;
+
+                                        // Temporary Move ;
+
+                                        board[currentRow][currentCol] = bishop ;
+                                        board[i][j] = ' ' ;
+
+                                        if(!isKinginCheck(whiteTurn))
+                                        {
+                                            return true ;
+                                        }
+
+                                        // Undo 
+
+                                        board[currentRow][currentCol] = capturedPiece ;
+                                        board[i][j] = bishop ;
+                                        
+                                    }
+
+                                    // If any other move then break the loop 
+                                    break ;
+                                }
+
+                                currentCol -- ;
+                                currentRow ++ ;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
