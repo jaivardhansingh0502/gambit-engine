@@ -1156,3 +1156,330 @@ bool Board :: isValid(Move move)
         }
 
     }
+
+    bool Board :: canRookSaveKing(bool whiteTurn)
+    {
+        char rook ;
+        char king ;
+
+        if(whiteTurn)
+        {
+            rook = 'R' ;
+            king = 'K' ;
+        }
+
+        else
+        {
+            rook = 'r' ;
+            king = 'k' ;
+        }
+
+        for(int i = 0 ; i < 8 ; i ++)
+        {
+            for(int j = 0 ; j < 8 ; j ++)
+            {
+                if(board[i][j] == rook)
+                {
+                    for(int rowChange = -7 ; rowChange < 8 ; rowChange++)
+                    {
+                        for(int colChange = -7 ; colChange < 8 ; colChange++)
+                        {
+
+                            // Same Square :
+                            if(rowChange == 0 && colChange == 0)
+                            {
+                                continue ;
+                            }
+
+
+                            // Rook Can not move diagonally :
+                            if(rowChange != 0 && colChange != 0)
+                            {
+                                continue ;
+                            }
+
+
+                            int newRow = i + rowChange ;
+                            int newCol = j + colChange ;
+
+
+                            // Boundary check
+                            if(newRow < 0 || newRow >= 8 ||
+                            newCol < 0 || newCol >= 8)
+                            {
+                                continue;
+                            }
+
+
+                            // Right Move : 
+                            int currentRow = i ; 
+                            int currentCol = j + 1 ; 
+
+                            while(currentCol < 8)
+                            {
+                                
+                                // Empty Space : 
+                                if(board[currentRow][currentCol] == ' ')
+                                {
+                                    
+                                    // Temprarily Move and check :
+
+                                    board[i][j] = ' ' ;
+                                    board[currentRow][currentCol] = rook ;
+
+                                    // Check kro if possible
+                                    if(!isKinginCheck(whiteTurn))
+                                    {
+                                        return true ;
+                                    }
+
+                                    // Undo the move : 
+                                    board[i][j] = rook ;
+                                    board[currentRow][currentCol] = ' ' ;
+
+                                }
+
+                                else
+                                {
+
+                                    // White Turn and Black Piece in Between : 
+                                    
+                                    if ((whiteTurn && board[currentRow][currentCol] >= 'a' &&
+                                    board[currentRow][currentCol] <= 'z') ||
+                                    (!whiteTurn && board[currentRow][currentCol] >= 'A' &&
+                                    board[currentRow][currentCol] <= 'Z'))
+                                    {
+
+                                        char CapturedPiece = board[currentRow][currentCol] ;
+
+                                        board[currentRow][currentCol] = rook ;
+                                        board[i][j] = ' ' ; 
+
+                                        // check if it does the Work \
+
+                                        if(!isKinginCheck(whiteTurn))
+                                        {
+                                            return true ;
+                                        }
+                                        
+
+                                        // Undo 
+                                        board[i][j] = rook ;
+                                        board[currentRow][currentCol] = CapturedPiece ;
+                                    }
+
+                                    // Koi bhi aur piece mil gaya to ye case Fail hai ;
+                                    break ;
+                                }
+
+                                currentCol ++ ;
+                            }
+
+
+
+
+
+                             // left Move : 
+                            currentRow = i ; 
+                            currentCol = j - 1 ; 
+
+                            while(currentCol >= 0)
+                            {
+                                
+                                // Empty Space : 
+                                if(board[currentRow][currentCol] == ' ')
+                                {
+                                    
+                                    // Temprarily Move and check :
+
+                                    board[i][j] = ' ' ;
+                                    board[currentRow][currentCol] = rook ;
+
+                                    // Check kro if possible
+                                    if(!isKinginCheck(whiteTurn))
+                                    {
+                                        return true ;
+                                    }
+
+                                    // Undo the move : 
+                                    board[i][j] = rook ;
+                                    board[currentRow][currentCol] = ' ' ;
+
+                                }
+
+                                else
+                                {
+
+                                    // White Turn and Black Piece in Between : 
+                                    
+                                    if ((whiteTurn && board[currentRow][currentCol] >= 'a' &&
+                                    board[currentRow][currentCol] <= 'z') ||
+                                    (!whiteTurn && board[currentRow][currentCol] >= 'A' &&
+                                    board[currentRow][currentCol] <= 'Z'))
+                                    {
+
+                                        char CapturedPiece = board[currentRow][currentCol] ;
+
+                                        board[currentRow][currentCol] = rook ;
+                                        board[i][j] = ' ' ; 
+
+                                        // check if it does the Work \
+
+                                        if(!isKinginCheck(whiteTurn))
+                                        {
+                                            return true ;
+                                        }
+                                        
+
+                                        // Undo 
+                                        board[i][j] = rook ;
+                                        board[currentRow][currentCol] = CapturedPiece ;
+                                    }
+
+                                    // Koi bhi aur piece mil gaya to ye case Fail hai ;
+                                    break ;
+                                }
+
+                                currentCol -- ;
+                            }
+
+
+
+
+
+                             // Up Move : 
+                            int currentRow = i + 1; 
+                            int currentCol = j ; 
+
+                            while(currentRow < 8)
+                            {
+                                
+                                // Empty Space : 
+                                if(board[currentRow][currentCol] == ' ')
+                                {
+                                    
+                                    // Temprarily Move and check :
+
+                                    board[i][j] = ' ' ;
+                                    board[currentRow][currentCol] = rook ;
+
+                                    // Check kro if possible
+                                    if(!isKinginCheck(whiteTurn))
+                                    {
+                                        return true ;
+                                    }
+
+                                    // Undo the move : 
+                                    board[i][j] = rook ;
+                                    board[currentRow][currentCol] = ' ' ;
+
+                                }
+
+                                else
+                                {
+
+                                    // White Turn and Black Piece in Between : 
+                                    
+                                    if ((whiteTurn && board[currentRow][currentCol] >= 'a' &&
+                                    board[currentRow][currentCol] <= 'z') ||
+                                    (!whiteTurn && board[currentRow][currentCol] >= 'A' &&
+                                    board[currentRow][currentCol] <= 'Z'))
+                                    {
+
+                                        char CapturedPiece = board[currentRow][currentCol] ;
+
+                                        board[currentRow][currentCol] = rook ;
+                                        board[i][j] = ' ' ; 
+
+                                        // check if it does the Work \
+
+                                        if(!isKinginCheck(whiteTurn))
+                                        {
+                                            return true ;
+                                        }
+                                        
+
+                                        // Undo 
+                                        board[i][j] = rook ;
+                                        board[currentRow][currentCol] = CapturedPiece ;
+                                    }
+
+                                    // Koi bhi aur piece mil gaya to ye case Fail hai ;
+                                    break ;
+                                }
+
+                                currentRow ++ ;
+                            }
+
+
+
+
+                             // Down Move : 
+                            int currentRow = i - 1; 
+                            int currentCol = j ; 
+
+                            while(currentRow >= 0)
+                            {
+                                
+                                // Empty Space : 
+                                if(board[currentRow][currentCol] == ' ')
+                                {
+                                    
+                                    // Temprarily Move and check :
+
+                                    board[i][j] = ' ' ;
+                                    board[currentRow][currentCol] = rook ;
+
+                                    // Check kro if possible
+                                    if(!isKinginCheck(whiteTurn))
+                                    {
+                                        return true ;
+                                    }
+
+                                    // Undo the move : 
+                                    board[i][j] = rook ;
+                                    board[currentRow][currentCol] = ' ' ;
+
+                                }
+
+                                else
+                                {
+
+                                    // White Turn and Black Piece in Between : 
+                                    
+                                    if ((whiteTurn && board[currentRow][currentCol] >= 'a' &&
+                                    board[currentRow][currentCol] <= 'z') ||
+                                    (!whiteTurn && board[currentRow][currentCol] >= 'A' &&
+                                    board[currentRow][currentCol] <= 'Z'))
+                                    {
+
+                                        char CapturedPiece = board[currentRow][currentCol] ;
+
+                                        board[currentRow][currentCol] = rook ;
+                                        board[i][j] = ' ' ; 
+
+                                        // check if it does the Work \
+
+                                        if(!isKinginCheck(whiteTurn))
+                                        {
+                                            return true ;
+                                        }
+                                        
+
+                                        // Undo 
+                                        board[i][j] = rook ;
+                                        board[currentRow][currentCol] = CapturedPiece ;
+                                    }
+
+                                    // Koi bhi aur piece mil gaya to ye case Fail hai ;
+                                    break ;
+                                }
+
+                                currentRow -- ;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }

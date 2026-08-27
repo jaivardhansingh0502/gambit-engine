@@ -35,7 +35,7 @@ public:
     bool isValid(Move move);
     bool isKinginCheck(bool whiteTurn) ;
     bool canKingEscape(bool whiteTurn) ;
-    bool canAnyPieceSaveKing(bool whiteTurn) ;
+    bool canRookSaveKing(bool whiteTurn) ;
 };
 
 #endif
