@@ -1807,3 +1807,288 @@ bool Board :: isValid(Move move)
             }
         }
     }
+
+
+    bool Board :: canKnightSaveKing(bool whiteTurn)
+    {
+
+        char knight ;
+        char king ; 
+        
+        if(whiteTurn)
+        {
+            king = 'K' ;
+            knight = 'N' ;
+        }
+
+        else
+        {
+            king = 'k' ;
+            knight = 'n' ;
+        }
+
+        
+        for(int i = 0 ; i < 8 ; i ++)
+        {
+            for(int j = 0 ; j < 8 ; j ++)
+            {
+                if(board[i][j] == knight)
+                {
+                
+                   for(int rowChange = -2 ; rowChange <= 2 ; rowChange++) 
+                    {
+                     for(int colChange = -2 ; colChange <= 2 ; colChange++)
+                    {
+                        
+                        // ColChange can not be equal to rowChange 
+                        if(abs(colChange) + abs(rowChange) != 3)
+                        {
+                            continue ;
+                        }
+
+                        // Actual Square 
+                        if(rowChange == 0 && colChange == 0)
+                        {
+                            continue ;
+                        }
+
+
+
+
+                        // Right(2) + Down(1)
+
+                        if(rowChange == 1 && colChange == 2)
+                        {
+
+                            if(i + 1 < 8 && j + 2 < 8)
+                            {
+
+                                if(board[i+1][j+2] == ' ')
+                                {
+
+                                    // Temporary
+                                    board[i+1][j+2] = knight ;
+                                    board[i][j] = ' ' ;
+
+                                    // Check King
+                                    if(!isKinginCheck(whiteTurn))
+                                    {
+                                        return true ;
+                                    }
+
+                                    // Undo
+                                    board[i+1][j+2] = ' ' ;
+                                    board[i][j] = knight ;
+                                }
+                            }
+                        }
+
+
+                        // Right(2) + Up(1)
+
+                        if(rowChange == -1 && colChange == 2)
+                        {
+
+                            if(i - 1 >= 0 && j + 2 < 8)
+                            {
+
+                                if(board[i-1][j+2] == ' ')
+                                {
+
+                                    // Temporary
+                                    board[i-1][j+2] = knight ;
+                                    board[i][j] = ' ' ;
+
+                                    // Check King
+                                    if(!isKinginCheck(whiteTurn))
+                                    {
+                                        return true ;
+                                    }
+
+                                    // Undo
+                                    board[i-1][j+2] = ' ' ;
+                                    board[i][j] = knight ;
+                                }
+                            }
+                        }
+
+
+                        // Left(2) + Down(1)
+
+                        if(rowChange == 1 && colChange == -2)
+                        {
+
+                            if(i + 1 < 8 && j - 2 >= 0)
+                            {
+
+                                if(board[i+1][j-2] == ' ')
+                                {
+
+                                    // Temporary
+                                    board[i+1][j-2] = knight ;
+                                    board[i][j] = ' ' ;
+
+                                    // Check King
+                                    if(!isKinginCheck(whiteTurn))
+                                    {
+                                        return true ;
+                                    }
+
+                                    // Undo
+                                    board[i+1][j-2] = ' ' ;
+                                    board[i][j] = knight ;
+                                }
+                            }
+                        }
+
+
+                        // Left(2) + Up(1)
+
+                        if(rowChange == -1 && colChange == -2)
+                        {
+
+                            if(i - 1 >= 0 && j - 2 >= 0)
+                            {
+
+                                if(board[i-1][j-2] == ' ')
+                                {
+
+                                    // Temporary
+                                    board[i-1][j-2] = knight ;
+                                    board[i][j] = ' ' ;
+
+                                    // Check King
+                                    if(!isKinginCheck(whiteTurn))
+                                    {
+                                        return true ;
+                                    }
+
+                                    // Undo
+                                    board[i-1][j-2] = ' ' ;
+                                    board[i][j] = knight ;
+                                }
+                            }
+                        }
+
+
+                        // Down(2) + Right(1)
+
+                        if(rowChange == 2 && colChange == 1)
+                        {
+
+                            if(i + 2 < 8 && j + 1 < 8)
+                            {
+
+                                if(board[i+2][j+1] == ' ')
+                                {
+
+                                    // Temporary
+                                    board[i+2][j+1] = knight ;
+                                    board[i][j] = ' ' ;
+
+                                    // Check King
+                                    if(!isKinginCheck(whiteTurn))
+                                    {
+                                        return true ;
+                                    }
+
+                                    // Undo
+                                    board[i+2][j+1] = ' ' ;
+                                    board[i][j] = knight ;
+                                }
+                            }
+                        }
+
+
+                        // Down(2) + Left(1)
+
+                        if(rowChange == 2 && colChange == -1)
+                        {
+
+                            if(i + 2 < 8 && j - 1 >= 0)
+                            {
+
+                                if(board[i+2][j-1] == ' ')
+                                {
+
+                                    // Temporary
+                                    board[i+2][j-1] = knight ;
+                                    board[i][j] = ' ' ;
+
+                                    // Check King
+                                    if(!isKinginCheck(whiteTurn))
+                                    {
+                                        return true ;
+                                    }
+
+                                    // Undo
+                                    board[i+2][j-1] = ' ' ;
+                                    board[i][j] = knight ;
+                                }
+                            }
+                        }
+
+
+                        // Up(2) + Right(1)
+
+                        if(rowChange == -2 && colChange == 1)
+                        {
+
+                            if(i - 2 >= 0 && j + 1 < 8)
+                            {
+
+                                if(board[i-2][j+1] == ' ')
+                                {
+
+                                    // Temporary
+                                    board[i-2][j+1] = knight ;
+                                    board[i][j] = ' ' ;
+
+                                    // Check King
+                                    if(!isKinginCheck(whiteTurn))
+                                    {
+                                        return true ;
+                                    }
+
+                                    // Undo
+                                    board[i-2][j+1] = ' ' ;
+                                    board[i][j] = knight ;
+                                }
+                            }
+                        }
+
+
+                        // Up(2) + Left(1)
+
+                        if(rowChange == -2 && colChange == -1)
+                        {
+
+                            if(i - 2 >= 0 && j - 1 >= 0)
+                            {
+
+                                if(board[i-2][j-1] == ' ')
+                                {
+
+                                    // Temporary
+                                    board[i-2][j-1] = knight ;
+                                    board[i][j] = ' ' ;
+
+                                    // Check King
+                                    if(!isKinginCheck(whiteTurn))
+                                    {
+                                        return true ;
+                                    }
+
+                                    // Undo
+                                    board[i-2][j-1] = ' ' ;
+                                    board[i][j] = knight ;
+                                }
+                            }
+                        }
+                    }
+                    }
+                }
+            }
+        }
+        return false ;
+    }
