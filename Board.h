@@ -40,6 +40,8 @@ public:
     bool canKnightSaveKing(bool whiteTurn) ;
     bool canQueenSaveKing(bool whiteTurn) ;
     bool canPawnSaveKing(bool whiteTurn) ;
+    bool canSaveKing(bool whiteTurn) ;
+    bool isCheckmate(bool whiteTurn) ;
 };
 
 #endif

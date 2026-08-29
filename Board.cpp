@@ -2932,3 +2932,42 @@ bool Board :: isValid(Move move)
 
     return false;
 }
+
+
+bool Board::canSaveKing(bool whiteTurn)
+{
+    if(canKingEscape(whiteTurn))
+        return true;
+
+    if(canKnightSaveKing(whiteTurn))
+        return true;
+
+    if(canBishopSaveKing(whiteTurn))
+        return true;
+
+    if(canRookSaveKing(whiteTurn))
+        return true;
+
+    if(canQueenSaveKing(whiteTurn))
+        return true;
+
+    if(canPawnSaveKing(whiteTurn))
+        return true;
+
+    return false;
+}
+
+bool Board::isCheckmate(bool whiteTurn)
+{
+    if(!isKinginCheck(whiteTurn))
+    {
+        return false;
+    }
+
+    if(canSaveKing(whiteTurn))
+    {
+        return false;
+    }
+
+    return true;
+}
