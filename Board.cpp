@@ -2707,3 +2707,228 @@ bool Board :: isValid(Move move)
 
         return false ;
     }
+
+
+    bool Board :: canPawnSaveKing(bool whiteTurn)
+{
+    char pawn;
+
+    if(whiteTurn)
+    {
+        pawn = 'P';
+    }
+    else
+    {
+        pawn = 'p';
+    }
+
+    for(int i = 0; i < 8; i++)
+    {
+        for(int j = 0; j < 8; j++)
+        {
+            if(board[i][j] == pawn)
+            {
+                // =========================================
+                // WHITE PAWN
+                // =========================================
+
+                if(whiteTurn)
+                {
+                    // One Square Forward
+
+                    if(i - 1 >= 0 && board[i-1][j] == ' ')
+                    {
+                        // Temporary Move
+                        board[i][j] = ' ';
+                        board[i-1][j] = pawn;
+
+                        if(!isKinginCheck(whiteTurn))
+                        {
+                            return true;
+                        }
+
+                        // Undo
+                        board[i][j] = pawn;
+                        board[i-1][j] = ' ';
+                    }
+
+
+                    // Two Square Forward
+                    // Only from starting position
+
+                    if(i == 6)
+                    {
+                        if(board[i-1][j] == ' ' &&
+                           board[i-2][j] == ' ')
+                        {
+                            // Temporary Move
+                            board[i][j] = ' ';
+                            board[i-2][j] = pawn;
+
+                            if(!isKinginCheck(whiteTurn))
+                            {
+                                return true;
+                            }
+
+                            // Undo
+                            board[i][j] = pawn;
+                            board[i-2][j] = ' ';
+                        }
+                    }
+
+
+                    // Diagonal Left Capture
+
+                    if(i - 1 >= 0 && j - 1 >= 0)
+                    {
+                        if(board[i-1][j-1] >= 'a' &&
+                           board[i-1][j-1] <= 'z')
+                        {
+                            char capturedPiece = board[i-1][j-1];
+
+                            // Temporary Move
+                            board[i][j] = ' ';
+                            board[i-1][j-1] = pawn;
+
+                            if(!isKinginCheck(whiteTurn))
+                            {
+                                return true;
+                            }
+
+                            // Undo
+                            board[i][j] = pawn;
+                            board[i-1][j-1] = capturedPiece;
+                        }
+                    }
+
+
+                    // Diagonal Right Capture
+
+                    if(i - 1 >= 0 && j + 1 < 8)
+                    {
+                        if(board[i-1][j+1] >= 'a' &&
+                           board[i-1][j+1] <= 'z')
+                        {
+                            char capturedPiece = board[i-1][j+1];
+
+                            // Temporary Move
+                            board[i][j] = ' ';
+                            board[i-1][j+1] = pawn;
+
+                            if(!isKinginCheck(whiteTurn))
+                            {
+                                return true;
+                            }
+
+                            // Undo
+                            board[i][j] = pawn;
+                            board[i-1][j+1] = capturedPiece;
+                        }
+                    }
+                }
+
+
+                // =========================================
+                // BLACK PAWN
+                // =========================================
+
+                else
+                {
+                    // One Square Forward
+
+                    if(i + 1 < 8 && board[i+1][j] == ' ')
+                    {
+                        // Temporary Move
+                        board[i][j] = ' ';
+                        board[i+1][j] = pawn;
+
+                        if(!isKinginCheck(whiteTurn))
+                        {
+                            return true;
+                        }
+
+                        // Undo
+                        board[i][j] = pawn;
+                        board[i+1][j] = ' ';
+                    }
+
+
+                    // Two Square Forward
+                    // Only from starting position
+
+                    if(i == 1)
+                    {
+                        if(board[i+1][j] == ' ' &&
+                           board[i+2][j] == ' ')
+                        {
+                            // Temporary Move
+                            board[i][j] = ' ';
+                            board[i+2][j] = pawn;
+
+                            if(!isKinginCheck(whiteTurn))
+                            {
+                                return true;
+                            }
+
+                            // Undo
+                            board[i][j] = pawn;
+                            board[i+2][j] = ' ';
+                        }
+                    }
+
+
+                    // Diagonal Left Capture
+
+                    if(i + 1 < 8 && j - 1 >= 0)
+                    {
+                        if(board[i+1][j-1] >= 'A' &&
+                           board[i+1][j-1] <= 'Z')
+                        {
+                            char capturedPiece = board[i+1][j-1];
+
+                            // Temporary Move
+                            board[i][j] = ' ';
+                            board[i+1][j-1] = pawn;
+
+                            if(!isKinginCheck(whiteTurn))
+                            {
+                                return true;
+                            }
+
+                            // Undo
+                            board[i][j] = pawn;
+                            board[i+1][j-1] = capturedPiece;
+                        }
+                    }
+
+
+                    // Diagonal Right Capture
+
+                    if(i + 1 < 8 && j + 1 < 8)
+                    {
+                        if(board[i+1][j+1] >= 'A' &&
+                           board[i+1][j+1] <= 'Z')
+                        {
+                            char capturedPiece = board[i+1][j+1];
+
+                            // Temporary Move
+                            board[i][j] = ' ';
+                            board[i+1][j+1] = pawn;
+
+                            if(!isKinginCheck(whiteTurn))
+                            {
+                                return true;
+                            }
+
+                            // Undo
+                            board[i][j] = pawn;
+                            board[i+1][j+1] = capturedPiece;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
+}
