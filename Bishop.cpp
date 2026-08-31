@@ -19,7 +19,7 @@ bool Bishop::isValidBishopMove(Move move, char board[8][8])
     if (startPiece == 'B')
     {
         if ((abs(startRow - endRow) == abs(startCol - endCol)) &&
-            (endPiece == '.' || (endPiece >= 'a' && endPiece <= 'z')))
+            (endPiece == ' ' || (endPiece >= 'a' && endPiece <= 'z')))
         {
             if (endRow > startRow)
             {
@@ -44,7 +44,7 @@ bool Bishop::isValidBishopMove(Move move, char board[8][8])
 
             while (moverow != endRow && movecol != endCol)
             {
-                if (board[moverow][movecol] == '.')
+                if (board[moverow][movecol] == ' ')
                 {
                     moverow = moverow + rowStep;
                     movecol = movecol + colStep;
@@ -65,7 +65,7 @@ bool Bishop::isValidBishopMove(Move move, char board[8][8])
     if (startPiece == 'b')
     {
         if ((abs(startRow - endRow) == abs(startCol - endCol)) &&
-            (endPiece == '.' || (endPiece >= 'A' && endPiece <= 'Z')))
+            (endPiece == ' ' || (endPiece >= 'A' && endPiece <= 'Z')))
         {
             if (endRow > startRow)
             {
@@ -90,7 +90,7 @@ bool Bishop::isValidBishopMove(Move move, char board[8][8])
 
             while (moverow != endRow && movecol != endCol)
             {
-                if (board[moverow][movecol] == '.')
+                if (board[moverow][movecol] == ' ')
                 {
                     moverow = moverow + rowStep;
                     movecol = movecol + colStep;

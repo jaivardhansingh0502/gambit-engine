@@ -42,6 +42,7 @@ public:
     bool canPawnSaveKing(bool whiteTurn) ;
     bool canSaveKing(bool whiteTurn) ;
     bool isCheckmate(bool whiteTurn) ;
+    bool isStalemate(bool whiteTurn) ;
 };
 
 #endif
