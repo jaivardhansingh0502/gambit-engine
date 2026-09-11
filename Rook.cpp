@@ -154,5 +154,5 @@ bool Rook::isValidRookMove(Move move, char board[8][8]) {
 
             return false ;
         }
-        
+        return false; 
 }

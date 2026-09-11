@@ -1064,6 +1064,7 @@ bool Board :: isValid(Move move)
                 }
             }
         }
+        return false;
     }
 
     bool Board ::canKingEscape(bool whiteTurn)
