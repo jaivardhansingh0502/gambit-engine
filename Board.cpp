@@ -57,7 +57,7 @@ void Board :: initializeBoard()
                 board[i][j] = 'p';
 
             else
-                board[i][j] = '.';
+                board[i][j] = ' ';
         }
     }
 
@@ -285,7 +285,7 @@ void Board :: makeMove(Move move)
 
     board[endRow][endCol] = board[startRow][startCol];
 
-    board[startRow][startCol] = '.';
+    board[startRow][startCol] = ' ';
 
     whiteTurn = !whiteTurn ;
 }
@@ -300,7 +300,7 @@ bool Board :: isValid(Move move)
     int endCol = move.getEndCol();
 
     // Starting square empty
-    if(board[startRow][startCol] == '.')
+    if(board[startRow][startCol] == ' ')
     {
         return false;
     }
@@ -329,7 +329,7 @@ bool Board :: isValid(Move move)
     }
 
     // Cannot capture your own piece
-    if(endPiece != '.')
+    if(endPiece != ' ')
     {
         
         // Black piece trying to capture black piece
