@@ -2958,6 +2958,7 @@ bool Board::canSaveKing(bool whiteTurn)
     return false;
 }
 
+
 bool Board::isCheckmate(bool whiteTurn)
 {
     if(!isKinginCheck(whiteTurn))
@@ -2972,3 +2973,103 @@ bool Board::isCheckmate(bool whiteTurn)
 
     return true;
 }
+
+
+bool Board :: hasLegalMoves(bool whiteTurn)
+{
+    for(int i = 0 ; i < 8 ; i ++)
+    {
+        for(int j = 0 ; j < 8 ; j ++)
+        {
+            char piece = board[i][j] ;
+
+            // Empty Square
+            if(piece == ' ')
+            {
+                continue ;
+            }
+
+            // White Piece
+            if(whiteTurn){
+
+                if(piece < 'A' || piece > 'Z')
+                    continue;
+
+            }
+
+            // Black Piece
+            else{
+
+                if(piece < 'a' || piece > 'z')
+                    continue;
+
+            }
+
+            // Consider all possible moves for this piece
+            for(int newRow = 0 ; newRow < 8 ; newRow ++)
+            {
+                for(int newCol = 0 ; newCol < 8 ; newCol ++)
+                {
+                    char destination = board[newRow][newCol];
+
+                    // Don't capture own piece
+                    if(whiteTurn && destination >= 'A' && destination <= 'Z')
+                        continue;
+
+                    if(!whiteTurn && destination >= 'a' && destination <= 'z')
+                        continue;
+
+                    // Convert board position to chess notation
+                    string from;
+                    string to;
+
+                    from += ('a' + j);
+                    from += ('8' - i);
+
+                    to += ('a' + newCol);
+                    to += ('8' - newRow);
+                    
+                    Move move(from, to);
+
+                    // Check Validity of Move
+                    if(!isValid(move))
+                    {
+                        continue ;
+                    }
+
+                    // Temporary Move
+
+                    char capturedPiece = board[newRow][newCol];
+                    board[newRow][newCol] = piece;  
+                    
+                    board[i][j] = ' ';
+
+                     // Is king safe after the move?
+                    bool illegal = isKinginCheck(whiteTurn);
+
+                    // Undo the move
+                    board[i][j] = piece;
+                    board[newRow][newCol] = capturedPiece;
+
+                    if(!illegal)
+                        return true;
+
+                }
+            }
+        }
+    }
+
+    return false ;
+}
+
+bool Board::isStalemate(bool whiteTurn)
+{
+    if(isKinginCheck(whiteTurn))
+        return false;
+
+    if(hasLegalMoves(whiteTurn))
+        return false;
+
+    return true;
+}
+

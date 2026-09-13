@@ -43,6 +43,8 @@ public:
     bool canSaveKing(bool whiteTurn) ;
     bool isCheckmate(bool whiteTurn) ;
     bool isStalemate(bool whiteTurn) ;
+    bool hasLegalMoves(bool whiteTurn) ;
+    bool isValidCastling(Move move, bool whiteTurn) ;
 };
 
 #endif
