@@ -13,13 +13,13 @@ bool Pawn::isValidPawnMove(Move move, char board[8][8]) {
     if (startPiece == 'P') {
         if (startRow - endRow == 1 &&
              startCol == endCol && 
-             endPiece == '.') {
+             endPiece == ' ') {
             return true;
         }
         if (startRow == 6 && 
             startRow - endRow == 2 && startCol == endCol && 
-            endPiece == '.' && 
-            board[endRow - 1][endCol] == '.') {
+            endPiece == ' ' && 
+            board[endRow - 1][endCol] == ' ') {
             return true;
         }
         if (startRow - endRow == 1 && abs(startCol - endCol) == 1 
@@ -31,12 +31,12 @@ bool Pawn::isValidPawnMove(Move move, char board[8][8]) {
     if (startPiece == 'p') {
         if (endRow - startRow == 1 && 
             startCol == endCol && 
-            endPiece == '.') {
+            endPiece == ' ') {
             return true;
         }
         if (startRow == 1 && endRow - startRow == 2 && 
-            startCol == endCol && endPiece == '.' && 
-            board[endRow - 1][endCol] == '.') {
+            startCol == endCol && endPiece == ' ' && 
+            board[endRow - 1][endCol] == ' ') {
             return true;
         }
         if (endRow - startRow == 1 && abs(startCol - endCol) == 1 

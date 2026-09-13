@@ -17,7 +17,7 @@ bool Knight::isValidKnightMove(Move move , char board[8][8])
         {
             if(((abs(startRow - endRow) == 1 && abs(startCol - endCol) == 2) || 
             (abs(startRow - endRow) == 2 && abs(startCol - endCol) == 1)) && 
-            (endPiece == '.' || (endPiece >= 'a' && endPiece <= 'z')))
+            (endPiece == ' ' || (endPiece >= 'a' && endPiece <= 'z')))
             {
                 return true ;
             }
@@ -28,7 +28,7 @@ bool Knight::isValidKnightMove(Move move , char board[8][8])
         {
             if(((abs(startRow - endRow) == 1 && abs(startCol - endCol) == 2) || 
             (abs(startRow - endRow) == 2 && abs(startCol - endCol) == 1)) && 
-            (endPiece == '.' || (endPiece >= 'A' && endPiece <= 'Z')))
+            (endPiece == ' ' || (endPiece >= 'A' && endPiece <= 'Z')))
             {
                 return true ;
             }

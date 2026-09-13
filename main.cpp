@@ -1,6 +1,9 @@
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
 #include <iostream>
 #include "Board.h"
-#include <windows.h>
+
 using namespace std;
 
 int main()
@@ -15,21 +18,10 @@ int main()
     chessboard.initializeBoard();
     chessboard.displayBoard();
 
-    bool whiteTurn = true;
-
     while(true)
     {
         chessboard.takeinput();
-
         chessboard.displayBoard();
-
-        if(chessboard.isCheckmate(!whiteTurn))
-        {
-            cout << "CHECKMATE!" << endl;
-            break;
-        }
-
-        whiteTurn = !whiteTurn;
     }
 
     return 0;

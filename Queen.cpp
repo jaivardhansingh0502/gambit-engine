@@ -20,7 +20,7 @@ bool Queen::isValidQueenMove(Move move , char board[8][8])
     {
         // Horizontal movement
         if ((startRow == endRow) &&
-            (endPiece == '.' ||
+            (endPiece == ' ' ||
              (endPiece >= 'a' && endPiece <= 'z')))
         {
             if (endCol > startCol)
@@ -36,7 +36,7 @@ bool Queen::isValidQueenMove(Move move , char board[8][8])
 
             while (movecol != endCol)
             {
-                if (board[startRow][movecol] == '.')
+                if (board[startRow][movecol] == ' ')
                 {
                     movecol = movecol + colstep;
                 }
@@ -51,7 +51,7 @@ bool Queen::isValidQueenMove(Move move , char board[8][8])
 
         // Vertical movement
         else if ((startCol == endCol) &&
-                 (endPiece == '.' ||
+                 (endPiece == ' ' ||
                   (endPiece >= 'a' && endPiece <= 'z')))
         {
             if (endRow > startRow)
@@ -67,7 +67,7 @@ bool Queen::isValidQueenMove(Move move , char board[8][8])
 
             while (moverow != endRow)
             {
-                if (board[moverow][startCol] == '.')
+                if (board[moverow][startCol] == ' ')
                 {
                     moverow = moverow + rowstep;
                 }
@@ -82,7 +82,7 @@ bool Queen::isValidQueenMove(Move move , char board[8][8])
 
         // Diagonal movement
         else if ((abs(startRow - endRow) == abs(startCol - endCol)) &&
-                 (endPiece == '.' ||
+                 (endPiece == ' ' ||
                   (endPiece >= 'a' && endPiece <= 'z')))
         {
             if (endRow > startRow)
@@ -108,7 +108,7 @@ bool Queen::isValidQueenMove(Move move , char board[8][8])
 
             while (moverow != endRow && movecol != endCol)
             {
-                if (board[moverow][movecol] == '.')
+                if (board[moverow][movecol] == ' ')
                 {
                     moverow = moverow + rowstep;
                     movecol = movecol + colstep;
@@ -131,7 +131,7 @@ bool Queen::isValidQueenMove(Move move , char board[8][8])
     {
         // Horizontal movement
         if ((startRow == endRow) &&
-            (endPiece == '.' ||
+            (endPiece == ' ' ||
              (endPiece >= 'A' && endPiece <= 'Z')))
         {
             if (endCol > startCol)
@@ -147,7 +147,7 @@ bool Queen::isValidQueenMove(Move move , char board[8][8])
 
             while (movecol != endCol)
             {
-                if (board[startRow][movecol] == '.')
+                if (board[startRow][movecol] == ' ')
                 {
                     movecol = movecol + colstep;
                 }
@@ -162,7 +162,7 @@ bool Queen::isValidQueenMove(Move move , char board[8][8])
 
         // Vertical movement
         else if ((startCol == endCol) &&
-                 (endPiece == '.' ||
+                 (endPiece == ' ' ||
                   (endPiece >= 'A' && endPiece <= 'Z')))
         {
             if (endRow > startRow)
@@ -178,7 +178,7 @@ bool Queen::isValidQueenMove(Move move , char board[8][8])
 
             while (moverow != endRow)
             {
-                if (board[moverow][startCol] == '.')
+                if (board[moverow][startCol] == ' ')
                 {
                     moverow = moverow + rowstep;
                 }
@@ -193,7 +193,7 @@ bool Queen::isValidQueenMove(Move move , char board[8][8])
 
         // Diagonal movement
         else if ((abs(startRow - endRow) == abs(startCol - endCol)) &&
-                 (endPiece == '.' ||
+                 (endPiece == ' ' ||
                   (endPiece >= 'A' && endPiece <= 'Z')))
         {
             if (endRow > startRow)
@@ -219,7 +219,7 @@ bool Queen::isValidQueenMove(Move move , char board[8][8])
 
             while (moverow != endRow && movecol != endCol)
             {
-                if (board[moverow][movecol] == '.')
+                if (board[moverow][movecol] == ' ')
                 {
                     moverow = moverow + rowstep;
                     movecol = movecol + colstep;

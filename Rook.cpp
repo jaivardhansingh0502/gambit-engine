@@ -19,7 +19,7 @@ bool Rook::isValidRookMove(Move move, char board[8][8]) {
         if(startPiece == 'R')
         {
             if(startRow - endRow == 0 && 
-            ((endPiece == '.') || 
+            ((endPiece == ' ') || 
             (endPiece >= 'a' && endPiece <= 'z')))
             {
 
@@ -37,7 +37,7 @@ bool Rook::isValidRookMove(Move move, char board[8][8]) {
                 int movecol = startCol + colstep ;
                 while(movecol != endCol)
                 {
-                    if(board[startRow][movecol] == '.')
+                    if(board[startRow][movecol] == ' ')
                     {
                         movecol = movecol + colstep ;
                     }
@@ -51,7 +51,7 @@ bool Rook::isValidRookMove(Move move, char board[8][8]) {
             }
 
             else if(startCol - endCol == 0 && 
-                ((endPiece == '.') ||
+                ((endPiece == ' ') ||
                  (endPiece >= 'a' && endPiece <= 'z')))
             {   
 
@@ -69,7 +69,7 @@ bool Rook::isValidRookMove(Move move, char board[8][8]) {
                 int moverow = startRow + rowstep ;
                 while(moverow != endRow )
                 {
-                    if(board[moverow][startCol] == '.')
+                    if(board[moverow][startCol] == ' ')
                     {
                         moverow = moverow + rowstep ;
                     }
@@ -91,7 +91,7 @@ bool Rook::isValidRookMove(Move move, char board[8][8]) {
         if(startPiece == 'r')
         {
             if(startRow - endRow == 0 && 
-            ((endPiece == '.') || 
+            ((endPiece == ' ') || 
             (endPiece >= 'A' && endPiece <= 'Z')))
             {   
 
@@ -108,7 +108,7 @@ bool Rook::isValidRookMove(Move move, char board[8][8]) {
                 int movecol = startCol + colstep ;
                 while(movecol != endCol)
                 {
-                    if(board[startRow][movecol] == '.')
+                    if(board[startRow][movecol] == ' ')
                     {
                         movecol = movecol + colstep ;
                     }
@@ -122,7 +122,7 @@ bool Rook::isValidRookMove(Move move, char board[8][8]) {
             }
 
             else if(startCol - endCol == 0 && 
-                ((endPiece == '.') ||
+                ((endPiece == ' ') ||
                  (endPiece >= 'A' && endPiece <= 'Z')))
             {   
                 
@@ -139,7 +139,7 @@ bool Rook::isValidRookMove(Move move, char board[8][8]) {
                 int moverow = startRow + rowstep ;
                 while(moverow != endRow )
                 {
-                    if(board[moverow][startCol] == '.')
+                    if(board[moverow][startCol] == ' ')
                     {
                         moverow = moverow + rowstep ;
                     }

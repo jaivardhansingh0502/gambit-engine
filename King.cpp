@@ -16,7 +16,7 @@ bool King::isValidKingMove(Move move, char board[8][8])
     {
         if(abs(startRow - endRow) <= 1 &&
            abs(startCol - endCol) <= 1 &&
-           (endPiece == '.' ||
+           (endPiece == ' ' ||
             (endPiece >= 'a' && endPiece <= 'z')))
         {
             if(startRow != endRow || startCol != endCol)
@@ -31,7 +31,7 @@ bool King::isValidKingMove(Move move, char board[8][8])
     {
         if(abs(startRow - endRow) <= 1 &&
            abs(startCol - endCol) <= 1 &&
-           (endPiece == '.' ||
+           (endPiece == ' ' ||
             (endPiece >= 'A' && endPiece <= 'Z')))
         {
             if(startRow != endRow || startCol != endCol)
