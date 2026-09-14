@@ -45,6 +45,7 @@ public:
     bool isStalemate(bool whiteTurn) ;
     bool hasLegalMoves(bool whiteTurn) ;
     bool isValidCastling(Move move, bool whiteTurn) ;
+    
 };
 
 #endif

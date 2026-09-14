@@ -3073,3 +3073,4 @@ bool Board::isStalemate(bool whiteTurn)
     return true;
 }
 
+
