@@ -3132,7 +3132,7 @@ bool Board :: isValidCastling(Move move , bool whiteTurn)
 
 
         // Temporary Move King to g1 : 
-        board[7][4] = ' ' ;
+        board[7][5] = ' ' ;
         board[7][6] = 'K' ;
 
 
@@ -3144,13 +3144,15 @@ bool Board :: isValidCastling(Move move , bool whiteTurn)
             return false ;
         }
 
+        board[7][6] = ' ';
+        board[7][4] = 'K';
         return true ;
 
     }
 
-
+    
     // Black KingSide Castling :
-
+    else{
     if(startRow!= 0 || startCol != 4 
             || endRow != 0 || endCol != 6  )
             {
@@ -3162,7 +3164,7 @@ bool Board :: isValidCastling(Move move , bool whiteTurn)
             return false ;
         }
 
-        if(board[0][7]  != 'R')
+        if(board[0][7]  != 'r')
         {
             return false ;
         }
@@ -3192,7 +3194,7 @@ bool Board :: isValidCastling(Move move , bool whiteTurn)
 
 
         // Temporary Move King to g1 : 
-        board[0][4] = ' ' ;
+        board[0][5] = ' ' ;
         board[0][6] = 'k' ;
 
 
@@ -3204,6 +3206,11 @@ bool Board :: isValidCastling(Move move , bool whiteTurn)
             return false ;
         }
 
+        board[0][6] = ' ';
+        board[0][4] = 'k';
         return true ;
+    }
 
+
+    // Queen Side Castling 
 }
