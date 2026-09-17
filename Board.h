@@ -23,7 +23,11 @@ private:
 
     string getPieceSymbol(char piece);
     bool whiteTurn ;
+    bool whiteKingMoved;
+    bool blackKingMoved;
 
+    bool whiteKingsideRookMoved;
+    bool blackKingsideRookMoved;
 
 public:
 

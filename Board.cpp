@@ -62,6 +62,10 @@ void Board :: initializeBoard()
     }
 
     whiteTurn = true ;
+    whiteKingMoved = false;
+    blackKingMoved = false;
+    whiteKingsideRookMoved = false;
+    blackKingsideRookMoved = false;
 }
 
 
@@ -3074,3 +3078,132 @@ bool Board::isStalemate(bool whiteTurn)
 }
 
 
+bool Board :: isValidCastling(Move move , bool whiteTurn)
+{
+
+    int startRow = move.getStartRow() ;
+    int endRow = move.getEndRow() ;
+    int startCol = move.getStartCol() ;
+    int endCol = move.getEndCol() ;
+
+
+    if(whiteTurn)
+    {
+
+        // White King Side Castling
+        if(startRow!= 7 || startCol != 4 
+            || endRow != 7 || endCol != 6  )
+            {
+                return false ;
+            }
+
+        if(whiteKingMoved || whiteKingsideRookMoved)
+        {
+            return false ;
+        }
+
+        if(board[7][7]  != 'R')
+        {
+            return false ;
+        }
+
+        if(board[7][5] != ' ' || board[7][6] != ' ')
+        {
+            return false ;
+        }
+
+        if(isKinginCheck(whiteTurn))
+        {
+            return false ;
+        }
+
+        // Temporary Move king to f1 : 
+
+        board[7][4] = ' ' ;
+        board[7][5] = 'K' ;
+
+        if(isKinginCheck(whiteTurn))
+        {
+            // Undo Move :
+            board[7][5] = ' ' ;
+            board[7][4] = 'K' ;
+            return false ;
+        }
+
+
+        // Temporary Move King to g1 : 
+        board[7][4] = ' ' ;
+        board[7][6] = 'K' ;
+
+
+        if(isKinginCheck(whiteTurn))
+        {
+             // Undo Move :
+            board[7][6] = ' ' ;
+            board[7][4] = 'K' ;
+            return false ;
+        }
+
+        return true ;
+
+    }
+
+
+    // Black KingSide Castling :
+
+    if(startRow!= 0 || startCol != 4 
+            || endRow != 0 || endCol != 6  )
+            {
+                return false ;
+            }
+
+        if(blackKingMoved || blackKingsideRookMoved)
+        {
+            return false ;
+        }
+
+        if(board[0][7]  != 'R')
+        {
+            return false ;
+        }
+
+        if(board[0][5] != ' ' || board[0][6] != ' ')
+        {
+            return false ;
+        }
+
+        if(isKinginCheck(whiteTurn))
+        {
+            return false ;
+        }
+
+        // Temporary Move king to f1 : 
+
+        board[0][4] = ' ' ;
+        board[0][5] = 'k' ;
+
+        if(isKinginCheck(whiteTurn))
+        {
+            // Undo Move :
+            board[0][5] = ' ' ;
+            board[0][4] = 'k' ;
+            return false ;
+        }
+
+
+        // Temporary Move King to g1 : 
+        board[0][4] = ' ' ;
+        board[0][6] = 'k' ;
+
+
+        if(isKinginCheck(whiteTurn))
+        {
+             // Undo Move :
+            board[0][6] = ' ' ;
+            board[0][4] = 'k' ;
+            return false ;
+        }
+
+        return true ;
+
+}
