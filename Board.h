@@ -29,6 +29,9 @@ private:
     bool whiteKingsideRookMoved;
     bool blackKingsideRookMoved;
 
+    bool whiteQueensideRookMoved ;
+    bool blackQueensideRookMoved ;
+
 public:
 
     void initializeBoard();
