@@ -289,11 +289,92 @@ void Board :: makeMove(Move move)
     int endRow = move.getEndRow();
     int endCol = move.getEndCol();
 
+
+    // =========================
+    // WHITE KING SIDE CASTLING
+    // =========================
+
+    if(board[startRow][startCol] == 'K' &&
+       startRow == 7 && startCol == 4 &&
+       endRow == 7 && endCol == 6)
+    {
+        board[7][4] = ' ';
+        board[7][6] = 'K';
+
+        board[7][7] = ' ';
+        board[7][5] = 'R';
+
+        whiteTurn = !whiteTurn;
+        return;
+    }
+
+
+    // =========================
+    // WHITE QUEEN SIDE CASTLING
+    // =========================
+
+    if(board[startRow][startCol] == 'K' &&
+       startRow == 7 && startCol == 4 &&
+       endRow == 7 && endCol == 2)
+    {
+        board[7][4] = ' ';
+        board[7][2] = 'K';
+
+        board[7][0] = ' ';
+        board[7][3] = 'R';
+
+        whiteTurn = !whiteTurn;
+        return;
+    }
+
+
+    // =========================
+    // BLACK KING SIDE CASTLING
+    // =========================
+
+    if(board[startRow][startCol] == 'k' &&
+       startRow == 0 && startCol == 4 &&
+       endRow == 0 && endCol == 6)
+    {
+        board[0][4] = ' ';
+        board[0][6] = 'k';
+
+        board[0][7] = ' ';
+        board[0][5] = 'r';
+
+        whiteTurn = !whiteTurn;
+        return;
+    }
+
+
+    // =========================
+    // BLACK QUEEN SIDE CASTLING
+    // =========================
+
+    if(board[startRow][startCol] == 'k' &&
+       startRow == 0 && startCol == 4 &&
+       endRow == 0 && endCol == 2)
+    {
+        board[0][4] = ' ';
+        board[0][2] = 'k';
+
+        board[0][0] = ' ';
+        board[0][3] = 'r';
+
+        whiteTurn = !whiteTurn;
+        return;
+    }
+
+
+    // =========================
+    // NORMAL MOVE
+    // =========================
+
     board[endRow][endCol] = board[startRow][startCol];
 
     board[startRow][startCol] = ' ';
 
-    whiteTurn = !whiteTurn ;
+    whiteTurn = !whiteTurn;
 }
 
 
@@ -391,6 +472,14 @@ bool Board :: isValid(Move move)
     // King 
     if(startPiece == 'K' || startPiece == 'k')
     {
+
+
+        if(isValidCastling(move, whiteTurn))
+        {
+            return true;
+        }
+
+
         return king.isValidKingMove(move, board);
     }
 
