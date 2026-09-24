@@ -289,12 +289,14 @@ void Board :: makeMove(Move move)
     int endRow = move.getEndRow();
     int endCol = move.getEndCol();
 
+    char piece = board[startRow][startCol];
+
 
     // =========================
     // WHITE KING SIDE CASTLING
     // =========================
 
-    if(board[startRow][startCol] == 'K' &&
+    if(piece == 'K' &&
        startRow == 7 && startCol == 4 &&
        endRow == 7 && endCol == 6)
     {
@@ -303,6 +305,9 @@ void Board :: makeMove(Move move)
 
         board[7][7] = ' ';
         board[7][5] = 'R';
+
+        whiteKingMoved = true;
+        whiteKingsideRookMoved = true;
 
         whiteTurn = !whiteTurn;
         return;
@@ -313,7 +318,7 @@ void Board :: makeMove(Move move)
     // WHITE QUEEN SIDE CASTLING
     // =========================
 
-    if(board[startRow][startCol] == 'K' &&
+    if(piece == 'K' &&
        startRow == 7 && startCol == 4 &&
        endRow == 7 && endCol == 2)
     {
@@ -322,6 +327,9 @@ void Board :: makeMove(Move move)
 
         board[7][0] = ' ';
         board[7][3] = 'R';
+
+        whiteKingMoved = true;
+        whiteQueensideRookMoved = true;
 
         whiteTurn = !whiteTurn;
         return;
@@ -332,7 +340,7 @@ void Board :: makeMove(Move move)
     // BLACK KING SIDE CASTLING
     // =========================
 
-    if(board[startRow][startCol] == 'k' &&
+    if(piece == 'k' &&
        startRow == 0 && startCol == 4 &&
        endRow == 0 && endCol == 6)
     {
@@ -341,6 +349,9 @@ void Board :: makeMove(Move move)
 
         board[0][7] = ' ';
         board[0][5] = 'r';
+
+        blackKingMoved = true;
+        blackKingsideRookMoved = true;
 
         whiteTurn = !whiteTurn;
         return;
@@ -351,7 +362,7 @@ void Board :: makeMove(Move move)
     // BLACK QUEEN SIDE CASTLING
     // =========================
 
-    if(board[startRow][startCol] == 'k' &&
+    if(piece == 'k' &&
        startRow == 0 && startCol == 4 &&
        endRow == 0 && endCol == 2)
     {
@@ -360,6 +371,9 @@ void Board :: makeMove(Move move)
 
         board[0][0] = ' ';
         board[0][3] = 'r';
+
+        blackKingMoved = true;
+        blackQueensideRookMoved = true;
 
         whiteTurn = !whiteTurn;
         return;
@@ -370,9 +384,49 @@ void Board :: makeMove(Move move)
     // NORMAL MOVE
     // =========================
 
-    board[endRow][endCol] = board[startRow][startCol];
-
+    board[endRow][endCol] = piece;
     board[startRow][startCol] = ' ';
+
+
+    // =========================
+    // MOVEMENT HISTORY
+    // =========================
+
+    if(piece == 'K')
+    {
+        whiteKingMoved = true;
+    }
+
+    if(piece == 'k')
+    {
+        blackKingMoved = true;
+    }
+
+    if(piece == 'R')
+    {
+        if(startRow == 7 && startCol == 7)
+        {
+            whiteKingsideRookMoved = true;
+        }
+
+        if(startRow == 7 && startCol == 0)
+        {
+            whiteQueensideRookMoved = true;
+        }
+    }
+
+    if(piece == 'r')
+    {
+        if(startRow == 0 && startCol == 7)
+        {
+            blackKingsideRookMoved = true;
+        }
+
+        if(startRow == 0 && startCol == 0)
+        {
+            blackQueensideRookMoved = true;
+        }
+    }
 
     whiteTurn = !whiteTurn;
 }
