@@ -1,81 +1,269 @@
-# ♟️ Gambit — Chess Engine
+# ♟️ Gambit Engine
 
-<p align="center">
-  <img src="https://img.shields.io/badge/C%2B%2B-17-00599C?style=for-the-badge&logo=cplusplus&logoColor=white" />
-  <img src="https://img.shields.io/badge/OOP-Designed-7C3AED?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Status-In%20Development-F59E0B?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Engine-Built%20From%20Scratch-16A34A?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Git-GitHub-181717?style=for-the-badge&logo=github" />
-</p>
+> A chess engine built from scratch in C++.
 
-<p align="center">
-  <strong>A chess engine built from scratch in C++.</strong>
-</p>
-
-<p align="center">
-  Gambit is a learning-focused chess engine designed to understand<br>
-  how chess engines actually work — from board representation and move<br>
-  validation to king safety, game-state management, search, and eventually AI.
-</p>
+Gambit is my ongoing project to understand how chess engines actually work by building one from the ground up — starting with board representation and piece movement, and gradually developing the complete rules and logic required for a legal chess game.
 
 ---
 
-# ♟️ About Gambit
+## 🚀 Current Progress
 
-Gambit is a **C++ chess engine that I am building from scratch** to strengthen my understanding of:
+Gambit currently has a working chess rules and legality foundation.
+
+### Implemented
+
+- ♟️ 8×8 board representation
+- ♙ Pawn movement and captures
+- ♘ Knight movement
+- ♗ Bishop movement
+- ♖ Rook movement
+- ♕ Queen movement
+- ♔ King movement
+- 🛡️ Move validation
+- ⚔️ Check detection
+- 👑 King safety validation
+- ♔ King escape detection
+- 🛡️ Piece-based King-saving logic
+- ♚ Checkmate detection
+- 🤝 Stalemate detection
+- 🏰 Kingside castling
+- 🏰 Queenside castling
+- 🔄 Castling for both White and Black
+- 📜 King and Rook movement-history tracking
+- 💻 Console-based board display
+- 🎮 Turn-based gameplay
+
+---
+
+## 🧠 How Gambit Validates a Move
+
+A chess move is more than simply moving a piece from one square to another.
+
+Gambit follows this general flow:
+
+    Player Input
+         │
+         ▼
+      Move Object
+         │
+         ▼
+    Movement Valid?
+         │
+         ▼
+    Simulate Move
+         │
+         ▼
+    King in Check?
+       /       \
+     YES       NO
+      │         │
+      ▼         ▼
+   Illegal    Legal
+      │         │
+      └────┬────┘
+           ▼
+      Restore / Update
+         Board State
+
+Temporary board states are used while checking King safety, allowing Gambit to test hypothetical moves without permanently changing the position.
+
+---
+
+## ⚔️ King Safety
+
+Gambit can currently detect attacks from:
+
+    Pawn
+    Knight
+    Bishop
+    Rook
+    Queen
+    King
+
+King safety is then used by several higher-level rules:
+
+    Check
+      ↓
+    Can the King escape?
+      ↓
+    Can another piece save the King?
+      ↓
+    No legal response?
+      ↓
+    Checkmate
+
+The same legal-move system is also used to distinguish checkmate from stalemate.
+
+---
+
+## 🏰 Castling
+
+All four castling cases are implemented:
+
+    White Kingside     e1 → g1
+    White Queenside    e1 → c1
+
+    Black Kingside     e8 → g8
+    Black Queenside    e8 → c8
+
+The corresponding Rook is moved automatically as part of the castling move.
+
+Gambit checks:
+
+- Whether the King has previously moved
+- Whether the corresponding Rook has previously moved
+- Whether the required squares are empty
+- Whether the King is currently in check
+- Whether the King crosses an attacked square
+- Whether the destination square is attacked
+
+Movement history is stored separately, so moving a King or Rook away and then returning it does not incorrectly restore castling rights.
+
+---
+
+## ♟️ Board Representation
+
+The internal board is represented using:
+
+    char board[8][8];
+
+White pieces use uppercase characters:
+
+    P  R  N  B  Q  K
+
+Black pieces use lowercase characters:
+
+    p  r  n  b  q  k
+
+Empty squares are represented internally using:
+
+    ' '
+
+The board uses zero-based array indexing:
+
+    Row 0 → Rank 8
+    Row 1 → Rank 7
+    Row 2 → Rank 6
+    Row 3 → Rank 5
+    Row 4 → Rank 4
+    Row 5 → Rank 3
+    Row 6 → Rank 2
+    Row 7 → Rank 1
+
+Columns map to:
+
+    0 → a
+    1 → b
+    2 → c
+    3 → d
+    4 → e
+    5 → f
+    6 → g
+    7 → h
+
+---
+
+## 🗂️ Project Structure
+
+    Gambit/
+    │
+    ├── Board.h
+    ├── Board.cpp
+    ├── Move.h
+    ├── Move.cpp
+    │
+    ├── Pawn.h
+    ├── Pawn.cpp
+    ├── Knight.h
+    ├── Knight.cpp
+    ├── Bishop.h
+    ├── Bishop.cpp
+    ├── Rook.h
+    ├── Rook.cpp
+    ├── Queen.h
+    ├── Queen.cpp
+    ├── King.h
+    ├── King.cpp
+    │
+    └── main.cpp
+
+The project is intentionally being developed incrementally so that the underlying chess logic is understood and implemented rather than hidden behind an existing engine or library.
+
+---
+
+## 🛠️ Tech Stack
 
 - C++
 - Object-Oriented Programming
-- Data Structures & Algorithms
-- Game-state management
-- Algorithms and recursion
-- Search algorithms
-- Software architecture
-- Debugging and problem solving
-
-The goal isn't simply to create a chess game that works.
-
-I want to understand what actually happens inside a chess engine.
-
-Instead of connecting Gambit to an existing engine such as Stockfish, I'm implementing the core systems myself and building the engine step by step.
+- Standard C++ Libraries
+- Git & GitHub
+- MSYS2 / MinGW
 
 ---
 
-# 🧠 How Gambit Works
+## 📈 Roadmap
 
-The long-term architecture of Gambit can be visualized as:
+### Chess Rules
 
-```mermaid
-flowchart LR
+- [x] Basic piece movement
+- [x] Move validation
+- [x] Check detection
+- [x] King safety
+- [x] Checkmate
+- [x] Stalemate
+- [x] Kingside castling
+- [x] Queenside castling
+- [ ] Pawn promotion
+- [ ] En passant
+- [ ] Draw conditions
 
-    A["♟ Player Input"]
-    B["Move Parser"]
-    C["Move Validation"]
-    D["King Safety"]
-    E["Board State"]
-    F["Game State"]
-    G["Move Generation"]
-    H["Position Evaluation"]
-    I["Search"]
-    J["🧠 Gambit AI"]
+### Engine Development
 
-    A --> B
-    B --> C
-    C --> D
-    D --> E
-    E --> F
-    F --> G
-    G --> H
-    H --> I
-    I --> J
+- [ ] Complete move generation
+- [ ] Improved move history
+- [ ] Better board-state management
+- [ ] Position evaluation
+- [ ] Search algorithms
+- [ ] Alpha-Beta pruning
+- [ ] Difficulty levels
+- [ ] Engine vs Engine testing
 
-    style A fill:#1e293b,color:#ffffff,stroke:#64748b
-    style B fill:#2563eb,color:#ffffff,stroke:#60a5fa
-    style C fill:#7c3aed,color:#ffffff,stroke:#a78bfa
-    style D fill:#dc2626,color:#ffffff,stroke:#f87171
-    style E fill:#0891b2,color:#ffffff,stroke:#22d3ee
-    style F fill:#0f766e,color:#ffffff,stroke:#2dd4bf
-    style G fill:#9333ea,color:#ffffff,stroke:#c084fc
-    style H fill:#c026d3,color:#ffffff,stroke:#e879f9
-    style I fill:#ea580c,color:#ffffff,stroke:#fb923c
-    style J fill:#16a34a,color:#ffffff,stroke:#4ade80
+### Future
+
+- 🤖 Chess AI
+- ♟️ Stronger position evaluation
+- 🔍 Search optimization
+- 🎮 Better user interface
+- 🌐 Possible chess-platform-style interface
+
+---
+
+## 🌱 Why Gambit?
+
+Gambit is more than a chess project for me. It is a long-term C++ project where I am applying concepts from DSA, OOP, algorithms, debugging, and problem solving to a real system.
+
+The long-term direction is:
+
+    Data Structures
+          ↓
+      Game Logic
+          ↓
+    Move Generation
+          ↓
+    Position Evaluation
+          ↓
+       Search
+          ↓
+     Chess AI
+
+The engine is being built one system at a time, with each feature tested and integrated before moving to the next stage.
+
+---
+
+## 📌 Current Status
+
+**Gambit is actively under development.**
+
+The chess rules and legality system now form the foundation for the next stage of the project: turning Gambit from a chess rules engine into an actual chess-playing engine.
+
+♟️ **One move at a time.**
