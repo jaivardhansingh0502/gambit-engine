@@ -432,6 +432,8 @@ void Board :: makeMove(Move move)
 }
 
 
+
+
 bool Board :: isValid(Move move)
 {
     int startRow = move.getStartRow();

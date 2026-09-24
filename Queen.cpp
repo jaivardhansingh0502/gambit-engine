@@ -229,6 +229,7 @@ bool Queen::isValidQueenMove(Move move , char board[8][8])
                     return false;
                 }
             }
+            
 
             return true;
         }
