@@ -1,100 +1,81 @@
-# ♟ Gambit — Chess Engine
+# ♟️ Gambit — Chess Engine
 
-Gambit is a chess engine that I am building from scratch in **C++** to strengthen my understanding of C++, OOP, algorithms, and software architecture.
+<p align="center">
+  <img src="https://img.shields.io/badge/C%2B%2B-17-00599C?style=for-the-badge&logo=cplusplus&logoColor=white" />
+  <img src="https://img.shields.io/badge/OOP-Designed-7C3AED?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Status-In%20Development-F59E0B?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Engine-Built%20From%20Scratch-16A34A?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Git-GitHub-181717?style=for-the-badge&logo=github" />
+</p>
 
-The goal isn't just to make a chess game that works. I want to understand how the different parts of a chess engine actually work — from basic piece movement and check detection to move validation, game-state management, and eventually chess AI.
+<p align="center">
+  <strong>A chess engine built from scratch in C++.</strong>
+</p>
 
-I'm building it step by step instead of using an existing chess engine like Stockfish.
-
----
-
-## 🚧 Current Progress
-
-### Board & Pieces
-
-- [x] Chess board representation
-- [x] Initial board setup
-- [x] Pawn
-- [x] Knight
-- [x] Bishop
-- [x] Rook
-- [x] Queen
-- [x] King
-
-### Movement
-
-- [x] Basic movement validation
-- [x] Capture validation
-- [x] Path obstruction checking
-- [x] Pawn movement and captures
-- [x] Turn-based movement
-- [x] Move representation
-
-### King Safety & Game State
-
-- [x] Check detection
-- [x] Attack detection for different pieces
-- [x] King escape validation
-- [x] Piece-based king-saving validation
-- [x] Temporary board-state simulation
-- [x] Checkmate detection
-- [x] Legal move detection
-- [x] Stalemate detection
-
-### Special Moves
-
-- [x] Kingside castling
-- [x] Queenside castling
-- [x] White castling
-- [x] Black castling
-- [x] Castling rights tracking
-- [x] King movement restriction
-- [x] Rook movement restriction
-- [x] Castling attack validation
-
-### Terminal Interface
-
-- [x] Unicode chess pieces
-- [x] ANSI colored board
-- [x] Board redraw after moves
-- [x] Interactive move input
-
-### Project Structure
-
-- [x] Separated classes into `.h` and `.cpp` files
-- [x] Modular piece-based architecture
-- [x] Git/GitHub version control
+<p align="center">
+  Gambit is a learning-focused chess engine designed to understand<br>
+  how chess engines actually work — from board representation and move<br>
+  validation to king safety, game-state management, search, and eventually AI.
+</p>
 
 ---
 
-## 🛠️ Technologies
+# ♟️ About Gambit
+
+Gambit is a **C++ chess engine that I am building from scratch** to strengthen my understanding of:
 
 - C++
 - Object-Oriented Programming
-- STL
-- Git & GitHub
-- ANSI Escape Codes
-- Unicode
+- Data Structures & Algorithms
+- Game-state management
+- Algorithms and recursion
+- Search algorithms
+- Software architecture
+- Debugging and problem solving
+
+The goal isn't simply to create a chess game that works.
+
+I want to understand what actually happens inside a chess engine.
+
+Instead of connecting Gambit to an existing engine such as Stockfish, I'm implementing the core systems myself and building the engine step by step.
 
 ---
 
-## ♟️ How Gambit Handles King Safety
+# 🧠 How Gambit Works
 
-One of the important parts of the engine is determining whether a move leaves the King vulnerable.
+The long-term architecture of Gambit can be visualized as:
 
-The engine uses temporary board-state changes to test possible positions before deciding whether a move is legal.
+```mermaid
+flowchart LR
 
-For example:
+    A["♟ Player Input"]
+    B["Move Parser"]
+    C["Move Validation"]
+    D["King Safety"]
+    E["Board State"]
+    F["Game State"]
+    G["Move Generation"]
+    H["Position Evaluation"]
+    I["Search"]
+    J["🧠 Gambit AI"]
 
-```text
-King is in check
-      ↓
-Can the King escape?
-      ↓
-Can another piece capture the attacker?
-      ↓
-Can another piece block the attack?
-      ↓
-No legal move?
-      ↓
-Checkmate
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> G
+    G --> H
+    H --> I
+    I --> J
+
+    style A fill:#1e293b,color:#ffffff,stroke:#64748b
+    style B fill:#2563eb,color:#ffffff,stroke:#60a5fa
+    style C fill:#7c3aed,color:#ffffff,stroke:#a78bfa
+    style D fill:#dc2626,color:#ffffff,stroke:#f87171
+    style E fill:#0891b2,color:#ffffff,stroke:#22d3ee
+    style F fill:#0f766e,color:#ffffff,stroke:#2dd4bf
+    style G fill:#9333ea,color:#ffffff,stroke:#c084fc
+    style H fill:#c026d3,color:#ffffff,stroke:#e879f9
+    style I fill:#ea580c,color:#ffffff,stroke:#fb923c
+    style J fill:#16a34a,color:#ffffff,stroke:#4ade80
