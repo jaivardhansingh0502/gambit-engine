@@ -389,6 +389,20 @@ void Board :: makeMove(Move move)
 
 
     // =========================
+    // PAWN PROMOTION
+    // =========================
+
+    if(piece == 'P' && endRow == 0)
+    {
+        promotePawn(endRow, endCol);
+    }
+
+    if(piece == 'p' && endRow == 7)
+    {
+        promotePawn(endRow, endCol);
+    }
+
+    // =========================
     // MOVEMENT HISTORY
     // =========================
 
@@ -3516,5 +3530,5 @@ void Board :: promotePawn(int row , int col)
         }
 
     }
-    
+
 }
