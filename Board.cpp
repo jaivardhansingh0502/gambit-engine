@@ -3478,3 +3478,43 @@ bool Board :: isValidCastling(Move move , bool whiteTurn)
 
     return false;
 }
+
+
+void Board :: promotePawn(int row , int col)
+{
+
+    char piece ;
+
+    cout<<"Promote Pawn to Piece : " ;
+    cin>> piece ;
+
+    // White :
+
+    if(piece == 'Q' || piece == 'R' || piece == 'B' || piece == 'N')
+    {
+        board[row][col] = piece ;
+    }
+
+    // Black :
+
+    else if( piece == 'q' || piece == 'r' || piece == 'b' || piece == 'n')
+    {
+        board[row][col] = piece ;
+    }
+
+    else
+    {
+        cout << "Invalid choice! Promoting to Queen." << endl;
+
+        if(board[row][col] == 'P')
+        {
+            board[row][col] = 'Q';
+        }
+        else
+        {
+            board[row][col] = 'q';
+        }
+
+    }
+    
+}
