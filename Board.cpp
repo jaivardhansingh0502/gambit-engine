@@ -68,6 +68,10 @@ void Board :: initializeBoard()
     blackKingsideRookMoved = false;
     whiteQueensideRookMoved = false ;
     blackQueensideRookMoved = false ;
+
+    lastPawnRow = -1;
+    lastPawnCol = -1;
+    lastMoveWasDoublePawn = false;
 }
 
 
@@ -281,199 +285,217 @@ void Board::displayBoard()
 }
 
 
-void Board :: makeMove(Move move)
-{
-    int startRow = move.getStartRow();
-    int startCol = move.getStartCol();
-
-    int endRow = move.getEndRow();
-    int endCol = move.getEndCol();
-
-    char piece = board[startRow][startCol];
-
-
-    // =========================
-    // WHITE KING SIDE CASTLING
-    // =========================
-
-    if(piece == 'K' &&
-       startRow == 7 && startCol == 4 &&
-       endRow == 7 && endCol == 6)
+    void Board :: makeMove(Move move)
     {
-        board[7][4] = ' ';
-        board[7][6] = 'K';
+        int startRow = move.getStartRow();
+        int startCol = move.getStartCol();
 
-        board[7][7] = ' ';
-        board[7][5] = 'R';
+        int endRow = move.getEndRow();
+        int endCol = move.getEndCol();
 
-        whiteKingMoved = true;
-        whiteKingsideRookMoved = true;
-
-        whiteTurn = !whiteTurn;
-        return;
-    }
+        char piece = board[startRow][startCol];
 
 
-    // =========================
-    // WHITE QUEEN SIDE CASTLING
-    // =========================
+        // =========================
+        // WHITE KING SIDE CASTLING
+        // =========================
 
-    if(piece == 'K' &&
-       startRow == 7 && startCol == 4 &&
-       endRow == 7 && endCol == 2)
-    {
-        board[7][4] = ' ';
-        board[7][2] = 'K';
-
-        board[7][0] = ' ';
-        board[7][3] = 'R';
-
-        whiteKingMoved = true;
-        whiteQueensideRookMoved = true;
-
-        whiteTurn = !whiteTurn;
-        return;
-    }
-
-
-    // =========================
-    // BLACK KING SIDE CASTLING
-    // =========================
-
-    if(piece == 'k' &&
-       startRow == 0 && startCol == 4 &&
-       endRow == 0 && endCol == 6)
-    {
-        board[0][4] = ' ';
-        board[0][6] = 'k';
-
-        board[0][7] = ' ';
-        board[0][5] = 'r';
-
-        blackKingMoved = true;
-        blackKingsideRookMoved = true;
-
-        whiteTurn = !whiteTurn;
-        return;
-    }
-
-
-    // =========================
-    // BLACK QUEEN SIDE CASTLING
-    // =========================
-
-    if(piece == 'k' &&
-       startRow == 0 && startCol == 4 &&
-       endRow == 0 && endCol == 2)
-    {
-        board[0][4] = ' ';
-        board[0][2] = 'k';
-
-        board[0][0] = ' ';
-        board[0][3] = 'r';
-
-        blackKingMoved = true;
-        blackQueensideRookMoved = true;
-
-        whiteTurn = !whiteTurn;
-        return;
-    }
-
-
-
-
-    if(piece == 'P' && startRow - endRow == 2 )
-    {
-
-        lastPawnRow = endRow;
-        lastPawnCol = endCol;
-        lastMoveWasDoublePawn = true;
-
-    }
-
-
-    else if(piece == 'p' && endRow - startRow == 2)
-    {
-
-        lastPawnRow = endRow ;
-        lastPawnCol = endCol ;
-        lastMoveWasDoublePawn = true ;
-
-    }
-
-
-    else
-    {
-        lastMoveWasDoublePawn = false ;
-    }
-
-
-    // =========================
-    // NORMAL MOVE
-    // =========================
-
-    board[endRow][endCol] = piece;
-    board[startRow][startCol] = ' ';
-
-    
-
-    // =========================
-    // PAWN PROMOTION
-    // =========================
-
-    if(piece == 'P' && endRow == 0)
-    {
-        promotePawn(endRow, endCol);
-    }
-
-    if(piece == 'p' && endRow == 7)
-    {
-        promotePawn(endRow, endCol);
-    }
-
-    // =========================
-    // MOVEMENT HISTORY
-    // =========================
-
-    if(piece == 'K')
-    {
-        whiteKingMoved = true;
-    }
-
-    if(piece == 'k')
-    {
-        blackKingMoved = true;
-    }
-
-    if(piece == 'R')
-    {
-        if(startRow == 7 && startCol == 7)
+        if(piece == 'K' &&
+        startRow == 7 && startCol == 4 &&
+        endRow == 7 && endCol == 6)
         {
+            board[7][4] = ' ';
+            board[7][6] = 'K';
+
+            board[7][7] = ' ';
+            board[7][5] = 'R';
+
+            whiteKingMoved = true;
             whiteKingsideRookMoved = true;
+
+            whiteTurn = !whiteTurn;
+            return;
         }
 
-        if(startRow == 7 && startCol == 0)
+
+        // =========================
+        // WHITE QUEEN SIDE CASTLING
+        // =========================
+
+        if(piece == 'K' &&
+        startRow == 7 && startCol == 4 &&
+        endRow == 7 && endCol == 2)
         {
+            board[7][4] = ' ';
+            board[7][2] = 'K';
+
+            board[7][0] = ' ';
+            board[7][3] = 'R';
+
+            whiteKingMoved = true;
             whiteQueensideRookMoved = true;
-        }
-    }
 
-    if(piece == 'r')
-    {
-        if(startRow == 0 && startCol == 7)
+            whiteTurn = !whiteTurn;
+            return;
+        }
+
+
+        // =========================
+        // BLACK KING SIDE CASTLING
+        // =========================
+
+        if(piece == 'k' &&
+        startRow == 0 && startCol == 4 &&
+        endRow == 0 && endCol == 6)
         {
+            board[0][4] = ' ';
+            board[0][6] = 'k';
+
+            board[0][7] = ' ';
+            board[0][5] = 'r';
+
+            blackKingMoved = true;
             blackKingsideRookMoved = true;
+
+            whiteTurn = !whiteTurn;
+            return;
         }
 
-        if(startRow == 0 && startCol == 0)
+
+        // =========================
+        // BLACK QUEEN SIDE CASTLING
+        // =========================
+
+        if(piece == 'k' &&
+        startRow == 0 && startCol == 4 &&
+        endRow == 0 && endCol == 2)
         {
+            board[0][4] = ' ';
+            board[0][2] = 'k';
+
+            board[0][0] = ' ';
+            board[0][3] = 'r';
+
+            blackKingMoved = true;
             blackQueensideRookMoved = true;
+
+            whiteTurn = !whiteTurn;
+            return;
         }
+
+
+        // =========================
+        // EN PASSANT CAPTURE
+        // =========================
+
+        if(isValidEnPassant(move, whiteTurn))
+        {
+            board[endRow][endCol] = piece;
+            board[startRow][startCol] = ' ';
+
+            // Remove the pawn captured en passant
+            board[lastPawnRow][lastPawnCol] = ' ';
+
+            // En passant is only available for one move
+            lastMoveWasDoublePawn = false;
+
+            whiteTurn = !whiteTurn;
+            return;
+        }
+
+
+        // =========================
+        // NORMAL MOVE
+        // =========================
+
+        board[endRow][endCol] = piece;
+        board[startRow][startCol] = ' ';
+
+
+        // =========================
+        // UPDATE EN PASSANT HISTORY
+        // =========================
+
+        if(piece == 'P' && startRow - endRow == 2)
+        {
+            lastPawnRow = endRow;
+            lastPawnCol = endCol;
+            lastMoveWasDoublePawn = true;
+        }
+        else if(piece == 'p' && endRow - startRow == 2)
+        {
+            lastPawnRow = endRow;
+            lastPawnCol = endCol;
+            lastMoveWasDoublePawn = true;
+        }
+        else
+        {
+            lastMoveWasDoublePawn = false;
+        }
+
+
+        // =========================
+        // PAWN PROMOTION
+        // =========================
+
+        if(piece == 'P' && endRow == 0)
+        {
+            promotePawn(endRow, endCol);
+        }
+
+        if(piece == 'p' && endRow == 7)
+        {
+            promotePawn(endRow, endCol);
+        }
+
+
+        // =========================
+        // MOVEMENT HISTORY
+        // =========================
+
+        if(piece == 'K')
+        {
+            whiteKingMoved = true;
+        }
+
+        if(piece == 'k')
+        {
+            blackKingMoved = true;
+        }
+
+        if(piece == 'R')
+        {
+            if(startRow == 7 && startCol == 7)
+            {
+                whiteKingsideRookMoved = true;
+            }
+
+            if(startRow == 7 && startCol == 0)
+            {
+                whiteQueensideRookMoved = true;
+            }
+        }
+
+        if(piece == 'r')
+        {
+            if(startRow == 0 && startCol == 7)
+            {
+                blackKingsideRookMoved = true;
+            }
+
+            if(startRow == 0 && startCol == 0)
+            {
+                blackQueensideRookMoved = true;
+            }
+        }
+
+
+        // =========================
+        // CHANGE TURN
+        // =========================
+
+        whiteTurn = !whiteTurn;
     }
-
-    whiteTurn = !whiteTurn;
-}
-
 
 
 
@@ -536,7 +558,13 @@ bool Board :: isValid(Move move)
 
     // Pawn
     if(startPiece == 'P' || startPiece == 'p')
-    {
+    {   
+
+        if(isValidEnPassant(move, whiteTurn))
+        {
+            return true;
+        }
+
         return pawn.isValidPawnMove(move, board);
     }
 
@@ -3560,4 +3588,112 @@ void Board :: promotePawn(int row , int col)
 
     }
 
+}
+
+bool Board::isValidEnPassant(Move move, bool whiteTurn)
+{
+    int startRow = move.getStartRow();
+    int startCol = move.getStartCol();
+
+    int endRow = move.getEndRow();
+    int endCol = move.getEndCol();
+
+    // En passant is only possible immediately
+    // after the opponent makes a two-square pawn move.
+    if(!lastMoveWasDoublePawn)
+    {
+        return false;
+    }
+
+    // Destination square must be empty
+    if(board[endRow][endCol] != ' ')
+    {
+        return false;
+    }
+
+
+    // =========================
+    // WHITE EN PASSANT
+    // =========================
+
+    if(whiteTurn)
+    {
+        // White pawn must be on the 5th rank
+        // Array row = 3
+        if(board[startRow][startCol] != 'P')
+        {
+            return false;
+        }
+
+        if(startRow != 3)
+        {
+            return false;
+        }
+
+        // White moves one row upward and one column sideways
+        if(endRow != startRow - 1 ||
+           abs(endCol - startCol) != 1)
+        {
+            return false;
+        }
+
+        // The pawn that moved two squares must be
+        // directly beside our pawn.
+        if(lastPawnRow != startRow ||
+           lastPawnCol != endCol)
+        {
+            return false;
+        }
+
+        // That pawn must actually be a black pawn.
+        if(board[lastPawnRow][lastPawnCol] != 'p')
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+
+    // =========================
+    // BLACK EN PASSANT
+    // =========================
+
+    else
+    {
+        // Black pawn must be on the 4th rank
+        // Array row = 4
+        if(board[startRow][startCol] != 'p')
+        {
+            return false;
+        }
+
+        if(startRow != 4)
+        {
+            return false;
+        }
+
+        // Black moves one row downward and one column sideways
+        if(endRow != startRow + 1 ||
+           abs(endCol - startCol) != 1)
+        {
+            return false;
+        }
+
+        // The pawn that moved two squares must be
+        // directly beside our pawn.
+        if(lastPawnRow != startRow ||
+           lastPawnCol != endCol)
+        {
+            return false;
+        }
+
+        // That pawn must actually be a white pawn.
+        if(board[lastPawnRow][lastPawnCol] != 'P')
+        {
+            return false;
+        }
+
+        return true;
+    }
 }
