@@ -380,6 +380,34 @@ void Board :: makeMove(Move move)
     }
 
 
+
+
+    if(piece == 'P' && startRow - endRow == 2 )
+    {
+
+        lastPawnRow = endRow;
+        lastPawnCol = endCol;
+        lastMoveWasDoublePawn = true;
+
+    }
+
+
+    else if(piece == 'p' && endRow - startRow == 2)
+    {
+
+        lastPawnRow = endRow ;
+        lastPawnCol = endCol ;
+        lastMoveWasDoublePawn = true ;
+
+    }
+
+
+    else
+    {
+        lastMoveWasDoublePawn = false ;
+    }
+
+
     // =========================
     // NORMAL MOVE
     // =========================
@@ -387,6 +415,7 @@ void Board :: makeMove(Move move)
     board[endRow][endCol] = piece;
     board[startRow][startCol] = ' ';
 
+    
 
     // =========================
     // PAWN PROMOTION

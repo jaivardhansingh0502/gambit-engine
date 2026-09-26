@@ -32,6 +32,11 @@ private:
     bool whiteQueensideRookMoved ;
     bool blackQueensideRookMoved ;
 
+    // En Passant
+    int lastPawnRow;
+    int lastPawnCol;
+    bool lastMoveWasDoublePawn;
+
 public:
 
     void initializeBoard();
@@ -53,6 +58,7 @@ public:
     bool hasLegalMoves(bool whiteTurn) ;
     bool isValidCastling(Move move, bool whiteTurn) ;
     void promotePawn(int row, int col);
+    bool isValidEnPassant(Move move, bool whiteTurn);
     
 };
 
