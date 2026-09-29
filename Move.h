@@ -12,14 +12,18 @@ private:
     int endRow;
     int endCol;
 
+    char promotionPiece ;
+
 public:
-    Move(int sR, int sC, int eR, int eC);
+    Move(int sR, int sC, int eR, int eC, char promotion = ' ');
     Move(string from, string to);
 
     int getStartRow();
     int getStartCol();
     int getEndRow();
     int getEndCol();
+
+    char getPromotionPiece();
 };
 
 #endif
