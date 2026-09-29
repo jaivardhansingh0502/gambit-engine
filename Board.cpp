@@ -3696,4 +3696,5 @@ bool Board::isValidEnPassant(Move move, bool whiteTurn)
 
         return true;
     }
+    
 }

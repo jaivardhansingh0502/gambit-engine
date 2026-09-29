@@ -9,6 +9,7 @@
 #include "Queen.h"
 #include "King.h"
 #include <string>
+#include<vector>
 
 class Board {
 private:
@@ -59,6 +60,8 @@ public:
     bool isValidCastling(Move move, bool whiteTurn) ;
     void promotePawn(int row, int col);
     bool isValidEnPassant(Move move, bool whiteTurn);
+
+    vector<Move> generateLegalMoves(bool whiteTurn);
     
 };
 
