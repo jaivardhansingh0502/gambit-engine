@@ -3723,4 +3723,33 @@ BoardState Board :: saveState()
     state.lastPawnCol = lastPawnCol ;
     state.lastMoveWasDoublePawn = lastMoveWasDoublePawn ;
 
+    return state ;
+
+}
+
+void Board :: restoreState(BoardState state) 
+{
+
+    for(int i = 0 ; i < 8 ; i ++)
+    {
+        for(int j = 0 ; j < 8 ; j ++)
+        {
+            board[i][j] == state.board[i][j] ; 
+        }
+    }
+
+    whiteTurn = state.whiteTurn ;
+
+    whiteKingMoved = state.whiteKingMoved;
+    blackKingMoved = state.blackKingMoved;
+
+    whiteKingsideRookMoved = state.whiteKingsideRookMoved;
+    blackKingsideRookMoved = state.blackKingsideRookMoved;
+
+    whiteQueensideRookMoved = state.whiteQueensideRookMoved;
+    blackQueensideRookMoved = state.blackQueensideRookMoved;
+
+    lastPawnRow = state.lastPawnRow;
+    lastPawnCol = state.lastPawnCol;
+    lastMoveWasDoublePawn = state.lastMoveWasDoublePawn;
 }
