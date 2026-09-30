@@ -3734,7 +3734,7 @@ void Board :: restoreState(BoardState state)
     {
         for(int j = 0 ; j < 8 ; j ++)
         {
-            board[i][j] == state.board[i][j] ; 
+            board[i][j] = state.board[i][j] ; 
         }
     }
 

@@ -16,7 +16,22 @@ int main()
     Board chessboard;
 
     chessboard.initializeBoard();
-    chessboard.displayBoard();
+    BoardState state = chessboard.saveState();
+
+Move testMove("e2", "e4");
+
+chessboard.makeTemporaryMove(testMove);
+
+cout << "After temporary move:" << endl;
+chessboard.displayBoard();
+
+chessboard.restoreState(state);
+
+cout << "After restore:" << endl;
+chessboard.displayBoard();
+
+chessboard.displayBoard();
+   
 
     while(true)
     {
