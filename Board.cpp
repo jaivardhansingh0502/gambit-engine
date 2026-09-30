@@ -3698,3 +3698,29 @@ bool Board::isValidEnPassant(Move move, bool whiteTurn)
     }
     
 }
+
+
+BoardState Board :: saveState()
+{
+
+    BoardState state ;
+    for(int i = 0 ; i < 8 ; i++){
+        for(int j = 0 ; j < 8 ; j++){
+
+            state.board[i][j] = board[i][j] ;
+        }
+    }
+
+    state.whiteTurn = whiteTurn ;
+
+    state.whiteKingMoved = whiteKingMoved ;
+    state.blackKingMoved = blackKingMoved ;
+
+    state.whiteQueensideRookMoved = whiteKingsideRookMoved ;
+    state.blackQueensideRookMoved = blackQueensideRookMoved ;
+
+    state.lastPawnRow = lastPawnRow ;
+    state.lastPawnCol = lastPawnCol ;
+    state.lastMoveWasDoublePawn = lastMoveWasDoublePawn ;
+
+}

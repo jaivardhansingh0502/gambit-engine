@@ -11,6 +11,26 @@
 #include <string>
 #include<vector>
 
+
+struct BoardState
+{
+    char board[8][8] ;
+
+    bool whiteTurn ;
+
+    bool blackKingMoved ;
+    bool whiteKingMoved ;
+    
+    bool whiteKingsideRookMoved;
+    bool blackKingsideRookMoved;
+
+    bool whiteQueensideRookMoved;
+    bool blackQueensideRookMoved;
+
+    int lastPawnRow;
+    int lastPawnCol;
+    bool lastMoveWasDoublePawn;
+} ;
 class Board {
 private:
     char board[8][8];
