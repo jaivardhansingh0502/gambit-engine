@@ -3753,3 +3753,103 @@ void Board :: restoreState(BoardState state)
     lastPawnCol = state.lastPawnCol;
     lastMoveWasDoublePawn = state.lastMoveWasDoublePawn;
 }
+
+
+void Board::makeTemporaryMove(Move move)
+{
+    int startRow = move.getStartRow();
+    int startCol = move.getStartCol();
+
+    int endRow = move.getEndRow();
+    int endCol = move.getEndCol();
+
+    char piece = board[startRow][startCol];
+
+   
+    // CASTLING
+   
+
+    if(piece == 'K' &&
+       startRow == 7 && startCol == 4 &&
+       endRow == 7 && endCol == 6)
+    {
+        board[7][4] = ' ';
+        board[7][6] = 'K';
+
+        board[7][7] = ' ';
+        board[7][5] = 'R';
+
+        return;
+    }
+
+    if(piece == 'K' &&
+       startRow == 7 && startCol == 4 &&
+       endRow == 7 && endCol == 2)
+    {
+        board[7][4] = ' ';
+        board[7][2] = 'K';
+
+        board[7][0] = ' ';
+        board[7][3] = 'R';
+
+        return;
+    }
+
+    if(piece == 'k' &&
+       startRow == 0 && startCol == 4 &&
+       endRow == 0 && endCol == 6)
+    {
+        board[0][4] = ' ';
+        board[0][6] = 'k';
+
+        board[0][7] = ' ';
+        board[0][5] = 'r';
+
+        return;
+    }
+
+    if(piece == 'k' &&
+       startRow == 0 && startCol == 4 &&
+       endRow == 0 && endCol == 2)
+    {
+        board[0][4] = ' ';
+        board[0][2] = 'k';
+
+        board[0][0] = ' ';
+        board[0][3] = 'r';
+
+        return;
+    }
+
+    
+    // EN PASSANT
+    
+
+    if(isValidEnPassant(move, whiteTurn))
+    {
+        board[endRow][endCol] = piece;
+        board[startRow][startCol] = ' ';
+
+        board[lastPawnRow][lastPawnCol] = ' ';
+
+        return;
+    }
+
+
+    // NORMAL MOVE
+    
+
+    board[endRow][endCol] = piece;
+    board[startRow][startCol] = ' ';
+
+    
+    // PROMOTION
+    
+
+    char promotion = move.getPromotionPiece();
+
+    if(promotion != ' ')
+    {
+        board[endRow][endCol] = promotion;
+    }
+}

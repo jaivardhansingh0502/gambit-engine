@@ -64,6 +64,7 @@ public:
     void displayBoard();
     void takeinput();
     void makeMove(Move move);
+    void makeTemporaryMove(Move move);
 
     bool isValid(Move move);
     bool isKinginCheck(bool whiteTurn) ;
@@ -82,6 +83,9 @@ public:
     bool isValidEnPassant(Move move, bool whiteTurn);
 
     vector<Move> generateLegalMoves(bool whiteTurn);
+
+    BoardState saveState();
+    void restoreState(BoardState state);
     
 };
 
