@@ -16,14 +16,17 @@ int main()
     Board chessboard;
 
     chessboard.initializeBoard();
-    chessboard.displayBoard();
-   
 
-    while(true)
-    {
-        chessboard.takeinput();
-        chessboard.displayBoard();
-    }
+vector<Move> moves = chessboard.generateLegalMoves(true);
+
+cout << "White legal moves: " << moves.size() << endl;
+
+while(true)
+{
+    chessboard.takeinput();
+    chessboard.displayBoard();
+}
+   
 
     return 0;
 }
