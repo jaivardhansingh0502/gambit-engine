@@ -12,6 +12,8 @@
 #include<vector>
 
 
+
+
 struct BoardState
 {
     char board[8][8] ;
