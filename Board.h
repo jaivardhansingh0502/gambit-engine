@@ -88,6 +88,9 @@ public:
 
     BoardState saveState();
     void restoreState(BoardState state);
+
+    void clearBoard() ;
+    void setPiece(int row , int col , char piece) ;
     
 };
 

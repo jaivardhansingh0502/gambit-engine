@@ -3855,50 +3855,45 @@ void Board::makeTemporaryMove(Move move)
 }
 
 
-vector<Move> Board :: generateLegalMoves(bool WhiteTurn)
+vector<Move> Board::generateLegalMoves(bool WhiteTurn)
 {
+    this->whiteTurn = WhiteTurn;
 
-    vector<Move> legalMoves ;
+    vector<Move> legalMoves;
 
-    for(int i = 0 ; i < 8 ; i ++)
+    for(int i = 0; i < 8; i++)
     {
-        for(int j = 0 ; j < 8 ; j++)
+        for(int j = 0; j < 8; j++)
         {
-            
-            char piece = board[i][j] ;
-
+            char piece = board[i][j];
 
             if(piece == ' ')
-            continue ;
+                continue;
 
+            if(WhiteTurn && islower(piece))
+                continue;
 
-            if(whiteTurn && islower(piece))
-            continue ;
+            if(!WhiteTurn && isupper(piece))
+                continue;
 
-
-            if(!whiteTurn && isupper(piece))
-            continue ;
-
-
-            for(int endRow = 0 ; endRow < 8 ; endRow++)
+            for(int endRow = 0; endRow < 8; endRow++)
             {
-                for(int endCol = 0 ; endCol < 8 ; endCol++)
+                for(int endCol = 0; endCol < 8; endCol++)
                 {
-
-                    Move move(i , j , endRow , endCol) ;
+                    Move move(i, j, endRow, endCol);
 
                     if(!isValid(move))
-                    continue    ; 
+                        continue;
 
-                    BoardState state = saveState() ;
+                    BoardState state = saveState();
 
-                    // Move is legal only if own king is safe
-                    if(!isKinginCheck(whiteTurn))
+                    makeTemporaryMove(move);
+
+                    if(!isKinginCheck(WhiteTurn))
                     {
                         legalMoves.push_back(move);
                     }
 
-                    // Restore everything
                     restoreState(state);
                 }
             }
@@ -3906,4 +3901,22 @@ vector<Move> Board :: generateLegalMoves(bool WhiteTurn)
     }
 
     return legalMoves;
+}
+
+void Board ::clearBoard()
+{
+
+    for(int i = 0 ; i < 8 ; i++)
+    {
+        for(int j = 0 ; j < 8 ; j++)
+        {
+            board[i][j] = ' ' ;
+        }
+    }
+}
+
+
+void Board::setPiece(int row, int col, char piece)
+{
+    board[row][col] = piece;
 }
