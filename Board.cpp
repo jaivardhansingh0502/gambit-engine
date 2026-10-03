@@ -1,4 +1,5 @@
 #include "Board.h"
+#include "Evaluation.h"
 #include <iostream>
 #include <cstdlib>
 #include <string>
@@ -3918,5 +3919,14 @@ void Board ::clearBoard()
 
 void Board::setPiece(int row, int col, char piece)
 {
+
     board[row][col] = piece;
+
+
+}
+
+
+char (*Board::getBoard())[8]
+{
+    return board;
 }

@@ -1,8 +1,9 @@
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
 
+#include <windows.h>
 #include <iostream>
 #include "Board.h"
+#include "Evaluation.h"
 
 using namespace std;
 
@@ -14,6 +15,7 @@ int main()
     cout << "Welcome to the Gambit Engine!" << endl;
 
     Board chessboard;
+    Evaluation evaluation;
 
     chessboard.initializeBoard();
     chessboard.displayBoard();
@@ -21,11 +23,12 @@ int main()
     while(true)
     {
         chessboard.takeinput();
+
         chessboard.displayBoard();
+
+        int score = evaluation.evaluateBoard(chessboard.getBoard());
+
+        cout << "\nBoard Evaluation: " << score << endl;
     }
 
-    return 0;
-
-    
 }
-

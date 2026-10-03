@@ -91,6 +91,8 @@ public:
 
     void clearBoard() ;
     void setPiece(int row , int col , char piece) ;
+
+    char (*getBoard())[8];
     
 };
 
