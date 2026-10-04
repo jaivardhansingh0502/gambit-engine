@@ -19,6 +19,9 @@ int main()
 
     chessboard.initializeBoard();
     chessboard.displayBoard();
+    chessboard.printBoardForAI();
+    cout << "\nLegal Moves for Python:\n";
+    chessboard.printLegalMovesForAI();
 
     while(true)
     {

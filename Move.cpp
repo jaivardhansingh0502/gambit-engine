@@ -44,3 +44,17 @@ char Move::getPromotionPiece()
 {
     return promotionPiece;
 }
+
+
+string Move::getChessNotation()
+{
+    string move = "";
+
+    move += char('a' + startCol);
+    move += char('8' - startRow);
+
+    move += char('a' + endCol);
+    move += char('8' - endRow);
+
+    return move;
+}

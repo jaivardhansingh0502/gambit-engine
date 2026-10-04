@@ -24,6 +24,8 @@ public:
     int getEndCol();
 
     char getPromotionPiece();
+
+    string getChessNotation();
 };
 
 #endif

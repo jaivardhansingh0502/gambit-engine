@@ -71,3 +71,47 @@ if __name__ == "__main__":
     move = ai.find_best_move(board, legal_moves)
 
     print("AI selected:", move)
+
+
+    def minimax(self, board, legal_moves, depth, maximizing_player):
+
+        if depth == 0:
+            return evaluate_board(board)
+
+        if maximizing_player:
+
+            best_score = float('-inf')
+
+            for move in legal_moves:
+
+                new_board = make_move(board, move)
+
+                score = self.minimax(
+                    new_board,
+                    [],
+                    depth - 1,
+                    False
+                )
+
+                best_score = max(best_score, score)
+
+            return best_score
+
+        else:
+
+            best_score = float('inf')
+
+            for move in legal_moves:
+
+                new_board = make_move(board, move)
+
+                score = self.minimax(
+                    new_board,
+                    [],
+                    depth - 1,
+                    True
+                )
+
+                best_score = min(best_score, score)
+
+            return best_score

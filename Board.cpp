@@ -3930,3 +3930,40 @@ char (*Board::getBoard())[8]
 {
     return board;
 }
+
+
+void Board::printBoardForAI()
+{
+    for(int i = 0; i < 8; i++)
+    {
+        for(int j = 0; j < 8; j++)
+        {
+            if(board[i][j] == ' ')
+                cout << '.';
+            else
+                cout << board[i][j];
+        }
+
+        cout << endl;
+    }
+}
+
+
+
+
+void Board :: printLegalMovesForAI()
+{
+
+
+    vector<Move> legalMoves = generateLegalMoves(whiteTurn) ;
+
+    for(auto move : legalMoves)
+    {
+        cout << move.getChessNotation() << endl;
+    }
+
+
+}
+
+
+
