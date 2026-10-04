@@ -19,6 +19,7 @@ def make_move(board, move):
 
     return new_board
 
+
 class AI:
 
     def __init__(self):
@@ -29,11 +30,21 @@ class AI:
         if not legal_moves:
             return None
 
-        score = evaluate_board(board)
+        best_move = None
+        best_score = float('-inf')
 
-        print("Current evaluation:", score)
+        for move in legal_moves:
 
-        return legal_moves[0]
+            new_board = make_move(board, move)
+
+            score = evaluate_board(new_board)
+
+            print(move, "->", score)
+
+            if score > best_score:
+                best_score = score
+                best_move = move
+        return best_move
 
 
 if __name__ == "__main__":
@@ -41,21 +52,21 @@ if __name__ == "__main__":
     ai = AI()
 
     board = [
-        ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
-        ['p', 'p', 'p', 'p', 'p', 'p', 'p', ' '],
-        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-        ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
-        ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
-    ]
+    [' ', ' ', ' ', ' ', 'k', ' ', ' ', ' '],
+    [' ', ' ', ' ', ' ', 'p', ' ', ' ', ' '],
+    [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+    [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+    [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+    [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+    [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+    [' ', ' ', ' ', ' ', 'R', ' ', ' ', 'K']
+]
+
 
     legal_moves = [
-        "e2e4",
-        "d2d4",
-        "g1f3"
-    ]
+    "e1e2",
+    "e1e7"
+]
 
     move = ai.find_best_move(board, legal_moves)
 
