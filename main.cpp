@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include "Board.h"
 #include "Evaluation.h"
@@ -18,6 +19,8 @@ int main()
     Evaluation evaluation;
 
     chessboard.initializeBoard();
+
+    vector<BoardState> stateStack;
 
     string command;
 
@@ -49,6 +52,9 @@ int main()
 
             if(chessboard.isValid(move))
             {
+                // Save current position before making the move
+                stateStack.push_back(chessboard.saveState());
+
                 chessboard.makeMove(move);
 
                 cout << "MOVE_OK" << endl;
@@ -56,6 +62,24 @@ int main()
             else
             {
                 cout << "MOVE_INVALID" << endl;
+            }
+        }
+
+        else if(command == "UNDO_MOVE")
+        {
+            if(stateStack.empty())
+            {
+                cout << "UNDO_EMPTY" << endl;
+            }
+            else
+            {
+                BoardState previousState = stateStack.back();
+
+                stateStack.pop_back();
+
+                chessboard.restoreState(previousState);
+
+                cout << "UNDO_OK" << endl;
             }
         }
     }

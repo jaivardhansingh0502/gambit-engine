@@ -169,13 +169,44 @@ if __name__ == "__main__":
 
     print("\nEngine response:", response)
 
-    ai = AI()
+engine.stdin.write("GET_MOVES\n")
+engine.stdin.flush()
 
-    best_move = ai.find_best_move(
-        board,
-        legal_moves
-    )
+board = []
+legal_moves = []
 
-    print("\nAI selected:", best_move)
+section = None
 
-    engine.terminate()
+while True:
+
+    line = engine.stdout.readline().strip()
+
+    if not line:
+        continue
+
+    if line == "BOARD":
+        section = "board"
+        continue
+
+    if line == "MOVES":
+        section = "moves"
+        continue
+
+    if line == "END":
+        break
+
+    if section == "board":
+        board.append(list(line))
+
+    elif section == "moves":
+        legal_moves.append(line)
+
+print("\nBoard after e2e4:")
+
+for row in board:
+    print(row)
+
+print("\nBlack legal moves:")
+
+for move in legal_moves:
+    print(move)
