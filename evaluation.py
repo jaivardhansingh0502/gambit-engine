@@ -19,22 +19,7 @@ def evaluate_board(board):
 
     for row in board:
         for piece in row:
+
             score += PIECE_VALUES.get(piece, 0)
 
     return score
-
-
-if __name__ == "__main__":
-
-    board = [
-        ['r', 'n', 'b', 'q', 'k', 'b', 'n', ' '],
-        ['p', 'p', 'p', 'p', 'p', 'p', 'p', ' '],
-        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-        [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-        ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
-        ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
-    ]
-
-    print("Board Evaluation:", evaluate_board(board))
