@@ -12,26 +12,20 @@ int main()
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
 
-    cout << "Welcome to the Gambit Engine!" << endl;
-
     Board chessboard;
     Evaluation evaluation;
 
     chessboard.initializeBoard();
-    chessboard.displayBoard();
+
+    cout << "BOARD" << endl;
+
     chessboard.printBoardForAI();
-    cout << "\nLegal Moves for Python:\n";
+
+    cout << "MOVES" << endl;
+
     chessboard.printLegalMovesForAI();
 
-    while(true)
-    {
-        chessboard.takeinput();
+    cout << "END" << endl;
 
-        chessboard.displayBoard();
-
-        int score = evaluation.evaluateBoard(chessboard.getBoard());
-
-        cout << "\nBoard Evaluation: " << score << endl;
-    }
-
+    return 0;
 }
