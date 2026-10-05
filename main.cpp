@@ -2,6 +2,8 @@
 
 #include <windows.h>
 #include <iostream>
+#include <string>
+
 #include "Board.h"
 #include "Evaluation.h"
 
@@ -17,15 +19,46 @@ int main()
 
     chessboard.initializeBoard();
 
-    cout << "BOARD" << endl;
+    string command;
 
-    chessboard.printBoardForAI();
+    while(cin >> command)
+    {
+        if(command == "GET_MOVES")
+        {
+            cout << "BOARD" << endl;
 
-    cout << "MOVES" << endl;
+            chessboard.printBoardForAI();
 
-    chessboard.printLegalMovesForAI();
+            cout << "MOVES" << endl;
 
-    cout << "END" << endl;
+            chessboard.printLegalMovesForAI();
+
+            cout << "END" << endl;
+        }
+
+        else if(command == "MAKE_MOVE")
+        {
+            string moveString;
+
+            cin >> moveString;
+
+            string from = moveString.substr(0, 2);
+            string to = moveString.substr(2, 2);
+
+            Move move(from, to);
+
+            if(chessboard.isValid(move))
+            {
+                chessboard.makeMove(move);
+
+                cout << "MOVE_OK" << endl;
+            }
+            else
+            {
+                cout << "MOVE_INVALID" << endl;
+            }
+        }
+    }
 
     return 0;
 }

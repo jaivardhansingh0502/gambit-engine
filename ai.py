@@ -1,6 +1,7 @@
 from evaluation import evaluate_board
 import subprocess
 
+
 def make_move(board, move):
 
     new_board = [row[:] for row in board]
@@ -20,35 +21,20 @@ def make_move(board, move):
     return new_board
 
 
-def read_engine_output():
+def send_move_to_engine(engine, move):
 
-    board = []
-    legal_moves = []
+    print("\nSending move:", move)
 
-    section = None
+    engine.stdin.write(f"MAKE_MOVE {move}\n")
+    engine.stdin.flush()
 
-    while True:
+    print("Waiting for engine response...")
 
-        line = input().strip()
+    response = engine.stdout.readline().strip()
 
-        if line == "BOARD":
-            section = "board"
-            continue
+    print("Response received")
 
-        if line == "MOVES":
-            section = "moves"
-            continue
-
-        if line == "END":
-            break
-
-        if section == "board":
-            board.append(list(line))
-
-        elif section == "moves":
-            legal_moves.append(line)
-
-    return board, legal_moves
+    return response
 
 
 class AI:
@@ -132,6 +118,10 @@ if __name__ == "__main__":
         encoding="utf-8"
     )
 
+    # Ask C++ for the initial position
+    engine.stdin.write("GET_MOVES\n")
+    engine.stdin.flush()
+
     board = []
     legal_moves = []
 
@@ -170,6 +160,14 @@ if __name__ == "__main__":
 
     for move in legal_moves:
         print(move)
+
+    # Test communication with C++
+    response = send_move_to_engine(
+        engine,
+        "e2e4"
+    )
+
+    print("\nEngine response:", response)
 
     ai = AI()
 
