@@ -9,7 +9,7 @@ class GambitUI:
 
         self.root = root
         self.root.title("Gambit Chess")
-        self.root.minsize(600, 600)
+        self.root.minsize(700, 600)
 
         self.engine = subprocess.Popen(
             ["gambit.exe"],
@@ -21,6 +21,11 @@ class GambitUI:
 
         self.board = []
         self.legal_moves = []
+
+        self.selected_square = None
+        self.selected_moves = []
+
+        self.engine_busy = False
 
         self.canvas = tk.Canvas(
             self.root,
@@ -35,6 +40,11 @@ class GambitUI:
         self.canvas.bind(
             "<Configure>",
             self.on_resize
+        )
+
+        self.canvas.bind(
+            "<Button-1>",
+            self.on_click
         )
 
         self.root.after(
@@ -87,6 +97,7 @@ class GambitUI:
 
         self.board = board
         self.legal_moves = legal_moves
+        self.engine_busy = False
 
         self.root.after(
             0,
@@ -98,12 +109,13 @@ class GambitUI:
         if self.board:
             self.draw_board()
 
-    def draw_board(self):
+    def on_click(self, event):
+
+        if self.engine_busy:
+            return
 
         if not self.board:
             return
-
-        self.canvas.delete("all")
 
         width = self.canvas.winfo_width()
         height = self.canvas.winfo_height()
@@ -115,23 +127,229 @@ class GambitUI:
         offset_x = (width - board_size) / 2
         offset_y = (height - board_size) / 2
 
+        col = int((event.x - offset_x) / square_size)
+        row = int((event.y - offset_y) / square_size)
+
+        if row < 0 or row >= 8 or col < 0 or col >= 8:
+            return
+
+        clicked_square = self.square_to_notation(row, col)
+
+        if self.selected_square is None:
+
+            piece = self.board[row][col]
+
+            if piece == ".":
+                return
+
+            moves = []
+
+            for move in self.legal_moves:
+
+                if move[:2] == clicked_square:
+                    moves.append(move)
+
+            if not moves:
+                return
+
+            self.selected_square = clicked_square
+            self.selected_moves = moves
+
+            self.draw_board()
+
+        else:
+
+            move_found = None
+
+            for move in self.selected_moves:
+
+                if move[2:4] == clicked_square:
+                    move_found = move
+                    break
+
+            if move_found is not None:
+
+                self.selected_square = None
+                self.selected_moves = []
+
+                self.make_move(move_found)
+
+            else:
+
+                piece = self.board[row][col]
+
+                if piece != ".":
+
+                    moves = []
+
+                    for move in self.legal_moves:
+
+                        if move[:2] == clicked_square:
+                            moves.append(move)
+
+                    if moves:
+
+                        self.selected_square = clicked_square
+                        self.selected_moves = moves
+
+                    else:
+
+                        self.selected_square = None
+                        self.selected_moves = []
+
+                else:
+
+                    self.selected_square = None
+                    self.selected_moves = []
+
+                self.draw_board()
+
+    def make_move(self, move):
+
+        self.engine_busy = True
+
+
+
+
+        threading.Thread(
+            target=self.send_move,
+            args=(move,),
+            daemon=True
+        ).start()
+
+
+
+
+    def send_move(self, move):
+
+
+
+
+        self.engine.stdin.write(
+            f"MAKE_MOVE {move}\n"
+        )
+
+
+
+        self.engine.stdin.flush()
+
+        response = self.engine.stdout.readline().strip()
+
+
+
+        if response != "MOVE_OK":
+
+            self.engine_busy = False
+
+            self.root.after(
+                0,
+                self.draw_board
+            )
+
+            return
+
+
+
+        self.get_position()
+
+
+
+
+    def square_to_notation(self, row, col):
+
+
+
+        file = chr(ord("a") + col)
+        rank = str(8 - row)
+
+        return file + rank
+
+
+
+
+
+    def draw_board(self):
+
+        if not self.board:
+            return
+
+        
+
+        self.canvas.delete("all")
+
+
+
+        width = self.canvas.winfo_width()
+        height = self.canvas.winfo_height()
+
+
+
+        board_size = min(width, height)
+
+
+
+        square_size = board_size / 8
+
+
+
+
+        offset_x = (width - board_size) / 2
+        offset_y = (height - board_size) / 2
+
+
+
+
         light = "#F0D9B5"
         dark = "#B58863"
+
+
+
+
+        selected_color = "#F6F669"
+        move_color = "#8FBC8F"
 
         for row in range(8):
 
             for col in range(8):
 
+
+
                 x1 = offset_x + col * square_size
                 y1 = offset_y + row * square_size
+
+
+
 
                 x2 = x1 + square_size
                 y2 = y1 + square_size
 
-                if (row + col) % 2 == 0:
-                    color = light
-                else:
-                    color = dark
+
+
+
+                color = (
+                    light
+                    if (row + col) % 2 == 0
+                    else dark
+                )
+
+
+
+                square = self.square_to_notation(row, col)
+
+
+
+                if square == self.selected_square:
+                    color = selected_color
+
+
+
+                elif square in [
+                    move[2:4]
+                    for move in self.selected_moves
+                ]:
+                    color = move_color
+
+
 
                 self.canvas.create_rectangle(
                     x1,
@@ -141,6 +359,8 @@ class GambitUI:
                     fill=color,
                     outline=""
                 )
+
+
 
                 piece = self.board[row][col]
 
@@ -153,7 +373,12 @@ class GambitUI:
                         square_size
                     )
 
+
+
+
     def draw_piece(self, piece, x, y, square_size):
+
+
 
         pieces = {
             "K": "♔",
@@ -170,12 +395,16 @@ class GambitUI:
             "p": "♟"
         }
 
+
+
         symbol = pieces.get(piece, "")
 
         font_size = max(
             20,
             int(square_size * 0.68)
         )
+
+
 
         self.canvas.create_text(
             x,
