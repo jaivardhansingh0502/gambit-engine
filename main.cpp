@@ -42,7 +42,6 @@ int main()
         else if(command == "MAKE_MOVE")
         {
             string moveString;
-
             cin >> moveString;
 
             string from = moveString.substr(0, 2);
@@ -52,8 +51,9 @@ int main()
 
             if(chessboard.isValid(move))
             {
-                // Save current position before making the move
-                stateStack.push_back(chessboard.saveState());
+                stateStack.push_back(
+                    chessboard.saveState()
+                );
 
                 chessboard.makeMove(move);
 
@@ -73,14 +73,26 @@ int main()
             }
             else
             {
-                BoardState previousState = stateStack.back();
+                BoardState previousState =
+                    stateStack.back();
 
                 stateStack.pop_back();
 
-                chessboard.restoreState(previousState);
+                chessboard.restoreState(
+                    previousState
+                );
 
                 cout << "UNDO_OK" << endl;
             }
+        }
+
+        else if(command == "NEW_GAME")
+        {
+            chessboard.initializeBoard();
+
+            stateStack.clear();
+
+            cout << "NEW_GAME_OK" << endl;
         }
     }
 
