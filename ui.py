@@ -43,15 +43,27 @@ class GambitUI:
         self.white_turn = True
 
 
-
+        self.move_history = []
 
 
         self.engine_busy = False
 
 
 
+        self.main_frame = tk.Frame(self.root)
+
+
+
+        self.main_frame.pack(
+            fill="both",
+            expand=True
+        )
+
+
+
+
         self.canvas = tk.Canvas(
-            self.root,
+            self.main_frame,
             highlightthickness=0
         )
 
@@ -59,8 +71,67 @@ class GambitUI:
 
 
         self.canvas.pack(
+            side="left",
             fill="both",
             expand=True
+        )
+
+
+
+
+
+        self.history_frame = tk.Frame(
+            self.main_frame,
+            width=260
+        )
+
+
+
+
+        self.history_frame.pack(
+            side="right",
+            fill="y"
+        )
+
+
+
+
+        self.history_frame.pack_propagate(False)
+
+
+
+
+        self.history_title = tk.Label(
+            self.history_frame,
+            text="Move History",
+            font=("Arial", 18, "bold")
+        )
+
+
+
+
+        self.history_title.pack(
+            pady=15
+        )
+
+
+
+
+        self.history_list = tk.Listbox(
+            self.history_frame,
+            font=("Consolas", 13),
+            borderwidth=0,
+            highlightthickness=0
+        )
+
+
+
+
+        self.history_list.pack(
+            fill="both",
+            expand=True,
+            padx=10,
+            pady=10
         )
 
 
@@ -364,7 +435,11 @@ class GambitUI:
 
         if response != "MOVE_OK":
 
+
+
             self.engine_busy = False
+
+
 
             self.root.after(
                 0,
@@ -374,10 +449,80 @@ class GambitUI:
             return
 
 
+
+        self.move_history.append(move)
+
+
+
         self.white_turn = not self.white_turn
 
 
+
+        self.root.after(
+            0,
+            self.update_move_history
+        )
+
+
+
         self.get_position()
+
+
+
+
+    def update_move_history(self):
+
+
+
+        self.history_list.delete(
+            0,
+            tk.END
+        )
+
+
+
+
+        for i in range(0, len(self.move_history), 2):
+
+
+
+            move_number = (i // 2) + 1
+
+
+
+            white_move = self.move_history[i]
+
+
+
+            if i + 1 < len(self.move_history):
+                black_move = self.move_history[i + 1]
+
+
+
+
+                text = (
+                    f"{move_number}. "
+                    f"{white_move}    "
+                    f"{black_move}"
+                )
+
+
+
+
+            else:
+                text = (
+                    f"{move_number}. "
+                    f"{white_move}"
+                )
+
+
+
+
+            self.history_list.insert(
+                tk.END,
+                text
+            )
+
 
 
 
