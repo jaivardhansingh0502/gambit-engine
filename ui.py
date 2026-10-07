@@ -25,6 +25,8 @@ class GambitUI:
         self.selected_square = None
         self.selected_moves = []
 
+        self.last_move = None
+
         self.engine_busy = False
 
         self.canvas = tk.Canvas(
@@ -120,12 +122,12 @@ class GambitUI:
         width = self.canvas.winfo_width()
         height = self.canvas.winfo_height()
 
-        board_size = min(width, height)
+        board_size = min(width, height - 40)
 
         square_size = board_size / 8
 
         offset_x = (width - board_size) / 2
-        offset_y = (height - board_size) / 2
+        offset_y = 20 + (height - 40 - board_size) / 2
 
         col = int((event.x - offset_x) / square_size)
         row = int((event.y - offset_y) / square_size)
@@ -172,6 +174,8 @@ class GambitUI:
                 self.selected_square = None
                 self.selected_moves = []
 
+                self.last_move = move_found
+
                 self.make_move(move_found)
 
             else:
@@ -208,34 +212,21 @@ class GambitUI:
 
         self.engine_busy = True
 
-
-
-
         threading.Thread(
             target=self.send_move,
             args=(move,),
             daemon=True
         ).start()
 
-
-
-
     def send_move(self, move):
-
-
-
 
         self.engine.stdin.write(
             f"MAKE_MOVE {move}\n"
         )
 
-
-
         self.engine.stdin.flush()
 
         response = self.engine.stdout.readline().strip()
-
-
 
         if response != "MOVE_OK":
 
@@ -248,83 +239,48 @@ class GambitUI:
 
             return
 
-
-
         self.get_position()
 
-
-
-
     def square_to_notation(self, row, col):
-
-
 
         file = chr(ord("a") + col)
         rank = str(8 - row)
 
         return file + rank
 
-
-
-
-
     def draw_board(self):
 
         if not self.board:
             return
 
-        
-
         self.canvas.delete("all")
-
-
 
         width = self.canvas.winfo_width()
         height = self.canvas.winfo_height()
 
-
-
-        board_size = min(width, height)
-
-
+        board_size = min(width, height - 40)
 
         square_size = board_size / 8
 
-
-
-
         offset_x = (width - board_size) / 2
-        offset_y = (height - board_size) / 2
-
-
-
+        offset_y = 20 + (height - 40 - board_size) / 2
 
         light = "#F0D9B5"
         dark = "#B58863"
 
-
-
-
         selected_color = "#F6F669"
         move_color = "#8FBC8F"
+        last_move_color = "#D9A441"
 
         for row in range(8):
 
             for col in range(8):
 
-
-
                 x1 = offset_x + col * square_size
                 y1 = offset_y + row * square_size
 
-
-
-
                 x2 = x1 + square_size
                 y2 = y1 + square_size
-
-
-
 
                 color = (
                     light
@@ -332,24 +288,24 @@ class GambitUI:
                     else dark
                 )
 
-
-
                 square = self.square_to_notation(row, col)
 
+                if self.last_move is not None:
 
+                    if (
+                        square == self.last_move[:2]
+                        or square == self.last_move[2:4]
+                    ):
+                        color = last_move_color
 
                 if square == self.selected_square:
                     color = selected_color
-
-
 
                 elif square in [
                     move[2:4]
                     for move in self.selected_moves
                 ]:
                     color = move_color
-
-
 
                 self.canvas.create_rectangle(
                     x1,
@@ -359,8 +315,6 @@ class GambitUI:
                     fill=color,
                     outline=""
                 )
-
-
 
                 piece = self.board[row][col]
 
@@ -373,12 +327,29 @@ class GambitUI:
                         square_size
                     )
 
+                if col == 0:
 
+                    self.canvas.create_text(
+                        x1 + 8,
+                        y1 + 8,
+                        text=str(8 - row),
+                        anchor="nw",
+                        font=("Arial", 11, "bold"),
+                        fill=dark if (row + col) % 2 == 0 else light
+                    )
 
+                if row == 7:
+
+                    self.canvas.create_text(
+                        x2 - 8,
+                        y2 - 8,
+                        text=chr(ord("a") + col),
+                        anchor="se",
+                        font=("Arial", 11, "bold"),
+                        fill=dark if (row + col) % 2 == 0 else light
+                    )
 
     def draw_piece(self, piece, x, y, square_size):
-
-
 
         pieces = {
             "K": "♔",
@@ -395,16 +366,12 @@ class GambitUI:
             "p": "♟"
         }
 
-
-
         symbol = pieces.get(piece, "")
 
         font_size = max(
             20,
             int(square_size * 0.68)
         )
-
-
 
         self.canvas.create_text(
             x,
