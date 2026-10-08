@@ -97,7 +97,7 @@ public:
     void printBoardForAI();
     void printLegalMovesForAI();
 
-    
+    bool getWhiteTurn();
     
 };
 

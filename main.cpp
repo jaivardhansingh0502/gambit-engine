@@ -18,23 +18,78 @@ int main()
     Board chessboard;
     Evaluation evaluation;
 
+    
     chessboard.initializeBoard();
+
+
 
     vector<BoardState> stateStack;
 
+
+
     string command;
+
+
 
     while(cin >> command)
     {
+
+
         if(command == "GET_MOVES")
         {
+
+
             cout << "BOARD" << endl;
+
+
 
             chessboard.printBoardForAI();
 
+
+
             cout << "MOVES" << endl;
 
+
+
             chessboard.printLegalMovesForAI();
+
+
+
+            cout << "STATUS" << endl;
+
+
+
+
+            if(chessboard.isCheckmate(chessboard.getWhiteTurn()))
+            {
+                cout<<"CHECKMATE" << endl ;
+            }
+
+
+
+
+            else if(chessboard.isStalemate(chessboard.getWhiteTurn()))
+            {
+                cout<<"STALEMATE" << endl ;
+            }
+
+
+
+
+            else if(chessboard.isKinginCheck(chessboard.getWhiteTurn()))
+            {
+                cout<<"CHECK" << endl ;
+            }
+
+
+
+
+            else
+            {
+                cout << "NORMAL" << endl;
+            }
+
+
 
             cout << "END" << endl;
         }

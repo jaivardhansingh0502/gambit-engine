@@ -3966,4 +3966,9 @@ void Board :: printLegalMovesForAI()
 }
 
 
+bool Board :: getWhiteTurn()
+{
 
+    return whiteTurn ;
+    
+}
