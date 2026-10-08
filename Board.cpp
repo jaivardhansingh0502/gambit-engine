@@ -1446,20 +1446,23 @@ bool Board :: isValid(Move move)
                                 if(board[currentRow][currentCol] == ' ')
                                 {
                                     
-                                    // Temprarily Move and check :
+                                    Move move(i , j , currentRow , currentCol) ;
 
-                                    board[i][j] = ' ' ;
-                                    board[currentRow][currentCol] = rook ;
-
-                                    // Check kro if possible
-                                    if(!isKinginCheck(whiteTurn))
+                                    if(isValid(move))
                                     {
-                                        return true ;
-                                    }
+                                        BoardState state = saveState();
 
-                                    // Undo the move : 
-                                    board[i][j] = rook ;
-                                    board[currentRow][currentCol] = ' ' ;
+                                        makeTemporaryMove(move);
+
+                                        bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                        restoreState(state);
+
+                                        if(!stillInCheck)
+                                        {
+                                            return true ;
+                                        }
+                                    }
 
                                 }
 
@@ -1474,22 +1477,23 @@ bool Board :: isValid(Move move)
                                     board[currentRow][currentCol] <= 'Z'))
                                     {
 
-                                        char CapturedPiece = board[currentRow][currentCol] ;
+                                        Move move(i , j , currentRow , currentCol) ;
 
-                                        board[currentRow][currentCol] = rook ;
-                                        board[i][j] = ' ' ; 
-
-                                        // check if it does the Work \
-
-                                        if(!isKinginCheck(whiteTurn))
+                                        if(isValid(move))
                                         {
-                                            return true ;
-                                        }
-                                        
+                                            BoardState state = saveState();
 
-                                        // Undo 
-                                        board[i][j] = rook ;
-                                        board[currentRow][currentCol] = CapturedPiece ;
+                                            makeTemporaryMove(move);
+
+                                            bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                            restoreState(state);
+
+                                            if(!stillInCheck)
+                                            {
+                                                return true ;
+                                            }
+                                        }
                                     }
 
                                     // Koi bhi aur piece mil gaya to ye case Fail hai ;
@@ -1503,7 +1507,7 @@ bool Board :: isValid(Move move)
 
 
 
-                             // left Move : 
+                            // left Move : 
                             currentRow = i ; 
                             currentCol = j - 1 ; 
 
@@ -1514,20 +1518,23 @@ bool Board :: isValid(Move move)
                                 if(board[currentRow][currentCol] == ' ')
                                 {
                                     
-                                    // Temprarily Move and check :
+                                    Move move(i , j , currentRow , currentCol) ;
 
-                                    board[i][j] = ' ' ;
-                                    board[currentRow][currentCol] = rook ;
-
-                                    // Check kro if possible
-                                    if(!isKinginCheck(whiteTurn))
+                                    if(isValid(move))
                                     {
-                                        return true ;
-                                    }
+                                        BoardState state = saveState();
 
-                                    // Undo the move : 
-                                    board[i][j] = rook ;
-                                    board[currentRow][currentCol] = ' ' ;
+                                        makeTemporaryMove(move);
+
+                                        bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                        restoreState(state);
+
+                                        if(!stillInCheck)
+                                        {
+                                            return true ;
+                                        }
+                                    }
 
                                 }
 
@@ -1542,22 +1549,23 @@ bool Board :: isValid(Move move)
                                     board[currentRow][currentCol] <= 'Z'))
                                     {
 
-                                        char CapturedPiece = board[currentRow][currentCol] ;
+                                        Move move(i , j , currentRow , currentCol) ;
 
-                                        board[currentRow][currentCol] = rook ;
-                                        board[i][j] = ' ' ; 
-
-                                        // check if it does the Work \
-
-                                        if(!isKinginCheck(whiteTurn))
+                                        if(isValid(move))
                                         {
-                                            return true ;
-                                        }
-                                        
+                                            BoardState state = saveState();
 
-                                        // Undo 
-                                        board[i][j] = rook ;
-                                        board[currentRow][currentCol] = CapturedPiece ;
+                                            makeTemporaryMove(move);
+
+                                            bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                            restoreState(state);
+
+                                            if(!stillInCheck)
+                                            {
+                                                return true ;
+                                            }
+                                        }
                                     }
 
                                     // Koi bhi aur piece mil gaya to ye case Fail hai ;
@@ -1571,7 +1579,7 @@ bool Board :: isValid(Move move)
 
 
 
-                             // Up Move : 
+                            // Up Move : 
                             currentRow = i + 1; 
                             currentCol = j ; 
 
@@ -1582,20 +1590,23 @@ bool Board :: isValid(Move move)
                                 if(board[currentRow][currentCol] == ' ')
                                 {
                                     
-                                    // Temprarily Move and check :
+                                    Move move(i , j , currentRow , currentCol) ;
 
-                                    board[i][j] = ' ' ;
-                                    board[currentRow][currentCol] = rook ;
-
-                                    // Check kro if possible
-                                    if(!isKinginCheck(whiteTurn))
+                                    if(isValid(move))
                                     {
-                                        return true ;
-                                    }
+                                        BoardState state = saveState();
 
-                                    // Undo the move : 
-                                    board[i][j] = rook ;
-                                    board[currentRow][currentCol] = ' ' ;
+                                        makeTemporaryMove(move);
+
+                                        bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                        restoreState(state);
+
+                                        if(!stillInCheck)
+                                        {
+                                            return true ;
+                                        }
+                                    }
 
                                 }
 
@@ -1610,22 +1621,23 @@ bool Board :: isValid(Move move)
                                     board[currentRow][currentCol] <= 'Z'))
                                     {
 
-                                        char CapturedPiece = board[currentRow][currentCol] ;
+                                        Move move(i , j , currentRow , currentCol) ;
 
-                                        board[currentRow][currentCol] = rook ;
-                                        board[i][j] = ' ' ; 
-
-                                        // check if it does the Work \
-
-                                        if(!isKinginCheck(whiteTurn))
+                                        if(isValid(move))
                                         {
-                                            return true ;
-                                        }
-                                        
+                                            BoardState state = saveState();
 
-                                        // Undo 
-                                        board[i][j] = rook ;
-                                        board[currentRow][currentCol] = CapturedPiece ;
+                                            makeTemporaryMove(move);
+
+                                            bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                            restoreState(state);
+
+                                            if(!stillInCheck)
+                                            {
+                                                return true ;
+                                            }
+                                        }
                                     }
 
                                     // Koi bhi aur piece mil gaya to ye case Fail hai ;
@@ -1638,7 +1650,7 @@ bool Board :: isValid(Move move)
 
 
 
-                             // Down Move : 
+                            // Down Move : 
                             currentRow = i - 1; 
                             currentCol = j ; 
 
@@ -1649,20 +1661,23 @@ bool Board :: isValid(Move move)
                                 if(board[currentRow][currentCol] == ' ')
                                 {
                                     
-                                    // Temprarily Move and check :
+                                    Move move(i , j , currentRow , currentCol) ;
 
-                                    board[i][j] = ' ' ;
-                                    board[currentRow][currentCol] = rook ;
-
-                                    // Check kro if possible
-                                    if(!isKinginCheck(whiteTurn))
+                                    if(isValid(move))
                                     {
-                                        return true ;
-                                    }
+                                        BoardState state = saveState();
 
-                                    // Undo the move : 
-                                    board[i][j] = rook ;
-                                    board[currentRow][currentCol] = ' ' ;
+                                        makeTemporaryMove(move);
+
+                                        bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                        restoreState(state);
+
+                                        if(!stillInCheck)
+                                        {
+                                            return true ;
+                                        }
+                                    }
 
                                 }
 
@@ -1677,22 +1692,23 @@ bool Board :: isValid(Move move)
                                     board[currentRow][currentCol] <= 'Z'))
                                     {
 
-                                        char CapturedPiece = board[currentRow][currentCol] ;
+                                        Move move(i , j , currentRow , currentCol) ;
 
-                                        board[currentRow][currentCol] = rook ;
-                                        board[i][j] = ' ' ; 
-
-                                        // check if it does the Work \
-
-                                        if(!isKinginCheck(whiteTurn))
+                                        if(isValid(move))
                                         {
-                                            return true ;
-                                        }
-                                        
+                                            BoardState state = saveState();
 
-                                        // Undo 
-                                        board[i][j] = rook ;
-                                        board[currentRow][currentCol] = CapturedPiece ;
+                                            makeTemporaryMove(move);
+
+                                            bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                            restoreState(state);
+
+                                            if(!stillInCheck)
+                                            {
+                                                return true ;
+                                            }
+                                        }
                                     }
 
                                     // Koi bhi aur piece mil gaya to ye case Fail hai ;
@@ -1706,6 +1722,7 @@ bool Board :: isValid(Move move)
                 }
             }
         }
+
         return false ;
     }
 
@@ -1772,50 +1789,51 @@ bool Board :: isValid(Move move)
                                 // Empty Space ;
                                 if(board[currentRow][currentCol] == ' ')
                                 {
+                                    Move move(i , j , currentRow , currentCol) ;
 
-                                    // Temporary Move 
-
-                                    board[i][j] = ' ' ;
-                                    board[currentRow][currentCol] = bishop ;
-
-                                    if(!isKinginCheck(whiteTurn))
+                                    if(isValid(move))
                                     {
-                                        return true ;
-                                    }
+                                        BoardState state = saveState();
 
-                                    // Undo 
-                                    board[i][j] = bishop ;
-                                    board[currentRow][currentCol] = ' ' ;
+                                        makeTemporaryMove(move);
+
+                                        bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                        restoreState(state);
+
+                                        if(!stillInCheck)
+                                        {
+                                            return true ;
+                                        }
+                                    }
                                 }
 
                                 else
                                 {
-
-                                    // White Turn and Black Piece in Between : 
+                                    // White Turn and Black Piece in Between :
                                     
                                     if ((whiteTurn && board[currentRow][currentCol] >= 'a' &&
                                     board[currentRow][currentCol] <= 'z') ||
                                     (!whiteTurn && board[currentRow][currentCol] >= 'A' &&
                                     board[currentRow][currentCol] <= 'Z'))
                                     {
+                                        Move move(i , j , currentRow , currentCol) ;
 
-                                        char capturedPiece = board[currentRow][currentCol] ;
-
-                                        // Temporary Move ;
-
-                                        board[currentRow][currentCol] = bishop ;
-                                        board[i][j] = ' ' ;
-
-                                        if(!isKinginCheck(whiteTurn))
+                                        if(isValid(move))
                                         {
-                                            return true ;
+                                            BoardState state = saveState();
+
+                                            makeTemporaryMove(move);
+
+                                            bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                            restoreState(state);
+
+                                            if(!stillInCheck)
+                                            {
+                                                return true ;
+                                            }
                                         }
-
-                                        // Undo 
-
-                                        board[currentRow][currentCol] = capturedPiece ;
-                                        board[i][j] = bishop ;
-                                        
                                     }
 
                                     // If any other move then break the loop 
@@ -1830,8 +1848,8 @@ bool Board :: isValid(Move move)
                             
                             // Right Downside Diagonal ;
 
-                             currentRow = i - 1 ;
-                             currentCol = j + 1 ;
+                            currentRow = i - 1 ;
+                            currentCol = j + 1 ;
 
                             while(currentRow >= 0 && currentCol < 8)
                             {
@@ -1839,50 +1857,51 @@ bool Board :: isValid(Move move)
                                 // Empty Space ;
                                 if(board[currentRow][currentCol] == ' ')
                                 {
+                                    Move move(i , j , currentRow , currentCol) ;
 
-                                    // Temporary Move 
-
-                                    board[i][j] = ' ' ;
-                                    board[currentRow][currentCol] = bishop ;
-
-                                    if(!isKinginCheck(whiteTurn))
+                                    if(isValid(move))
                                     {
-                                        return true ;
-                                    }
+                                        BoardState state = saveState();
 
-                                    // Undo 
-                                    board[i][j] = bishop ;
-                                    board[currentRow][currentCol] = ' ' ;
+                                        makeTemporaryMove(move);
+
+                                        bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                        restoreState(state);
+
+                                        if(!stillInCheck)
+                                        {
+                                            return true ;
+                                        }
+                                    }
                                 }
 
                                 else
                                 {
-
-                                    // White Turn and Black Piece in Between : 
+                                    // White Turn and Black Piece in Between :
                                     
                                     if ((whiteTurn && board[currentRow][currentCol] >= 'a' &&
                                     board[currentRow][currentCol] <= 'z') ||
                                     (!whiteTurn && board[currentRow][currentCol] >= 'A' &&
                                     board[currentRow][currentCol] <= 'Z'))
                                     {
+                                        Move move(i , j , currentRow , currentCol) ;
 
-                                        char capturedPiece = board[currentRow][currentCol] ;
-
-                                        // Temporary Move ;
-
-                                        board[currentRow][currentCol] = bishop ;
-                                        board[i][j] = ' ' ;
-
-                                        if(!isKinginCheck(whiteTurn))
+                                        if(isValid(move))
                                         {
-                                            return true ;
+                                            BoardState state = saveState();
+
+                                            makeTemporaryMove(move);
+
+                                            bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                            restoreState(state);
+
+                                            if(!stillInCheck)
+                                            {
+                                                return true ;
+                                            }
                                         }
-
-                                        // Undo 
-
-                                        board[currentRow][currentCol] = capturedPiece ;
-                                        board[i][j] = bishop ;
-                                        
                                     }
 
                                     // If any other move then break the loop 
@@ -1897,8 +1916,8 @@ bool Board :: isValid(Move move)
 
                             // Left Downside Diagonal ;
 
-                             currentRow = i - 1 ;
-                             currentCol = j - 1 ;
+                            currentRow = i - 1 ;
+                            currentCol = j - 1 ;
 
                             while(currentRow >= 0 && currentCol >= 0)
                             {
@@ -1906,50 +1925,51 @@ bool Board :: isValid(Move move)
                                 // Empty Space ;
                                 if(board[currentRow][currentCol] == ' ')
                                 {
+                                    Move move(i , j , currentRow , currentCol) ;
 
-                                    // Temporary Move 
-
-                                    board[i][j] = ' ' ;
-                                    board[currentRow][currentCol] = bishop ;
-
-                                    if(!isKinginCheck(whiteTurn))
+                                    if(isValid(move))
                                     {
-                                        return true ;
-                                    }
+                                        BoardState state = saveState();
 
-                                    // Undo 
-                                    board[i][j] = bishop ;
-                                    board[currentRow][currentCol] = ' ' ;
+                                        makeTemporaryMove(move);
+
+                                        bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                        restoreState(state);
+
+                                        if(!stillInCheck)
+                                        {
+                                            return true ;
+                                        }
+                                    }
                                 }
 
                                 else
                                 {
-
-                                    // White Turn and Black Piece in Between : 
+                                    // White Turn and Black Piece in Between :
                                     
                                     if ((whiteTurn && board[currentRow][currentCol] >= 'a' &&
                                     board[currentRow][currentCol] <= 'z') ||
                                     (!whiteTurn && board[currentRow][currentCol] >= 'A' &&
                                     board[currentRow][currentCol] <= 'Z'))
                                     {
+                                        Move move(i , j , currentRow , currentCol) ;
 
-                                        char capturedPiece = board[currentRow][currentCol] ;
-
-                                        // Temporary Move ;
-
-                                        board[currentRow][currentCol] = bishop ;
-                                        board[i][j] = ' ' ;
-
-                                        if(!isKinginCheck(whiteTurn))
+                                        if(isValid(move))
                                         {
-                                            return true ;
+                                            BoardState state = saveState();
+
+                                            makeTemporaryMove(move);
+
+                                            bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                            restoreState(state);
+
+                                            if(!stillInCheck)
+                                            {
+                                                return true ;
+                                            }
                                         }
-
-                                        // Undo 
-
-                                        board[currentRow][currentCol] = capturedPiece ;
-                                        board[i][j] = bishop ;
-                                        
                                     }
 
                                     // If any other move then break the loop 
@@ -1964,8 +1984,8 @@ bool Board :: isValid(Move move)
 
                             // left Upside Diagonal ;
 
-                             currentRow = i + 1 ;
-                             currentCol = j - 1 ;
+                            currentRow = i + 1 ;
+                            currentCol = j - 1 ;
 
                             while(currentRow < 8 && currentCol >= 0)
                             {
@@ -1973,50 +1993,51 @@ bool Board :: isValid(Move move)
                                 // Empty Space ;
                                 if(board[currentRow][currentCol] == ' ')
                                 {
+                                    Move move(i , j , currentRow , currentCol) ;
 
-                                    // Temporary Move 
-
-                                    board[i][j] = ' ' ;
-                                    board[currentRow][currentCol] = bishop ;
-
-                                    if(!isKinginCheck(whiteTurn))
+                                    if(isValid(move))
                                     {
-                                        return true ;
-                                    }
+                                        BoardState state = saveState();
 
-                                    // Undo 
-                                    board[i][j] = bishop ;
-                                    board[currentRow][currentCol] = ' ' ;
+                                        makeTemporaryMove(move);
+
+                                        bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                        restoreState(state);
+
+                                        if(!stillInCheck)
+                                        {
+                                            return true ;
+                                        }
+                                    }
                                 }
 
                                 else
                                 {
-
-                                    // White Turn and Black Piece in Between : 
+                                    // White Turn and Black Piece in Between :
                                     
                                     if ((whiteTurn && board[currentRow][currentCol] >= 'a' &&
                                     board[currentRow][currentCol] <= 'z') ||
                                     (!whiteTurn && board[currentRow][currentCol] >= 'A' &&
                                     board[currentRow][currentCol] <= 'Z'))
                                     {
+                                        Move move(i , j , currentRow , currentCol) ;
 
-                                        char capturedPiece = board[currentRow][currentCol] ;
-
-                                        // Temporary Move ;
-
-                                        board[currentRow][currentCol] = bishop ;
-                                        board[i][j] = ' ' ;
-
-                                        if(!isKinginCheck(whiteTurn))
+                                        if(isValid(move))
                                         {
-                                            return true ;
+                                            BoardState state = saveState();
+
+                                            makeTemporaryMove(move);
+
+                                            bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                            restoreState(state);
+
+                                            if(!stillInCheck)
+                                            {
+                                                return true ;
+                                            }
                                         }
-
-                                        // Undo 
-
-                                        board[currentRow][currentCol] = capturedPiece ;
-                                        board[i][j] = bishop ;
-                                        
                                     }
 
                                     // If any other move then break the loop 
@@ -2031,292 +2052,86 @@ bool Board :: isValid(Move move)
                 }
             }
         }
+
         return false ;
     }
 
 
     bool Board :: canKnightSaveKing(bool whiteTurn)
-    {
-
-        char knight ;
-        char king ; 
-        
-        if(whiteTurn)
-        {
-            king = 'K' ;
-            knight = 'N' ;
-        }
-
-        else
-        {
-            king = 'k' ;
-            knight = 'n' ;
-        }
-
-        
-        for(int i = 0 ; i < 8 ; i ++)
-        {
-            for(int j = 0 ; j < 8 ; j ++)
-            {
-                if(board[i][j] == knight)
-                {
-                
-                   for(int rowChange = -2 ; rowChange <= 2 ; rowChange++) 
-                    {
-                     for(int colChange = -2 ; colChange <= 2 ; colChange++)
-                    {
-                        
-                        // ColChange can not be equal to rowChange 
-                        if(abs(colChange) + abs(rowChange) != 3)
-                        {
-                            continue ;
-                        }
-
-                        // Actual Square 
-                        if(rowChange == 0 && colChange == 0)
-                        {
-                            continue ;
-                        }
-
-
-
-
-                        // Right(2) + Down(1)
-
-                        if(rowChange == 1 && colChange == 2)
-                        {
-
-                            if(i + 1 < 8 && j + 2 < 8)
-                            {
-
-                                if(board[i+1][j+2] == ' ')
-                                {
-
-                                    // Temporary
-                                    board[i+1][j+2] = knight ;
-                                    board[i][j] = ' ' ;
-
-                                    // Check King
-                                    if(!isKinginCheck(whiteTurn))
-                                    {
-                                        return true ;
-                                    }
-
-                                    // Undo
-                                    board[i+1][j+2] = ' ' ;
-                                    board[i][j] = knight ;
-                                }
-                            }
-                        }
-
-
-                        // Right(2) + Up(1)
-
-                        if(rowChange == -1 && colChange == 2)
-                        {
-
-                            if(i - 1 >= 0 && j + 2 < 8)
-                            {
-
-                                if(board[i-1][j+2] == ' ')
-                                {
-
-                                    // Temporary
-                                    board[i-1][j+2] = knight ;
-                                    board[i][j] = ' ' ;
-
-                                    // Check King
-                                    if(!isKinginCheck(whiteTurn))
-                                    {
-                                        return true ;
-                                    }
-
-                                    // Undo
-                                    board[i-1][j+2] = ' ' ;
-                                    board[i][j] = knight ;
-                                }
-                            }
-                        }
-
-
-                        // Left(2) + Down(1)
-
-                        if(rowChange == 1 && colChange == -2)
-                        {
-
-                            if(i + 1 < 8 && j - 2 >= 0)
-                            {
-
-                                if(board[i+1][j-2] == ' ')
-                                {
-
-                                    // Temporary
-                                    board[i+1][j-2] = knight ;
-                                    board[i][j] = ' ' ;
-
-                                    // Check King
-                                    if(!isKinginCheck(whiteTurn))
-                                    {
-                                        return true ;
-                                    }
-
-                                    // Undo
-                                    board[i+1][j-2] = ' ' ;
-                                    board[i][j] = knight ;
-                                }
-                            }
-                        }
-
-
-                        // Left(2) + Up(1)
-
-                        if(rowChange == -1 && colChange == -2)
-                        {
-
-                            if(i - 1 >= 0 && j - 2 >= 0)
-                            {
-
-                                if(board[i-1][j-2] == ' ')
-                                {
-
-                                    // Temporary
-                                    board[i-1][j-2] = knight ;
-                                    board[i][j] = ' ' ;
-
-                                    // Check King
-                                    if(!isKinginCheck(whiteTurn))
-                                    {
-                                        return true ;
-                                    }
-
-                                    // Undo
-                                    board[i-1][j-2] = ' ' ;
-                                    board[i][j] = knight ;
-                                }
-                            }
-                        }
-
-
-                        // Down(2) + Right(1)
-
-                        if(rowChange == 2 && colChange == 1)
-                        {
-
-                            if(i + 2 < 8 && j + 1 < 8)
-                            {
-
-                                if(board[i+2][j+1] == ' ')
-                                {
-
-                                    // Temporary
-                                    board[i+2][j+1] = knight ;
-                                    board[i][j] = ' ' ;
-
-                                    // Check King
-                                    if(!isKinginCheck(whiteTurn))
-                                    {
-                                        return true ;
-                                    }
-
-                                    // Undo
-                                    board[i+2][j+1] = ' ' ;
-                                    board[i][j] = knight ;
-                                }
-                            }
-                        }
-
-
-                        // Down(2) + Left(1)
-
-                        if(rowChange == 2 && colChange == -1)
-                        {
-
-                            if(i + 2 < 8 && j - 1 >= 0)
-                            {
-
-                                if(board[i+2][j-1] == ' ')
-                                {
-
-                                    // Temporary
-                                    board[i+2][j-1] = knight ;
-                                    board[i][j] = ' ' ;
-
-                                    // Check King
-                                    if(!isKinginCheck(whiteTurn))
-                                    {
-                                        return true ;
-                                    }
-
-                                    // Undo
-                                    board[i+2][j-1] = ' ' ;
-                                    board[i][j] = knight ;
-                                }
-                            }
-                        }
-
-
-                        // Up(2) + Right(1)
-
-                        if(rowChange == -2 && colChange == 1)
-                        {
-
-                            if(i - 2 >= 0 && j + 1 < 8)
-                            {
-
-                                if(board[i-2][j+1] == ' ')
-                                {
-
-                                    // Temporary
-                                    board[i-2][j+1] = knight ;
-                                    board[i][j] = ' ' ;
-
-                                    // Check King
-                                    if(!isKinginCheck(whiteTurn))
-                                    {
-                                        return true ;
-                                    }
-
-                                    // Undo
-                                    board[i-2][j+1] = ' ' ;
-                                    board[i][j] = knight ;
-                                }
-                            }
-                        }
-
-
-                        // Up(2) + Left(1)
-
-                        if(rowChange == -2 && colChange == -1)
-                        {
-
-                            if(i - 2 >= 0 && j - 1 >= 0)
-                            {
-
-                                if(board[i-2][j-1] == ' ')
-                                {
-
-                                    // Temporary
-                                    board[i-2][j-1] = knight ;
-                                    board[i][j] = ' ' ;
-
-                                    // Check King
-                                    if(!isKinginCheck(whiteTurn))
-                                    {
-                                        return true ;
-                                    }
-
-                                    // Undo
-                                    board[i-2][j-1] = ' ' ;
-                                    board[i][j] = knight ;
-                                }
-                            }
-                        }
-                    }
-                    }
-                }
-            }
-        }
-        return false ;
+    { 
+
+        char knight ; 
+         
+        if(whiteTurn) 
+        { 
+            knight = 'N' ; 
+        } 
+ 
+        else 
+        { 
+            knight = 'n' ; 
+        } 
+ 
+         
+        for(int i = 0 ; i < 8 ; i ++) 
+        { 
+            for(int j = 0 ; j < 8 ; j ++) 
+            { 
+                if(board[i][j] == knight) 
+                { 
+                 
+                    for(int rowChange = -2 ; rowChange <= 2 ; rowChange++)  
+                    { 
+                        for(int colChange = -2 ; colChange <= 2 ; colChange++) 
+                        { 
+                         
+                            // ColChange can not be equal to rowChange  
+                            if(abs(colChange) + abs(rowChange) != 3) 
+                            { 
+                                continue ; 
+                            } 
+ 
+                            // Actual Square 
+                            if(rowChange == 0 && colChange == 0) 
+                            { 
+                                continue ; 
+                            } 
+ 
+                            int newRow = i + rowChange ; 
+                            int newCol = j + colChange ; 
+ 
+                            if(newRow < 0 || newRow >= 8 || 
+                               newCol < 0 || newCol >= 8) 
+                            { 
+                                continue ; 
+                            } 
+ 
+                            Move move(i , j , newRow , newCol) ; 
+ 
+                            if(!isValid(move)) 
+                            { 
+                                continue ; 
+                            } 
+ 
+                            BoardState state = saveState() ; 
+ 
+                            makeTemporaryMove(move) ; 
+ 
+                            bool stillInCheck = isKinginCheck(whiteTurn) ; 
+ 
+                            restoreState(state) ; 
+ 
+                            if(!stillInCheck) 
+                            { 
+                                return true ; 
+                            } 
+                        } 
+                    } 
+                } 
+            } 
+        } 
+ 
+        return false ; 
     }
 
 
@@ -2380,7 +2195,6 @@ bool Board :: isValid(Move move)
 
                         // Now this is a valid Queen destination
 
-                        
 
                         // Rook Part : 
 
@@ -2396,20 +2210,23 @@ bool Board :: isValid(Move move)
                                 if(board[currentRow][currentCol] == ' ')
                                 {
                                     
-                                    // Temprarily Move and check :
+                                    Move move(i , j , currentRow , currentCol) ;
 
-                                    board[i][j] = ' ' ;
-                                    board[currentRow][currentCol] = queen ;
-
-                                    // Check kro if possible
-                                    if(!isKinginCheck(whiteTurn))
+                                    if(isValid(move))
                                     {
-                                        return true ;
-                                    }
+                                        BoardState state = saveState();
 
-                                    // Undo the move : 
-                                    board[i][j] = queen ;
-                                    board[currentRow][currentCol] = ' ' ;
+                                        makeTemporaryMove(move);
+
+                                        bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                        restoreState(state);
+
+                                        if(!stillInCheck)
+                                        {
+                                            return true ;
+                                        }
+                                    }
 
                                 }
 
@@ -2424,22 +2241,23 @@ bool Board :: isValid(Move move)
                                     board[currentRow][currentCol] <= 'Z'))
                                     {
 
-                                        char CapturedPiece = board[currentRow][currentCol] ;
+                                        Move move(i , j , currentRow , currentCol) ;
 
-                                        board[currentRow][currentCol] = queen ;
-                                        board[i][j] = ' ' ; 
-
-                                        // check if it does the Work \
-
-                                        if(!isKinginCheck(whiteTurn))
+                                        if(isValid(move))
                                         {
-                                            return true ;
-                                        }
-                                        
+                                            BoardState state = saveState();
 
-                                        // Undo 
-                                        board[i][j] = queen ;
-                                        board[currentRow][currentCol] = CapturedPiece ;
+                                            makeTemporaryMove(move);
+
+                                            bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                            restoreState(state);
+
+                                            if(!stillInCheck)
+                                            {
+                                                return true ;
+                                            }
+                                        }
                                     }
 
                                     // Koi bhi aur piece mil gaya to ye case Fail hai ;
@@ -2464,20 +2282,23 @@ bool Board :: isValid(Move move)
                                 if(board[currentRow][currentCol] == ' ')
                                 {
                                     
-                                    // Temprarily Move and check :
+                                    Move move(i , j , currentRow , currentCol) ;
 
-                                    board[i][j] = ' ' ;
-                                    board[currentRow][currentCol] = queen ;
-
-                                    // Check kro if possible
-                                    if(!isKinginCheck(whiteTurn))
+                                    if(isValid(move))
                                     {
-                                        return true ;
-                                    }
+                                        BoardState state = saveState();
 
-                                    // Undo the move : 
-                                    board[i][j] = queen ;
-                                    board[currentRow][currentCol] = ' ' ;
+                                        makeTemporaryMove(move);
+
+                                        bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                        restoreState(state);
+
+                                        if(!stillInCheck)
+                                        {
+                                            return true ;
+                                        }
+                                    }
 
                                 }
 
@@ -2492,22 +2313,23 @@ bool Board :: isValid(Move move)
                                     board[currentRow][currentCol] <= 'Z'))
                                     {
 
-                                        char CapturedPiece = board[currentRow][currentCol] ;
+                                        Move move(i , j , currentRow , currentCol) ;
 
-                                        board[currentRow][currentCol] = queen ;
-                                        board[i][j] = ' ' ; 
-
-                                        // check if it does the Work \
-
-                                        if(!isKinginCheck(whiteTurn))
+                                        if(isValid(move))
                                         {
-                                            return true ;
-                                        }
-                                        
+                                            BoardState state = saveState();
 
-                                        // Undo 
-                                        board[i][j] = queen ;
-                                        board[currentRow][currentCol] = CapturedPiece ;
+                                            makeTemporaryMove(move);
+
+                                            bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                            restoreState(state);
+
+                                            if(!stillInCheck)
+                                            {
+                                                return true ;
+                                            }
+                                        }
                                     }
 
                                     // Koi bhi aur piece mil gaya to ye case Fail hai ;
@@ -2532,20 +2354,23 @@ bool Board :: isValid(Move move)
                                 if(board[currentRow][currentCol] == ' ')
                                 {
                                     
-                                    // Temprarily Move and check :
+                                    Move move(i , j , currentRow , currentCol) ;
 
-                                    board[i][j] = ' ' ;
-                                    board[currentRow][currentCol] = queen ;
-
-                                    // Check kro if possible
-                                    if(!isKinginCheck(whiteTurn))
+                                    if(isValid(move))
                                     {
-                                        return true ;
-                                    }
+                                        BoardState state = saveState();
 
-                                    // Undo the move : 
-                                    board[i][j] = queen ;
-                                    board[currentRow][currentCol] = ' ' ;
+                                        makeTemporaryMove(move);
+
+                                        bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                        restoreState(state);
+
+                                        if(!stillInCheck)
+                                        {
+                                            return true ;
+                                        }
+                                    }
 
                                 }
 
@@ -2560,22 +2385,23 @@ bool Board :: isValid(Move move)
                                     board[currentRow][currentCol] <= 'Z'))
                                     {
 
-                                        char CapturedPiece = board[currentRow][currentCol] ;
+                                        Move move(i , j , currentRow , currentCol) ;
 
-                                        board[currentRow][currentCol] = queen ;
-                                        board[i][j] = ' ' ; 
-
-                                        // check if it does the Work \
-
-                                        if(!isKinginCheck(whiteTurn))
+                                        if(isValid(move))
                                         {
-                                            return true ;
-                                        }
-                                        
+                                            BoardState state = saveState();
 
-                                        // Undo 
-                                        board[i][j] = queen ;
-                                        board[currentRow][currentCol] = CapturedPiece ;
+                                            makeTemporaryMove(move);
+
+                                            bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                            restoreState(state);
+
+                                            if(!stillInCheck)
+                                            {
+                                                return true ;
+                                            }
+                                        }
                                     }
 
                                     // Koi bhi aur piece mil gaya to ye case Fail hai ;
@@ -2599,20 +2425,23 @@ bool Board :: isValid(Move move)
                                 if(board[currentRow][currentCol] == ' ')
                                 {
                                     
-                                    // Temprarily Move and check :
+                                    Move move(i , j , currentRow , currentCol) ;
 
-                                    board[i][j] = ' ' ;
-                                    board[currentRow][currentCol] = queen ;
-
-                                    // Check kro if possible
-                                    if(!isKinginCheck(whiteTurn))
+                                    if(isValid(move))
                                     {
-                                        return true ;
-                                    }
+                                        BoardState state = saveState();
 
-                                    // Undo the move : 
-                                    board[i][j] = queen ;
-                                    board[currentRow][currentCol] = ' ' ;
+                                        makeTemporaryMove(move);
+
+                                        bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                        restoreState(state);
+
+                                        if(!stillInCheck)
+                                        {
+                                            return true ;
+                                        }
+                                    }
 
                                 }
 
@@ -2627,22 +2456,23 @@ bool Board :: isValid(Move move)
                                     board[currentRow][currentCol] <= 'Z'))
                                     {
 
-                                        char CapturedPiece = board[currentRow][currentCol] ;
+                                        Move move(i , j , currentRow , currentCol) ;
 
-                                        board[currentRow][currentCol] = queen ;
-                                        board[i][j] = ' ' ; 
-
-                                        // check if it does the Work \
-
-                                        if(!isKinginCheck(whiteTurn))
+                                        if(isValid(move))
                                         {
-                                            return true ;
-                                        }
-                                        
+                                            BoardState state = saveState();
 
-                                        // Undo 
-                                        board[i][j] = queen ;
-                                        board[currentRow][currentCol] = CapturedPiece ;
+                                            makeTemporaryMove(move);
+
+                                            bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                            restoreState(state);
+
+                                            if(!stillInCheck)
+                                            {
+                                                return true ;
+                                            }
+                                        }
                                     }
 
                                     // Koi bhi aur piece mil gaya to ye case Fail hai ;
@@ -2668,19 +2498,23 @@ bool Board :: isValid(Move move)
                                 if(board[currentRow][currentCol] == ' ')
                                 {
 
-                                    // Temporary Move 
+                                    Move move(i , j , currentRow , currentCol) ;
 
-                                    board[i][j] = ' ' ;
-                                    board[currentRow][currentCol] = queen ;
-
-                                    if(!isKinginCheck(whiteTurn))
+                                    if(isValid(move))
                                     {
-                                        return true ;
-                                    }
+                                        BoardState state = saveState();
 
-                                    // Undo 
-                                    board[i][j] = queen ;
-                                    board[currentRow][currentCol] = ' ' ;
+                                        makeTemporaryMove(move);
+
+                                        bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                        restoreState(state);
+
+                                        if(!stillInCheck)
+                                        {
+                                            return true ;
+                                        }
+                                    }
                                 }
 
                                 else
@@ -2694,23 +2528,23 @@ bool Board :: isValid(Move move)
                                     board[currentRow][currentCol] <= 'Z'))
                                     {
 
-                                        char capturedPiece = board[currentRow][currentCol] ;
+                                        Move move(i , j , currentRow , currentCol) ;
 
-                                        // Temporary Move ;
-
-                                        board[currentRow][currentCol] = queen ;
-                                        board[i][j] = ' ' ;
-
-                                        if(!isKinginCheck(whiteTurn))
+                                        if(isValid(move))
                                         {
-                                            return true ;
+                                            BoardState state = saveState();
+
+                                            makeTemporaryMove(move);
+
+                                            bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                            restoreState(state);
+
+                                            if(!stillInCheck)
+                                            {
+                                                return true ;
+                                            }
                                         }
-
-                                        // Undo 
-
-                                        board[currentRow][currentCol] = capturedPiece ;
-                                        board[i][j] = queen ;
-                                        
                                     }
 
                                     // If any other move then break the loop 
@@ -2725,8 +2559,8 @@ bool Board :: isValid(Move move)
                             
                             // Right Downside Diagonal ;
 
-                             currentRow = i - 1 ;
-                             currentCol = j + 1 ;
+                            currentRow = i - 1 ;
+                            currentCol = j + 1 ;
 
                             while(currentRow >= 0 && currentCol < 8)
                             {
@@ -2735,19 +2569,23 @@ bool Board :: isValid(Move move)
                                 if(board[currentRow][currentCol] == ' ')
                                 {
 
-                                    // Temporary Move 
+                                    Move move(i , j , currentRow , currentCol) ;
 
-                                    board[i][j] = ' ' ;
-                                    board[currentRow][currentCol] = queen ;
-
-                                    if(!isKinginCheck(whiteTurn))
+                                    if(isValid(move))
                                     {
-                                        return true ;
-                                    }
+                                        BoardState state = saveState();
 
-                                    // Undo 
-                                    board[i][j] = queen ;
-                                    board[currentRow][currentCol] = ' ' ;
+                                        makeTemporaryMove(move);
+
+                                        bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                        restoreState(state);
+
+                                        if(!stillInCheck)
+                                        {
+                                            return true ;
+                                        }
+                                    }
                                 }
 
                                 else
@@ -2761,23 +2599,23 @@ bool Board :: isValid(Move move)
                                     board[currentRow][currentCol] <= 'Z'))
                                     {
 
-                                        char capturedPiece = board[currentRow][currentCol] ;
+                                        Move move(i , j , currentRow , currentCol) ;
 
-                                        // Temporary Move ;
-
-                                        board[currentRow][currentCol] = queen ;
-                                        board[i][j] = ' ' ;
-
-                                        if(!isKinginCheck(whiteTurn))
+                                        if(isValid(move))
                                         {
-                                            return true ;
+                                            BoardState state = saveState();
+
+                                            makeTemporaryMove(move);
+
+                                            bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                            restoreState(state);
+
+                                            if(!stillInCheck)
+                                            {
+                                                return true ;
+                                            }
                                         }
-
-                                        // Undo 
-
-                                        board[currentRow][currentCol] = capturedPiece ;
-                                        board[i][j] = queen ;
-                                        
                                     }
 
                                     // If any other move then break the loop 
@@ -2792,8 +2630,8 @@ bool Board :: isValid(Move move)
 
                             // Left Downside Diagonal ;
 
-                             currentRow = i - 1 ;
-                             currentCol = j - 1 ;
+                            currentRow = i - 1 ;
+                            currentCol = j - 1 ;
 
                             while(currentRow >= 0 && currentCol >= 0)
                             {
@@ -2802,19 +2640,23 @@ bool Board :: isValid(Move move)
                                 if(board[currentRow][currentCol] == ' ')
                                 {
 
-                                    // Temporary Move 
+                                    Move move(i , j , currentRow , currentCol) ;
 
-                                    board[i][j] = ' ' ;
-                                    board[currentRow][currentCol] = queen ;
-
-                                    if(!isKinginCheck(whiteTurn))
+                                    if(isValid(move))
                                     {
-                                        return true ;
-                                    }
+                                        BoardState state = saveState();
 
-                                    // Undo 
-                                    board[i][j] = queen ;
-                                    board[currentRow][currentCol] = ' ' ;
+                                        makeTemporaryMove(move);
+
+                                        bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                        restoreState(state);
+
+                                        if(!stillInCheck)
+                                        {
+                                            return true ;
+                                        }
+                                    }
                                 }
 
                                 else
@@ -2828,23 +2670,23 @@ bool Board :: isValid(Move move)
                                     board[currentRow][currentCol] <= 'Z'))
                                     {
 
-                                        char capturedPiece = board[currentRow][currentCol] ;
+                                        Move move(i , j , currentRow , currentCol) ;
 
-                                        // Temporary Move ;
-
-                                        board[currentRow][currentCol] = queen ;
-                                        board[i][j] = ' ' ;
-
-                                        if(!isKinginCheck(whiteTurn))
+                                        if(isValid(move))
                                         {
-                                            return true ;
+                                            BoardState state = saveState();
+
+                                            makeTemporaryMove(move);
+
+                                            bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                            restoreState(state);
+
+                                            if(!stillInCheck)
+                                            {
+                                                return true ;
+                                            }
                                         }
-
-                                        // Undo 
-
-                                        board[currentRow][currentCol] = capturedPiece ;
-                                        board[i][j] = queen ;
-                                        
                                     }
 
                                     // If any other move then break the loop 
@@ -2859,8 +2701,8 @@ bool Board :: isValid(Move move)
 
                             // left Upside Diagonal ;
 
-                             currentRow = i + 1 ;
-                             currentCol = j - 1 ;
+                            currentRow = i + 1 ;
+                            currentCol = j - 1 ;
 
                             while(currentRow < 8 && currentCol >= 0)
                             {
@@ -2869,19 +2711,23 @@ bool Board :: isValid(Move move)
                                 if(board[currentRow][currentCol] == ' ')
                                 {
 
-                                    // Temporary Move 
+                                    Move move(i , j , currentRow , currentCol) ;
 
-                                    board[i][j] = ' ' ;
-                                    board[currentRow][currentCol] = queen ;
-
-                                    if(!isKinginCheck(whiteTurn))
+                                    if(isValid(move))
                                     {
-                                        return true ;
-                                    }
+                                        BoardState state = saveState();
 
-                                    // Undo 
-                                    board[i][j] = queen ;
-                                    board[currentRow][currentCol] = ' ' ;
+                                        makeTemporaryMove(move);
+
+                                        bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                        restoreState(state);
+
+                                        if(!stillInCheck)
+                                        {
+                                            return true ;
+                                        }
+                                    }
                                 }
 
                                 else
@@ -2895,23 +2741,23 @@ bool Board :: isValid(Move move)
                                     board[currentRow][currentCol] <= 'Z'))
                                     {
 
-                                        char capturedPiece = board[currentRow][currentCol] ;
+                                        Move move(i , j , currentRow , currentCol) ;
 
-                                        // Temporary Move ;
-
-                                        board[currentRow][currentCol] = queen ;
-                                        board[i][j] = ' ' ;
-
-                                        if(!isKinginCheck(whiteTurn))
+                                        if(isValid(move))
                                         {
-                                            return true ;
+                                            BoardState state = saveState();
+
+                                            makeTemporaryMove(move);
+
+                                            bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                            restoreState(state);
+
+                                            if(!stillInCheck)
+                                            {
+                                                return true ;
+                                            }
                                         }
-
-                                        // Undo 
-
-                                        board[currentRow][currentCol] = capturedPiece ;
-                                        board[i][j] = queen ;
-                                        
                                     }
 
                                     // If any other move then break the loop 
@@ -2921,17 +2767,14 @@ bool Board :: isValid(Move move)
                                 currentCol -- ;
                                 currentRow ++ ;
                             }
+                        }
                     }
-                }
-
-
                 }
             }
         }
 
         return false ;
     }
-
 
     bool Board :: canPawnSaveKing(bool whiteTurn)
 {
@@ -2962,18 +2805,23 @@ bool Board :: isValid(Move move)
 
                     if(i - 1 >= 0 && board[i-1][j] == ' ')
                     {
-                        // Temporary Move
-                        board[i][j] = ' ';
-                        board[i-1][j] = pawn;
+                        Move move(i , j , i-1 , j) ;
 
-                        if(!isKinginCheck(whiteTurn))
+                        if(isValid(move))
                         {
-                            return true;
-                        }
+                            BoardState state = saveState();
 
-                        // Undo
-                        board[i][j] = pawn;
-                        board[i-1][j] = ' ';
+                            makeTemporaryMove(move);
+
+                            bool stillInCheck = isKinginCheck(whiteTurn);
+
+                            restoreState(state);
+
+                            if(!stillInCheck)
+                            {
+                                return true;
+                            }
+                        }
                     }
 
 
@@ -2985,18 +2833,23 @@ bool Board :: isValid(Move move)
                         if(board[i-1][j] == ' ' &&
                            board[i-2][j] == ' ')
                         {
-                            // Temporary Move
-                            board[i][j] = ' ';
-                            board[i-2][j] = pawn;
+                            Move move(i , j , i-2 , j) ;
 
-                            if(!isKinginCheck(whiteTurn))
+                            if(isValid(move))
                             {
-                                return true;
-                            }
+                                BoardState state = saveState();
 
-                            // Undo
-                            board[i][j] = pawn;
-                            board[i-2][j] = ' ';
+                                makeTemporaryMove(move);
+
+                                bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                restoreState(state);
+
+                                if(!stillInCheck)
+                                {
+                                    return true;
+                                }
+                            }
                         }
                     }
 
@@ -3008,20 +2861,23 @@ bool Board :: isValid(Move move)
                         if(board[i-1][j-1] >= 'a' &&
                            board[i-1][j-1] <= 'z')
                         {
-                            char capturedPiece = board[i-1][j-1];
+                            Move move(i , j , i-1 , j-1) ;
 
-                            // Temporary Move
-                            board[i][j] = ' ';
-                            board[i-1][j-1] = pawn;
-
-                            if(!isKinginCheck(whiteTurn))
+                            if(isValid(move))
                             {
-                                return true;
-                            }
+                                BoardState state = saveState();
 
-                            // Undo
-                            board[i][j] = pawn;
-                            board[i-1][j-1] = capturedPiece;
+                                makeTemporaryMove(move);
+
+                                bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                restoreState(state);
+
+                                if(!stillInCheck)
+                                {
+                                    return true;
+                                }
+                            }
                         }
                     }
 
@@ -3033,20 +2889,23 @@ bool Board :: isValid(Move move)
                         if(board[i-1][j+1] >= 'a' &&
                            board[i-1][j+1] <= 'z')
                         {
-                            char capturedPiece = board[i-1][j+1];
+                            Move move(i , j , i-1 , j+1) ;
 
-                            // Temporary Move
-                            board[i][j] = ' ';
-                            board[i-1][j+1] = pawn;
-
-                            if(!isKinginCheck(whiteTurn))
+                            if(isValid(move))
                             {
-                                return true;
-                            }
+                                BoardState state = saveState();
 
-                            // Undo
-                            board[i][j] = pawn;
-                            board[i-1][j+1] = capturedPiece;
+                                makeTemporaryMove(move);
+
+                                bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                restoreState(state);
+
+                                if(!stillInCheck)
+                                {
+                                    return true;
+                                }
+                            }
                         }
                     }
                 }
@@ -3062,18 +2921,23 @@ bool Board :: isValid(Move move)
 
                     if(i + 1 < 8 && board[i+1][j] == ' ')
                     {
-                        // Temporary Move
-                        board[i][j] = ' ';
-                        board[i+1][j] = pawn;
+                        Move move(i , j , i+1 , j) ;
 
-                        if(!isKinginCheck(whiteTurn))
+                        if(isValid(move))
                         {
-                            return true;
-                        }
+                            BoardState state = saveState();
 
-                        // Undo
-                        board[i][j] = pawn;
-                        board[i+1][j] = ' ';
+                            makeTemporaryMove(move);
+
+                            bool stillInCheck = isKinginCheck(whiteTurn);
+
+                            restoreState(state);
+
+                            if(!stillInCheck)
+                            {
+                                return true;
+                            }
+                        }
                     }
 
 
@@ -3085,18 +2949,23 @@ bool Board :: isValid(Move move)
                         if(board[i+1][j] == ' ' &&
                            board[i+2][j] == ' ')
                         {
-                            // Temporary Move
-                            board[i][j] = ' ';
-                            board[i+2][j] = pawn;
+                            Move move(i , j , i+2 , j) ;
 
-                            if(!isKinginCheck(whiteTurn))
+                            if(isValid(move))
                             {
-                                return true;
-                            }
+                                BoardState state = saveState();
 
-                            // Undo
-                            board[i][j] = pawn;
-                            board[i+2][j] = ' ';
+                                makeTemporaryMove(move);
+
+                                bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                restoreState(state);
+
+                                if(!stillInCheck)
+                                {
+                                    return true;
+                                }
+                            }
                         }
                     }
 
@@ -3108,20 +2977,23 @@ bool Board :: isValid(Move move)
                         if(board[i+1][j-1] >= 'A' &&
                            board[i+1][j-1] <= 'Z')
                         {
-                            char capturedPiece = board[i+1][j-1];
+                            Move move(i , j , i+1 , j-1) ;
 
-                            // Temporary Move
-                            board[i][j] = ' ';
-                            board[i+1][j-1] = pawn;
-
-                            if(!isKinginCheck(whiteTurn))
+                            if(isValid(move))
                             {
-                                return true;
-                            }
+                                BoardState state = saveState();
 
-                            // Undo
-                            board[i][j] = pawn;
-                            board[i+1][j-1] = capturedPiece;
+                                makeTemporaryMove(move);
+
+                                bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                restoreState(state);
+
+                                if(!stillInCheck)
+                                {
+                                    return true;
+                                }
+                            }
                         }
                     }
 
@@ -3133,20 +3005,23 @@ bool Board :: isValid(Move move)
                         if(board[i+1][j+1] >= 'A' &&
                            board[i+1][j+1] <= 'Z')
                         {
-                            char capturedPiece = board[i+1][j+1];
+                            Move move(i , j , i+1 , j+1) ;
 
-                            // Temporary Move
-                            board[i][j] = ' ';
-                            board[i+1][j+1] = pawn;
-
-                            if(!isKinginCheck(whiteTurn))
+                            if(isValid(move))
                             {
-                                return true;
-                            }
+                                BoardState state = saveState();
 
-                            // Undo
-                            board[i][j] = pawn;
-                            board[i+1][j+1] = capturedPiece;
+                                makeTemporaryMove(move);
+
+                                bool stillInCheck = isKinginCheck(whiteTurn);
+
+                                restoreState(state);
+
+                                if(!stillInCheck)
+                                {
+                                    return true;
+                                }
+                            }
                         }
                     }
                 }
@@ -3970,5 +3845,5 @@ bool Board :: getWhiteTurn()
 {
 
     return whiteTurn ;
-    
+
 }
