@@ -98,6 +98,8 @@ public:
     void printLegalMovesForAI();
 
     bool getWhiteTurn();
+    bool isInsufficientMaterial();
+
     
 };
 

@@ -3847,3 +3847,59 @@ bool Board :: getWhiteTurn()
     return whiteTurn ;
 
 }
+
+
+
+
+bool Board :: isInsufficientMaterial()
+{
+
+    int bishop = 0 ; 
+    int knight = 0 ; 
+    int otherPieces = 0 ; 
+
+    for(int i = 0 ; i < 8 ; i ++)
+    {
+        for(int j = 0 ; j < 8 ; j ++)
+        {
+
+            char piece = board[i][j] ;
+
+
+            if(piece == 'N' || piece == 'n')
+            {
+                knight++ ;
+            }
+
+            if(piece == 'B' || piece == 'b')
+            {
+                bishop++ ;
+            }
+
+            if(piece == 'K' || piece == 'k' || piece == ' ')
+            {
+                continue; 
+            }
+
+            else
+            {
+                otherPieces++ ;
+            }
+        }
+    }
+
+
+    if(knight + bishop <= 1)
+    {
+        return true ;
+    }
+
+
+    if(otherPieces > 0)
+    {
+        return false ;
+    }
+
+
+    return false;
+};
