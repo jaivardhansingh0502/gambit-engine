@@ -713,6 +713,11 @@ class GambitUI:
 
 
 
+        elif self.game_status == "DRAW_INSUFFICIENT_MATERIAL":
+
+            turn_text = "DRAW — Insufficient Material"
+
+
         else:
             turn_text = (
                 "White to move"

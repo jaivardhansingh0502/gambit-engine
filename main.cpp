@@ -1,3 +1,4 @@
+
 #define WIN32_LEAN_AND_MEAN
 
 #include <windows.h>
@@ -12,16 +13,20 @@ using namespace std;
 
 int main()
 {
+
+
+
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
+
+
 
     Board chessboard;
     Evaluation evaluation;
 
-    
+
+
     chessboard.initializeBoard();
-
-
 
     vector<BoardState> stateStack;
 
@@ -29,10 +34,9 @@ int main()
 
     string command;
 
-
-
     while(cin >> command)
     {
+
 
 
         if(command == "GET_MOVES")
@@ -59,27 +63,32 @@ int main()
 
 
 
-
             if(chessboard.isCheckmate(chessboard.getWhiteTurn()))
             {
-                cout<<"CHECKMATE" << endl ;
+                cout << "CHECKMATE" << endl;
             }
-
 
 
 
             else if(chessboard.isStalemate(chessboard.getWhiteTurn()))
             {
-                cout<<"STALEMATE" << endl ;
+                cout << "STALEMATE" << endl;
             }
 
+
+
+            else if(chessboard.isInsufficientMaterial())
+            {
+                cout << "DRAW_INSUFFICIENT_MATERIAL" << endl;
+            }
 
 
 
             else if(chessboard.isKinginCheck(chessboard.getWhiteTurn()))
             {
-                cout<<"CHECK" << endl ;
+                cout << "CHECK" << endl;
             }
+
 
 
 
@@ -91,65 +100,135 @@ int main()
 
 
 
+
             cout << "END" << endl;
+
+
         }
+
+
+
 
         else if(command == "MAKE_MOVE")
         {
+
+
+
             string moveString;
             cin >> moveString;
+
+
+
+            if(chessboard.isCheckmate(chessboard.getWhiteTurn()) ||
+               chessboard.isStalemate(chessboard.getWhiteTurn()) ||
+               chessboard.isInsufficientMaterial())
+            {
+
+
+
+                cout << "GAME_OVER" << endl;
+                continue;
+
+
+            }
+
+
+
 
             string from = moveString.substr(0, 2);
             string to = moveString.substr(2, 2);
 
+
+
+
             Move move(from, to);
+
+
 
             if(chessboard.isValid(move))
             {
+
+
                 stateStack.push_back(
                     chessboard.saveState()
                 );
 
+
+
                 chessboard.makeMove(move);
 
+
+
                 cout << "MOVE_OK" << endl;
+
+
             }
+
+
             else
             {
+
+
                 cout << "MOVE_INVALID" << endl;
+
+
             }
+
+
         }
+
+
 
         else if(command == "UNDO_MOVE")
         {
+
+
             if(stateStack.empty())
             {
                 cout << "UNDO_EMPTY" << endl;
             }
+
+
             else
             {
+
+
                 BoardState previousState =
                     stateStack.back();
 
+
                 stateStack.pop_back();
+
 
                 chessboard.restoreState(
                     previousState
+
+
                 );
 
                 cout << "UNDO_OK" << endl;
+
+
             }
+
         }
 
         else if(command == "NEW_GAME")
         {
+
+
             chessboard.initializeBoard();
 
             stateStack.clear();
 
             cout << "NEW_GAME_OK" << endl;
+
+
         }
+
     }
 
+
+    
     return 0;
 }
