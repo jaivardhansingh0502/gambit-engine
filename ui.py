@@ -4,6 +4,8 @@ import subprocess
 
 import threading
 
+from tkinter import simpledialog
+
 class GambitUI:
 
     def __init__(self, root):
@@ -342,13 +344,20 @@ class GambitUI:
                     break
 
             if move_found is not None:
+                same_destination = [
+                    move for move in self.selected_moves
+                    if move[2:4] == clicked_square
+                ]
+
+                if any(len(move) >= 5 for move in same_destination):
+                    move_found = self.choose_promotion(same_destination)
+
+                    if move_found is None:
+                        return
 
                 self.selected_square = None
-
                 self.selected_moves = []
-
                 self.last_move = move_found
-
                 self.make_move(move_found)
 
             else:
@@ -385,6 +394,34 @@ class GambitUI:
 
                 self.draw_board()
 
+
+
+    def choose_promotion(self, moves):
+        promotion_moves = {
+                move[4].lower(): move
+                for move in moves
+                if len(move) >= 5 and move[4].lower() in "qrbn"
+            }
+
+        if not promotion_moves:
+                return moves[0] if moves else None
+
+        choice = simpledialog.askstring(
+                "Pawn Promotion",
+                "Choose piece:\n"
+                "q - Queen\n"
+                "r - Rook\n"
+                "b - Bishop\n"
+                "n - Knight",
+                parent=self.root
+            )
+
+        if choice is None:
+            return None
+
+        return promotion_moves.get(choice.strip().lower())
+
+    
     def make_move(self, move):
 
         self.engine_busy = True

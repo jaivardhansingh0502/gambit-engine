@@ -1,4 +1,6 @@
+
 #include "Move.h"
+#include <cctype>
 
 Move::Move(int sR, int sC, int eR, int eC, char promotion)
 {
@@ -18,6 +20,12 @@ Move::Move(string from, string to)
     endCol = to[0] - 'a';
 
     promotionPiece = ' ';
+
+    if(to.length() >= 3)
+    {
+        promotionPiece = to[2];
+        promotionPiece = tolower(promotionPiece);
+    }
 }
 
 int Move::getStartRow()
@@ -45,7 +53,6 @@ char Move::getPromotionPiece()
     return promotionPiece;
 }
 
-
 string Move::getChessNotation()
 {
     string move = "";
@@ -55,6 +62,11 @@ string Move::getChessNotation()
 
     move += char('a' + endCol);
     move += char('8' - endRow);
+
+    if(promotionPiece != ' ')
+    {
+        move += char(tolower(promotionPiece));
+    }
 
     return move;
 }

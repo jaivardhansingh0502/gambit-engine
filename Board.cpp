@@ -441,12 +441,68 @@ void Board::displayBoard()
 
         if(piece == 'P' && endRow == 0)
         {
-            promotePawn(endRow, endCol);
+
+            char promotion = move.getPromotionPiece();
+
+
+            if(promotion == ' ')
+                promotion = 'Q';
+
+
+            promotion = toupper(promotion);
+
+
+            if(promotion != 'Q' &&
+            promotion != 'R' &&
+            promotion != 'B' &&
+            promotion != 'N')
+            {
+
+                promotion = 'Q';
+
+            }
+
+
+
+            board[endRow][endCol] = promotion;
+
+
         }
+
+
+
 
         if(piece == 'p' && endRow == 7)
         {
-            promotePawn(endRow, endCol);
+
+
+            char promotion = move.getPromotionPiece();
+
+
+            if(promotion == ' ')
+                promotion = 'q';
+
+
+            promotion = tolower(promotion);
+
+
+            if(promotion != 'q' &&
+            promotion != 'r' &&
+            promotion != 'b' &&
+            promotion != 'n')
+            {
+
+
+                promotion = 'q';
+
+
+            }
+
+
+
+            board[endRow][endCol] = promotion;
+
+            
         }
 
 
@@ -3731,53 +3787,158 @@ void Board::makeTemporaryMove(Move move)
 }
 
 
+
+
+
 vector<Move> Board::generateLegalMoves(bool WhiteTurn)
 {
+
+
     this->whiteTurn = WhiteTurn;
+
+
 
     vector<Move> legalMoves;
 
+
     for(int i = 0; i < 8; i++)
     {
+
+
         for(int j = 0; j < 8; j++)
         {
+
+
             char piece = board[i][j];
+
+
 
             if(piece == ' ')
                 continue;
 
+
+
             if(WhiteTurn && islower(piece))
                 continue;
+
+
 
             if(!WhiteTurn && isupper(piece))
                 continue;
 
+                
             for(int endRow = 0; endRow < 8; endRow++)
             {
+
+
                 for(int endCol = 0; endCol < 8; endCol++)
                 {
+
+                    
                     Move move(i, j, endRow, endCol);
 
                     if(!isValid(move))
                         continue;
 
-                    BoardState state = saveState();
+                    bool isPromotion =
+                        (piece == 'P' && endRow == 0) ||
+                        (piece == 'p' && endRow == 7);
 
-                    makeTemporaryMove(move);
 
-                    if(!isKinginCheck(WhiteTurn))
+                        
+                    if(isPromotion)
                     {
-                        legalMoves.push_back(move);
+
+
+                        char promotions[4] =
+                        {
+
+
+                            WhiteTurn ? 'Q' : 'q',
+                            WhiteTurn ? 'R' : 'r',
+                            WhiteTurn ? 'B' : 'b',
+                            WhiteTurn ? 'N' : 'n'
+
+
+                        };
+
+
+
+                        for(char promotion : promotions)
+                        {
+
+
+                            Move promotionMove(
+                                i, j, endRow, endCol, promotion
+                            );
+
+
+
+                            BoardState state = saveState();
+
+
+
+                            makeTemporaryMove(promotionMove);
+
+
+
+                            if(!isKinginCheck(WhiteTurn))
+                            {
+                                legalMoves.push_back(promotionMove);
+                            }
+
+
+
+                            restoreState(state);
+                        }
+
                     }
 
-                    restoreState(state);
+                    
+
+
+                    else
+
+                    {
+
+
+                        BoardState state = saveState();
+
+
+                        makeTemporaryMove(move);
+
+
+                        if(!isKinginCheck(WhiteTurn))
+                        {
+
+                            legalMoves.push_back(move);
+
+                        }
+
+
+
+                        restoreState(state);
+                    }
+
                 }
+
+
             }
+
         }
+
     }
 
+
+
     return legalMoves;
+
+
 }
+
+
+
+
 
 void Board ::clearBoard()
 {
