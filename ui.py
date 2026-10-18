@@ -12,9 +12,12 @@ class GambitUI:
 
         self.root = root
 
+
         self.root.title("Gambit Chess")
 
+
         self.root.minsize(700, 600)
+
 
         self.engine = subprocess.Popen(
 
@@ -29,6 +32,8 @@ class GambitUI:
             encoding="utf-8"
 
         )
+
+
 
         self.board = []
 
@@ -50,6 +55,8 @@ class GambitUI:
 
         self.main_frame = tk.Frame(self.root)
 
+
+
         self.main_frame.pack(
 
             fill="both",
@@ -58,6 +65,8 @@ class GambitUI:
 
         )
 
+
+
         self.canvas = tk.Canvas(
 
             self.main_frame,
@@ -65,6 +74,8 @@ class GambitUI:
             highlightthickness=0
 
         )
+
+
 
         self.canvas.pack(
 
@@ -76,6 +87,8 @@ class GambitUI:
 
         )
 
+
+
         self.history_frame = tk.Frame(
 
             self.main_frame,
@@ -83,6 +96,8 @@ class GambitUI:
             width=260
 
         )
+
+
 
         self.history_frame.pack(
 
@@ -92,7 +107,12 @@ class GambitUI:
 
         )
 
+
+
+
         self.history_frame.pack_propagate(False)
+
+
 
         self.history_title = tk.Label(
 
@@ -104,11 +124,15 @@ class GambitUI:
 
         )
 
+
+
         self.history_title.pack(
 
             pady=15
 
         )
+
+
 
         self.history_list = tk.Listbox(
 
@@ -122,6 +146,8 @@ class GambitUI:
 
         )
 
+
+
         self.history_list.pack(
 
             fill="both",
@@ -134,17 +160,25 @@ class GambitUI:
 
         )
 
+
+
         self.new_game_button = tk.Button(
+
 
         self.history_frame,
 
+
         text="New Game",
 
+
         font=("Arial", 13, "bold"),
+
 
         command=self.new_game
 
     )
+
+        
 
         self.new_game_button.pack(
 
@@ -156,6 +190,8 @@ class GambitUI:
 
         )
 
+
+
         self.canvas.bind(
 
                 "<Configure>",
@@ -163,6 +199,8 @@ class GambitUI:
                 self.on_resize
 
             )
+
+
 
         self.canvas.bind(
 
@@ -172,6 +210,8 @@ class GambitUI:
 
         )
 
+
+
         self.root.after(
 
             100,
@@ -180,9 +220,15 @@ class GambitUI:
 
         )
 
+
+
         self.root.state("zoomed")
 
+
+
     def start_engine_read(self):
+
+
 
         threading.Thread(
 
@@ -192,7 +238,11 @@ class GambitUI:
 
         ).start()
 
+
+
     def get_position(self):
+
+
 
         self.engine.stdin.write("GET_MOVES\n")
 
@@ -206,13 +256,18 @@ class GambitUI:
 
         section = None
 
+
+
         while True:
 
+
             line = self.engine.stdout.readline().strip()
+
 
             if not line:
 
                 continue
+
 
             if line == "BOARD":
 
@@ -220,11 +275,15 @@ class GambitUI:
 
                 continue
 
+
+
             if line == "MOVES":
 
                 section = "moves"
 
                 continue
+
+
 
             if line == "STATUS":
 
@@ -232,27 +291,40 @@ class GambitUI:
 
                 continue
 
+
+
             if line == "END":
 
                 break
+
+
 
             if section == "board":
 
                 board.append(list(line))
 
+
+
             elif section == "moves":
 
                 legal_moves.append(line)
+
+
 
             elif section == "status":
 
                 self.game_status = line
 
+
+
         self.board = board
+
 
         self.legal_moves = legal_moves
 
+
         self.engine_busy = False
+
 
         self.root.after(
 
@@ -261,6 +333,8 @@ class GambitUI:
             self.draw_board
 
         )
+
+
 
     def on_resize(self, event):
 
