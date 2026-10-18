@@ -502,7 +502,7 @@ void Board::displayBoard()
 
             board[endRow][endCol] = promotion;
 
-            
+
         }
 
 
@@ -3648,8 +3648,11 @@ BoardState Board :: saveState()
     state.whiteKingMoved = whiteKingMoved ;
     state.blackKingMoved = blackKingMoved ;
 
-    state.whiteQueensideRookMoved = whiteKingsideRookMoved ;
-    state.blackQueensideRookMoved = blackQueensideRookMoved ;
+    state.whiteKingsideRookMoved = whiteKingsideRookMoved;
+    state.blackKingsideRookMoved = blackKingsideRookMoved;
+
+    state.whiteQueensideRookMoved = whiteQueensideRookMoved;
+    state.blackQueensideRookMoved = blackQueensideRookMoved;
 
     state.lastPawnRow = lastPawnRow ;
     state.lastPawnCol = lastPawnCol ;
