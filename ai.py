@@ -37,6 +37,55 @@ def send_move_to_engine(engine, move):
     return response
 
 
+
+def get_position(engine):
+
+    engine.stdin.write("GET_MOVES\n")
+    engine.stdin.flush()
+
+    board = []
+    legal_moves = []
+    status = "NORMAL"
+    section = None
+
+    while True:
+
+        line = engine.stdout.readline()
+
+        if line == "":
+            raise RuntimeError("C++ engine closed its output.")
+
+        line = line.strip()
+
+        if line == "BOARD":
+            section = "board"
+            continue
+
+        elif line == "MOVES":
+            section = "moves"
+            continue
+
+        elif line == "STATUS":
+            section = "status"
+            continue
+
+        elif line == "END":
+            break
+
+        if section == "board":
+            board.append(list(line))
+
+        elif section == "moves":
+            legal_moves.append(line)
+
+        elif section == "status":
+            status = line
+
+    return board, legal_moves, status
+
+
+
+
 class AI:
 
     def __init__(self):
