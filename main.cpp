@@ -100,6 +100,12 @@ int main()
 
 
 
+            cout << "TURN" << endl;
+
+
+            cout << (chessboard.getWhiteTurn() ? "WHITE" : "BLACK") << endl;
+
+            
 
             cout << "END" << endl;
 
