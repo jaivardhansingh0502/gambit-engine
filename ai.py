@@ -176,6 +176,7 @@ class AI:
 
     def __init__(self, engine):
         self.engine = engine
+        self.nodes_searched = 0
 
 
     def undo_move(self):
@@ -200,6 +201,7 @@ class AI:
     def find_best_move(self, board, legal_moves, turn):
 
 
+        self.nodes_searched = 0 
 
         if not legal_moves:
             return None
@@ -267,6 +269,7 @@ class AI:
                 best_move = move
 
 
+        print("Nodes searched:", self.nodes_searched)
 
         return best_move
 
@@ -286,7 +289,7 @@ class AI:
     ):
 
 
-
+        self.nodes_searched += 1 
         # Terminal positions
         if status == "CHECKMATE":
             return -100000 if maximizing_player else 100000
@@ -350,6 +353,7 @@ class AI:
 
 
                 best_score = max(best_score, score)
+
                 alpha = max(alpha, best_score)
 
 
@@ -389,6 +393,8 @@ class AI:
                         next_moves,
                         depth - 1,
                         maximizing_player=(next_turn == "WHITE"),
+                        alpha=alpha,
+                        beta=beta,
                         status=next_status
                     )
 
@@ -398,6 +404,10 @@ class AI:
                     self.undo_move()
 
                 best_score = min(best_score, score)
+                beta = min(beta, best_score)
+
+                if beta <= alpha:
+                    break
 
 
 
