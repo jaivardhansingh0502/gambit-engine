@@ -280,6 +280,8 @@ class AI:
         legal_moves,
         depth,
         maximizing_player,
+        alpha=float('-inf'),
+        beta=float('inf'),
         status="NORMAL"
     ):
 
@@ -336,6 +338,8 @@ class AI:
                         next_moves,
                         depth - 1,
                         maximizing_player=(next_turn == "WHITE"),
+                        alpha=alpha,
+                        beta=beta,
                         status=next_status
                     )
 
@@ -346,6 +350,11 @@ class AI:
 
 
                 best_score = max(best_score, score)
+                alpha = max(alpha, best_score)
+
+
+                if alpha >= beta:
+                    break
 
             return best_score
 
