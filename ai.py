@@ -517,6 +517,306 @@ class AI:
 
 
 
+
+
+
+
+    def minimax_without_pruning(
+    
+            self,
+            board,
+            legal_moves,
+            depth,
+            maximizing_player,
+            status="NORMAL"
+    
+        ):
+    
+            self.nodes_searched += 1
+    
+    
+            # Terminal positions
+            if status == "CHECKMATE":
+    
+                return -100000 if maximizing_player else 100000
+    
+    
+            if status in ("STALEMATE", "DRAW_INSUFFICIENT_MATERIAL"):
+    
+                return 0
+    
+    
+            # Leaf node evaluation
+            if depth == 0:
+    
+                return evaluate_board(board)
+    
+    
+            if not legal_moves:
+    
+                return evaluate_board(board)
+    
+    
+    
+            # Maximizing player: White
+            if maximizing_player:
+    
+                best_score = float('-inf')
+    
+    
+                for move in legal_moves:
+    
+                    response = send_move_to_engine(self.engine, move)
+    
+    
+                    if response != "MOVE_OK":
+    
+                        raise RuntimeError(
+                            f"Engine rejected legal move {move}: {response}"
+                        )
+    
+    
+                    try:
+    
+                        new_board, next_moves, next_status, next_turn = (
+                            get_position(self.engine)
+                        )
+    
+    
+                        score = self.minimax_without_pruning(
+    
+                            new_board,
+                            next_moves,
+                            depth - 1,
+                            maximizing_player=(next_turn == "WHITE"),
+                            status=next_status
+    
+                        )
+    
+    
+                    finally:
+    
+                        self.undo_move()
+    
+    
+                    best_score = max(best_score, score)
+    
+    
+                return best_score
+    
+    
+    
+            # Minimizing player: Black
+            else:
+    
+                best_score = float('inf')
+    
+    
+                for move in legal_moves:
+    
+                    response = send_move_to_engine(self.engine, move)
+    
+    
+                    if response != "MOVE_OK":
+    
+                        raise RuntimeError(
+                            f"Engine rejected legal move {move}: {response}"
+                        )
+    
+    
+                    try:
+    
+                        new_board, next_moves, next_status, next_turn = (
+                            get_position(self.engine)
+                        )
+    
+    
+                        score = self.minimax_without_pruning(
+    
+                            new_board,
+                            next_moves,
+                            depth - 1,
+                            maximizing_player=(next_turn == "WHITE"),
+                            status=next_status
+    
+                        )
+    
+    
+                    finally:
+    
+                        self.undo_move()
+    
+    
+                    best_score = min(best_score, score)
+    
+    
+                return best_score
+    
+    
+    
+    
+    
+        
+
+
+    def compare_searches(self, board, legal_moves, turn, depth=2):
+    
+            import time
+    
+    
+            results = {}
+    
+    
+            # Run both algorithms from the same root position
+            for algorithm in ("Minimax", "Alpha-Beta"):
+    
+                self.nodes_searched = 0
+    
+                best_move = None
+    
+                best_score = (
+                    float('-inf') if turn == "WHITE"
+                    else float('inf')
+                )
+    
+                alpha = float('-inf')
+    
+                beta = float('inf')
+    
+    
+                start_time = time.perf_counter()
+    
+    
+                for move in legal_moves:
+    
+                    response = send_move_to_engine(self.engine, move)
+    
+                    if response != "MOVE_OK":
+    
+                        raise RuntimeError(
+                            f"Engine rejected legal move {move}: {response}"
+                        )
+    
+    
+                    try:
+    
+                        new_board, next_moves, next_status, next_turn = (
+                            get_position(self.engine)
+                        )
+    
+    
+                        if algorithm == "Minimax":
+    
+                            score = self.minimax_without_pruning(
+    
+                                new_board,
+                                next_moves,
+                                depth,
+                                maximizing_player=(next_turn == "WHITE"),
+                                status=next_status
+    
+                            )
+    
+                        else:
+    
+                            score = self.minimax(
+    
+                                new_board,
+                                next_moves,
+                                depth,
+                                maximizing_player=(next_turn == "WHITE"),
+                                alpha=alpha,
+                                beta=beta,
+                                status=next_status
+    
+                            )
+    
+                    finally:
+    
+                        self.undo_move()
+    
+    
+                    if turn == "WHITE":
+    
+                        if score > best_score:
+    
+                            best_score = score
+    
+                            best_move = move
+    
+                        if algorithm == "Alpha-Beta":
+    
+                            alpha = max(alpha, best_score)
+    
+                    else:
+    
+                        if score < best_score:
+    
+                            best_score = score
+    
+                            best_move = move
+    
+                        if algorithm == "Alpha-Beta":
+    
+                            beta = min(beta, best_score)
+    
+    
+                elapsed = time.perf_counter() - start_time
+    
+    
+                results[algorithm] = {
+    
+                    "best_move": best_move,
+    
+                    "best_score": best_score,
+    
+                    "nodes": self.nodes_searched,
+    
+                    "time": elapsed
+    
+                }
+    
+    
+            print("\n===== SEARCH COMPARISON =====")
+    
+    
+            for algorithm, result in results.items():
+    
+                print(f"\n{algorithm}")
+    
+                print(f"Best move: {result['best_move']}")
+    
+                print(f"Best score: {result['best_score']}")
+    
+                print(f"Nodes searched: {result['nodes']}")
+    
+                print(f"Time: {result['time']:.4f} seconds")
+    
+    
+            print("\n===== IMPROVEMENT =====")
+    
+    
+            minimax_nodes = results["Minimax"]["nodes"]
+    
+            alpha_beta_nodes = results["Alpha-Beta"]["nodes"]
+    
+    
+            if minimax_nodes > 0:
+    
+                reduction = (
+                    (minimax_nodes - alpha_beta_nodes)
+                    / minimax_nodes
+                ) * 100
+    
+                print(f"Node reduction: {reduction:.2f}%")
+    
+    
+            return results
+    
+
+
+
+
 if __name__ == "__main__":
 
 
@@ -565,9 +865,7 @@ if __name__ == "__main__":
 
         else:
 
-            best_move = ai.find_best_move(board, legal_moves, turn)
-
-            print("\nBest move:", best_move)
+            ai.compare_searches(board, legal_moves, turn, depth=2)
 
 
     finally:
@@ -578,133 +876,4 @@ if __name__ == "__main__":
 
 
 
-    def minimax_without_pruning(
-
-        self,
-        board,
-        legal_moves,
-        depth,
-        maximizing_player,
-        status="NORMAL"
-
-    ):
-
-        self.nodes_searched += 1
-
-
-        # Terminal positions
-        if status == "CHECKMATE":
-
-            return -100000 if maximizing_player else 100000
-
-
-        if status in ("STALEMATE", "DRAW_INSUFFICIENT_MATERIAL"):
-
-            return 0
-
-
-        # Leaf node evaluation
-        if depth == 0:
-
-            return evaluate_board(board)
-
-
-        if not legal_moves:
-
-            return evaluate_board(board)
-
-
-
-        # Maximizing player: White
-        if maximizing_player:
-
-            best_score = float('-inf')
-
-
-            for move in legal_moves:
-
-                response = send_move_to_engine(self.engine, move)
-
-
-                if response != "MOVE_OK":
-
-                    raise RuntimeError(
-                        f"Engine rejected legal move {move}: {response}"
-                    )
-
-
-                try:
-
-                    new_board, next_moves, next_status, next_turn = (
-                        get_position(self.engine)
-                    )
-
-
-                    score = self.minimax_without_pruning(
-
-                        new_board,
-                        next_moves,
-                        depth - 1,
-                        maximizing_player=(next_turn == "WHITE"),
-                        status=next_status
-
-                    )
-
-
-                finally:
-
-                    self.undo_move()
-
-
-                best_score = max(best_score, score)
-
-
-            return best_score
-
-
-
-        # Minimizing player: Black
-        else:
-
-            best_score = float('inf')
-
-
-            for move in legal_moves:
-
-                response = send_move_to_engine(self.engine, move)
-
-
-                if response != "MOVE_OK":
-
-                    raise RuntimeError(
-                        f"Engine rejected legal move {move}: {response}"
-                    )
-
-
-                try:
-
-                    new_board, next_moves, next_status, next_turn = (
-                        get_position(self.engine)
-                    )
-
-
-                    score = self.minimax_without_pruning(
-
-                        new_board,
-                        next_moves,
-                        depth - 1,
-                        maximizing_player=(next_turn == "WHITE"),
-                        status=next_status
-
-                    )
-
-
-                finally:
-
-                    self.undo_move()
-
-
-                best_score = min(best_score, score)
-
-
-            return best_score
+    
