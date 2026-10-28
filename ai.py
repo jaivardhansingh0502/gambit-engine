@@ -362,6 +362,55 @@ class AI:
 
 
 
+    
+    
+    def order_moves(self, board, legal_moves):
+
+        captures = []
+
+        promotions = []
+
+        other_moves = []
+
+
+        for move in legal_moves:
+
+            start_row = 8 - int(move[1])
+
+            start_col = ord(move[0]) - ord('a')
+
+            end_row = 8 - int(move[3])
+
+            end_col = ord(move[2]) - ord('a')
+
+
+            piece = board[start_row][start_col]
+
+            target = board[end_row][end_col]
+
+
+
+            if target != '.' and target != ' ':
+
+                captures.append(move)
+
+
+
+            elif len(move) == 5:
+
+                promotions.append(move)
+
+
+
+            else:
+
+                other_moves.append(move)
+
+
+        return captures + promotions + other_moves
+
+
+
 
     def minimax(
         self,
@@ -407,7 +456,7 @@ class AI:
             best_score = float('-inf')
 
 
-            for move in legal_moves:
+            for move in self.order_moves(board, legal_moves):
 
 
                 response = send_move_to_engine(self.engine, move)
@@ -466,7 +515,7 @@ class AI:
             best_score = float('inf')
 
 
-            for move in legal_moves:
+            for move in self.order_moves(board, legal_moves):
 
 
                 response = send_move_to_engine(self.engine, move)
