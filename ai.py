@@ -364,50 +364,82 @@ class AI:
 
     
     
+    
     def order_moves(self, board, legal_moves):
 
-        captures = []
-
-        promotions = []
-
-        other_moves = []
 
 
-        for move in legal_moves:
+        piece_values = {
+            'p': 1,
+            'n': 3,
+            'b': 3,
+            'r': 5,
+            'q': 9,
+            'k': 100
+        }
+
+
+
+        def move_score(move):
+
+
 
             start_row = 8 - int(move[1])
-
             start_col = ord(move[0]) - ord('a')
 
-            end_row = 8 - int(move[3])
 
+
+            end_row = 8 - int(move[3])
             end_col = ord(move[2]) - ord('a')
 
 
-            piece = board[start_row][start_col]
 
-            target = board[end_row][end_col]
+            attacker = board[start_row][start_col].lower()
+            victim = board[end_row][end_col].lower()
 
+           
 
-
-            if target != '.' and target != ' ':
-
-                captures.append(move)
+            score = 0
 
 
 
-            elif len(move) == 5:
-
-                promotions.append(move)
-
+            # Captures: valuable victim, cheaper attacker
+            if victim in piece_values:
 
 
-            else:
-
-                other_moves.append(move)
 
 
-        return captures + promotions + other_moves
+                score += 10 * piece_values[victim]
+                score -= piece_values[attacker]
+
+
+
+
+
+            # Promotions
+            if len(move) == 5:
+
+
+
+                promoted_piece = move[4].lower()
+
+                score += piece_values.get(promoted_piece, 0) * 10
+
+
+
+
+            return score
+
+
+        
+
+
+        return sorted(
+            legal_moves,
+            key=move_score,
+            reverse=True
+        )
+
 
 
 
@@ -861,7 +893,25 @@ class AI:
     
     
             return results
-    
+
+
+
+
+
+def play_test_moves(engine, moves):
+
+    for move in moves:
+
+        response = send_move_to_engine(engine, move)
+
+        if response != "MOVE_OK":
+
+            raise RuntimeError(
+                f"Test move failed: {move} -> {response}"
+            )
+
+    return get_position(engine)
+
 
 
 
@@ -885,6 +935,14 @@ if __name__ == "__main__":
 
 
         board, legal_moves, status, turn = get_position(engine)
+
+
+
+
+        
+        
+
+
 
 
         print("Board received:")
