@@ -471,8 +471,14 @@ class AI:
 
         # Leaf node evaluation
         if depth == 0:
-
-            return evaluate_board(board)
+            return self.quiescence_search(
+                board,
+                legal_moves,
+                maximizing_player,
+                alpha,
+                beta,
+                status
+            )
 
 
         if not legal_moves:
@@ -599,7 +605,266 @@ class AI:
 
 
 
+    
+    def quiescence_search(
+    self,
+    board,
+    legal_moves,
+    maximizing_player,
+    alpha=float('-inf'),
+    beta=float('inf'),
+    status="NORMAL",
+    remaining_depth=4
+):
+        self.nodes_searched += 1
 
+
+
+
+
+
+        # Terminal positions
+        if status == "CHECKMATE":
+            return -100000 if maximizing_player else 100000
+
+
+
+
+
+        if status in ("STALEMATE", "DRAW_INSUFFICIENT_MATERIAL"):
+            return 0
+
+
+
+
+
+        in_check = status == "CHECK"
+        stand_pat = evaluate_board(board)
+
+
+
+
+
+        # At the depth limit, return static evaluation unless in check.
+        if remaining_depth <= 0 and not in_check:
+            return stand_pat
+
+
+
+
+
+        # Stand-pat is allowed only when the king is not in check.
+        if not in_check:
+            if maximizing_player:
+                if stand_pat >= beta:
+                    return stand_pat
+
+
+
+
+                
+                alpha = max(alpha, stand_pat)
+
+
+
+
+
+
+
+            else:
+                if stand_pat <= alpha:
+                    return stand_pat
+
+
+                
+                beta = min(beta, stand_pat)
+
+
+
+
+
+
+            best_score = stand_pat
+
+
+
+
+
+
+
+        else:
+            # In check, a legal evasion must be played.
+            best_score = (
+                float('-inf') if maximizing_player else float('inf')
+            )
+
+
+
+
+
+
+        # In check: examine every legal evasion.
+        # Otherwise: examine captures and promotions only.
+        tactical_moves = []
+
+
+
+
+
+        for move in legal_moves:
+            start_row = 8 - int(move[1])
+            start_col = ord(move[0]) - ord('a')
+            end_row = 8 - int(move[3])
+            end_col = ord(move[2]) - ord('a')
+
+
+
+
+
+            attacker = board[start_row][start_col]
+            victim = board[end_row][end_col]
+
+
+
+
+            is_capture = victim not in ('.', ' ')
+
+
+
+            # En passant capture
+            if (
+                attacker.lower() == 'p'
+                and start_col != end_col
+                and not is_capture
+            ):
+
+
+                
+                is_capture = True
+
+            is_promotion = len(move) == 5
+
+
+
+
+            if in_check or is_capture or is_promotion:
+                tactical_moves.append(move)
+
+
+
+
+
+        for move in self.order_moves(board, tactical_moves):
+            response = send_move_to_engine(self.engine, move)
+
+
+
+
+            if response != "MOVE_OK":
+                raise RuntimeError(
+                    f"Engine rejected legal move {move}: {response}"
+                )
+
+
+            
+
+            try:
+                (
+                    new_board,
+                    next_moves,
+                    next_status,
+                    next_turn
+                ) = get_position(self.engine)
+
+
+
+
+                next_maximizing = next_turn == "WHITE"
+
+                # At the depth limit, still allow one legal evasion
+                # if the current side is in check, then stop recursing.
+
+
+
+
+
+                if in_check and remaining_depth <= 0:
+                    if next_status == "CHECKMATE":
+                        score = (
+                            -100000 if next_maximizing else 100000
+                        )
+
+
+
+
+
+
+
+                    elif next_status in (
+                        "STALEMATE",
+                        "DRAW_INSUFFICIENT_MATERIAL"
+                    ):
+
+
+
+
+                        
+                        score = 0
+                    else:
+                        score = evaluate_board(new_board)
+
+
+
+
+
+
+                else:
+                    score = self.quiescence_search(
+                        new_board,
+                        next_moves,
+                        maximizing_player=next_maximizing,
+                        alpha=alpha,
+                        beta=beta,
+                        status=next_status,
+                        remaining_depth=remaining_depth - 1
+                    )
+
+
+
+
+
+
+
+            finally:
+                self.undo_move()
+
+
+
+
+
+            if maximizing_player:
+                best_score = max(best_score, score)
+                alpha = max(alpha, best_score)
+
+
+
+
+            else:
+                best_score = min(best_score, score)
+                beta = min(beta, best_score)
+
+
+
+
+
+            if alpha >= beta:
+                break
+
+
+
+            
+
+        return best_score
 
 
     def minimax_without_pruning(
@@ -934,7 +1199,12 @@ if __name__ == "__main__":
         ai = AI(engine)
 
 
-        board, legal_moves, status, turn = get_position(engine)
+        # board, legal_moves, status, turn = get_position(engine)
+
+
+        test_moves = ["e2e4", "d7d5", "e4d5", "d8d5", "b1c3"]
+
+        board, legal_moves, status, turn = play_test_moves(engine, test_moves)
 
 
 
