@@ -862,7 +862,7 @@ class AI:
 
 
 
-            
+
 
         return best_score
 
@@ -1202,9 +1202,7 @@ if __name__ == "__main__":
         # board, legal_moves, status, turn = get_position(engine)
 
 
-        test_moves = ["e2e4", "d7d5", "e4d5", "d8d5", "b1c3"]
-
-        board, legal_moves, status, turn = play_test_moves(engine, test_moves)
+        board, legal_moves, status, turn = get_position(engine)
 
 
 
