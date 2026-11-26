@@ -64,32 +64,20 @@ def make_move(board, move):
 
 
 
-def send_move_to_engine(engine, move):
-
-
-
-    print("\nSending move:", move)
-
+def send_move_to_engine(engine, move, verbose=False):
+    if verbose:
+        print("\nSending move:", move)
 
     engine.stdin.write(f"MAKE_MOVE {move}\n")
     engine.stdin.flush()
 
-
-
-
-    print("Waiting for engine response...")
-
-
-
+    if verbose:
+        print("Waiting for engine response...")
 
     response = engine.stdout.readline().strip()
 
-
-
-
-    print("Response received")
-
-
+    if verbose:
+        print("Response received")
 
     return response
 
@@ -236,9 +224,10 @@ class AI:
 
 
 
-    def __init__(self, engine):
+    def __init__(self, engine, verbose=False):
 
         self.engine = engine
+        self.verbose = verbose
 
         self.nodes_searched = 0
 
@@ -324,7 +313,8 @@ class AI:
                 self.undo_move()
 
 
-            print(move, "->", score)
+            if self.verbose:
+                print(move, "->", score)
 
 
             if white_turn and score > best_score:
@@ -355,7 +345,8 @@ class AI:
                 beta = min(beta, best_score)
 
 
-        print("Nodes searched:", self.nodes_searched)
+        if self.verbose:
+            print("Nodes searched:", self.nodes_searched)
 
 
         return best_move

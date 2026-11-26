@@ -1,0 +1,42 @@
+# Gambit Chess Engine — Development Log
+
+Repository: `https://github.com/jaivardhansingh0502/gambit-engine`  
+Branch: `main`  
+Baseline Commit: `b070b5e` (*Temporary Move Removed*)
+
+---
+
+## Milestone Plan
+
+1. **Milestone 1 — Baseline Stabilization & Thread-Safe Human-vs-AI Integration**
+   - Stabilize the `ui.py` ↔ `ai.py` integration, serialize engine I/O with a lock, keep UI state mutations on the Tkinter main thread, prevent shutdown race errors, and gate verbose per-node search logging in `ai.py`.
+2. **Milestone 2 — Fix C++ Engine Promotion Bug & Add Automated Engine/Protocol Tests**
+   - Fix `main.cpp` `MAKE_MOVE` parsing so 5-character promotion moves (e.g., `e7e8n`) preserve the promotion piece, recompile `gambit.exe`, and add `tests/test_engine.py` covering protocol commands, castling, en passant, promotions, checkmate, stalemate, and insufficient material.
+3. **Milestone 3 — GUI Interaction, Promotion Dialog & Game-State Indicators**
+   - Replace text-prompt promotion with a clickable piece-selection dialog, highlight the king square when in check, add an Undo Move button, and improve game-over presentation.
+4. **Milestone 4 — AI Search Depth Control, Side/Turn Polish & AI Tests**
+   - Add configurable AI search depth in the UI, improve engine/AI turn handling and `tests/test_ai.py` (mate-in-1 detection, capture preference, and engine state preservation).
+5. **Milestone 5 — Final Stability Testing, Documentation & Cleanup**
+   - Update `README.md` with accurate architecture, build, run, and test instructions, run the full test suite, and verify a clean repository state.
+
+---
+
+## Milestone 1 — Baseline Stabilization & Thread-Safe Human-vs-AI Integration
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - `ai.py`: Added `verbose=False` parameter to `send_move_to_engine()` and `AI.__init__()` so minimax/quiescence search no longer floods stdout on every node while preserving optional debug output.
+  - `ui.py`:
+    - Integrated `AI`, `get_position`, and `send_move_to_engine` cleanly into `GambitUI`.
+    - Added `self.engine_lock` (`threading.Lock`) to serialize all subprocess stdin/stdout communication.
+    - Added `self.closing` guard and `_handle_move_error()` to prevent background threads from raising Tkinter error dialogs during window shutdown.
+    - Moved `move_history` and `last_move` updates into `update_position()` / `_apply_new_game_state()` on the Tkinter main thread.
+    - Removed redundant `get_position()` call between `process_human_move()` and `process_ai_turn()` and kept `engine_busy=True` continuously across the human → AI turn transition.
+- **Files Modified:**
+  - `ai.py`
+  - `ui.py`
+  - `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `python -m py_compile ai.py evaluation.py ui.py` — Passed.
+  - AI smoke test (`e2e4` followed by `AI.find_best_move` and engine state verification) — Passed (`best=b8c6`, `nodes=1790`, engine turn/moves preserved).
+  - Headless `GambitUI` smoke test (initial position load → `make_move('e2e4')` → AI reply → `new_game()` → `close()`) — Passed.
