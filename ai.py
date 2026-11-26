@@ -255,7 +255,7 @@ class AI:
 
 
 
-    def find_best_move(self, board, legal_moves, turn):
+    def find_best_move(self, board, legal_moves, turn, depth=2):
 
         self.nodes_searched = 0
 
@@ -277,10 +277,10 @@ class AI:
         beta = float('inf')
 
 
-        for move in legal_moves:
+        for move in self.order_moves(board, legal_moves):
 
 
-            response = send_move_to_engine(self.engine, move)
+            response = send_move_to_engine(self.engine, move, verbose=self.verbose)
 
 
             if response != "MOVE_OK":
@@ -300,7 +300,7 @@ class AI:
                 score = self.minimax(
                     new_board,
                     next_moves,
-                    depth=2,
+                    depth=max(0, depth),
                     maximizing_player=(next_turn == "WHITE"),
                     alpha=alpha,
                     beta=beta,
@@ -449,10 +449,11 @@ class AI:
         self.nodes_searched += 1
 
 
-        # Terminal positions
+        # Terminal positions (prefer faster checkmates)
         if status == "CHECKMATE":
 
-            return -100000 if maximizing_player else 100000
+            mate_score = 100000 + (depth * 10)
+            return -mate_score if maximizing_player else mate_score
 
 
         if status in ("STALEMATE", "DRAW_INSUFFICIENT_MATERIAL"):
@@ -614,9 +615,10 @@ class AI:
 
 
 
-        # Terminal positions
+        # Terminal positions (prefer faster checkmates)
         if status == "CHECKMATE":
-            return -100000 if maximizing_player else 100000
+            mate_score = 100000 + remaining_depth
+            return -mate_score if maximizing_player else mate_score
 
 
 

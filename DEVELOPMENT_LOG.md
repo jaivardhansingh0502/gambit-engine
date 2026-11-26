@@ -65,6 +65,7 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 3 — GUI Interaction, Promotion Dialog & Game-State Indicators
 
 - **Status:** Completed
+- **Commit:** `52c9011`
 - **Changes Implemented:**
   - `ui.py`:
     - Replaced `simpledialog.askstring` in `choose_promotion()` with a clickable modal `tk.Toplevel` dialog (`♕ Queen`, `♖ Rook`, `♗ Bishop`, `♘ Knight`).
@@ -78,3 +79,27 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
   - `DEVELOPMENT_LOG.md`
 - **Tests Performed:**
   - `python -m unittest discover -s tests -v` — 13 tests passed in 0.826s.
+
+---
+
+## Milestone 4 — AI Search Depth Control, Search Polish & AI Tests
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - `ai.py`:
+    - Added configurable `depth=2` parameter to `AI.find_best_move()`.
+    - Applied `order_moves()` at the root move loop in `find_best_move()` and respected `self.verbose` in `send_move_to_engine()`.
+    - Added mate-distance scoring bonuses in `minimax()` (`100000 + depth * 10`) and `quiescence_search()` (`100000 + remaining_depth`) so the AI always prefers faster forced checkmates.
+  - `ui.py`:
+    - Added an `AI Level` selector (`Easy (Depth 1)`, `Medium (Depth 2)`, `Hard (Depth 3)`) via `AI_DIFFICULTY_DEPTHS` and `get_ai_depth()`, disabled while the engine is busy.
+    - Closed subprocess `stdin`/`stdout` pipes cleanly in `close()`.
+  - `tests/test_ai.py`: Added 4 AI unit tests verifying configurable search depth, engine state preservation after search, Scholar's Mate & Fool's Mate mate-in-1 detection, and alpha-beta node reduction vs minimax.
+  - `tests/test_ui_logic.py`: Added assertions covering `get_ai_depth()` default and updated difficulty selection.
+- **Files Modified:**
+  - `ai.py`
+  - `ui.py`
+  - `tests/test_ai.py`
+  - `tests/test_ui_logic.py`
+  - `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `python -m unittest discover -s tests -v` — 17 tests passed in 1.249s.

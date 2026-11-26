@@ -65,6 +65,9 @@ class GambitUIUndoFlowTests(unittest.TestCase):
                 root.after(40, step_wait_init)
                 return
             results["init_moves"] = len(app.legal_moves)
+            results["default_depth"] = app.get_ai_depth()
+            app.difficulty_var.set("Easy (Depth 1)")
+            results["easy_depth"] = app.get_ai_depth()
             app.make_move("e2e4")
             root.after(40, step_wait_ai)
 
@@ -109,6 +112,8 @@ class GambitUIUndoFlowTests(unittest.TestCase):
 
         self.assertTrue(results.get("done"))
         self.assertEqual(results["init_moves"], 20)
+        self.assertEqual(results["default_depth"], 2)
+        self.assertEqual(results["easy_depth"], 1)
         self.assertEqual(len(results["after_ai_history"]), 2)
         self.assertEqual(results["after_ai_history"][0], "e2e4")
         self.assertEqual(results["undo_state_before"], "normal")

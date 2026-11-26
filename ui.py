@@ -13,6 +13,12 @@ GAME_OVER_STATUSES = (
     "DRAW_INSUFFICIENT_MATERIAL",
 )
 
+AI_DIFFICULTY_DEPTHS = {
+    "Easy (Depth 1)": 1,
+    "Medium (Depth 2)": 2,
+    "Hard (Depth 3)": 3,
+}
+
 
 def square_to_notation(row, col):
     file_char = chr(ord("a") + col)
@@ -142,6 +148,24 @@ class GambitUI:
             pady=10
         )
 
+        self.difficulty_frame = tk.Frame(self.history_frame)
+        self.difficulty_frame.pack(fill="x", padx=10, pady=(0, 8))
+
+        tk.Label(
+            self.difficulty_frame,
+            text="AI Level:",
+            font=("Arial", 11, "bold")
+        ).pack(side="left")
+
+        self.difficulty_var = tk.StringVar(value="Medium (Depth 2)")
+        self.difficulty_menu = tk.OptionMenu(
+            self.difficulty_frame,
+            self.difficulty_var,
+            *AI_DIFFICULTY_DEPTHS.keys()
+        )
+        self.difficulty_menu.config(font=("Arial", 11))
+        self.difficulty_menu.pack(side="right", fill="x", expand=True, padx=(8, 0))
+
         self.undo_button = tk.Button(
             self.history_frame,
             text="Undo Move",
@@ -204,12 +228,15 @@ class GambitUI:
                     )
                 )
 
+    def get_ai_depth(self):
+        return AI_DIFFICULTY_DEPTHS.get(self.difficulty_var.get(), 2)
+
     def _update_controls(self):
         if self.closing:
             return
-        self.new_game_button.config(
-            state="disabled" if self.engine_busy else "normal"
-        )
+        state = "disabled" if self.engine_busy else "normal"
+        self.new_game_button.config(state=state)
+        self.difficulty_menu.config(state=state)
         can_undo = (not self.engine_busy) and len(self.move_history) > 0
         self.undo_button.config(
             state="normal" if can_undo else "disabled"
@@ -478,11 +505,7 @@ class GambitUI:
     def process_ai_turn(self, board, moves, status, turn):
 
         try:
-            if status in (
-                "CHECKMATE",
-                "STALEMATE",
-                "DRAW_INSUFFICIENT_MATERIAL"
-            ):
+            if status in GAME_OVER_STATUSES:
                 if not self.closing:
                     self.root.after(
                         0,
@@ -492,11 +515,14 @@ class GambitUI:
                     )
                 return
 
+            depth = self.get_ai_depth()
+
             with self.engine_lock:
                 ai_move = self.ai.find_best_move(
                     board,
                     moves,
-                    turn
+                    turn,
+                    depth=depth
                 )
 
                 if ai_move is None:
@@ -855,8 +881,13 @@ class GambitUI:
         self.closing = True
 
         try:
-            self.engine.terminate()
-            self.engine.wait(timeout=2)
+            if self.engine.poll() is None:
+                self.engine.terminate()
+                self.engine.wait(timeout=2)
+            if self.engine.stdin:
+                self.engine.stdin.close()
+            if self.engine.stdout:
+                self.engine.stdout.close()
 
         except Exception:
             pass
