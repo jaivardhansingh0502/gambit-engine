@@ -1,7 +1,9 @@
 
-import tkinter as tk
+import random
 import subprocess
 import threading
+import time
+import tkinter as tk
 from tkinter import messagebox
 
 from ai import AI, get_engine_evaluation, get_position, send_move_to_engine
@@ -18,14 +20,26 @@ GAME_OVER_STATUSES = (
     "DRAW_INSUFFICIENT_MATERIAL",
     "RESIGNED_WHITE",
     "RESIGNED_BLACK",
+    "TIMEOUT_WHITE",
+    "TIMEOUT_BLACK",
 )
 
 MODE_PVP = "PvP"
 MODE_PVAI = "PvAI"
 
+HUMAN_COLOR_WHITE = "WHITE"
+HUMAN_COLOR_BLACK = "BLACK"
+
 GAME_MODE_LABELS = {
     MODE_PVP: "Player vs Player (PvP)",
     MODE_PVAI: "Player vs AI (PvAI)",
+}
+
+TIME_CONTROLS = {
+    "Untimed": None,
+    "Bullet (1+0)": (60, 0),
+    "Blitz (3+2)": (180, 2),
+    "Rapid (10+0)": (600, 0),
 }
 
 AI_DIFFICULTY_DEPTHS = {
@@ -56,8 +70,35 @@ THEME = {
 }
 
 
-def can_human_interact(game_mode, white_turn):
-    return True if game_mode == MODE_PVP else white_turn
+def can_human_interact(game_mode, white_turn, human_color=HUMAN_COLOR_WHITE):
+    if game_mode == MODE_PVP:
+        return True
+    return white_turn if human_color == HUMAN_COLOR_WHITE else (not white_turn)
+
+
+def should_ai_move_for_turn(game_mode, status, turn, human_color=HUMAN_COLOR_WHITE):
+    if game_mode != MODE_PVAI or status in GAME_OVER_STATUSES:
+        return False
+    return turn != human_color
+
+
+def board_to_display_coords(row, col, flipped=False):
+    return (7 - row, 7 - col) if flipped else (row, col)
+
+
+def display_to_board_coords(disp_row, disp_col, flipped=False):
+    return (7 - disp_row, 7 - disp_col) if flipped else (disp_row, disp_col)
+
+
+def format_clock_time(seconds):
+    if seconds is None:
+        return "∞"
+    seconds = max(0.0, float(seconds))
+    if seconds < 10.0:
+        return f"0:{seconds:04.1f}"
+    total_secs = int(seconds)
+    mins, secs = divmod(total_secs, 60)
+    return f"{mins:02d}:{secs:02d}"
 
 
 def is_own_piece(piece, white_turn):
@@ -100,9 +141,21 @@ def get_promotion_map(moves):
     }
 
 
-def format_status_text(game_status, white_turn, engine_busy, game_mode=MODE_PVAI):
-    if game_mode == MODE_PVAI and not white_turn and engine_busy:
-        return "Black — AI thinking...", "#60A5FA"
+def format_status_text(
+    game_status,
+    white_turn,
+    engine_busy,
+    game_mode=MODE_PVAI,
+    human_color=HUMAN_COLOR_WHITE
+):
+    ai_turn = (
+        game_mode == MODE_PVAI
+        and ((white_turn and human_color == HUMAN_COLOR_BLACK)
+             or ((not white_turn) and human_color == HUMAN_COLOR_WHITE))
+    )
+    if ai_turn and engine_busy and game_status not in GAME_OVER_STATUSES:
+        side = "White" if white_turn else "Black"
+        return f"{side} — AI thinking...", "#60A5FA"
 
     if game_status == "CHECK":
         text = (
@@ -132,6 +185,12 @@ def format_status_text(game_status, white_turn, engine_busy, game_mode=MODE_PVAI
     if game_status == "RESIGNED_BLACK":
         return "Black resigned — White wins", "#F87171"
 
+    if game_status == "TIMEOUT_WHITE":
+        return "Time out — Black wins", "#F87171"
+
+    if game_status == "TIMEOUT_BLACK":
+        return "Time out — White wins", "#F87171"
+
     text = "White to move" if white_turn else "Black to move"
     return text, "#F3F4F6"
 
@@ -147,10 +206,17 @@ def get_board_geometry(width, height, top_margin=44):
 
 class GambitUI:
 
-    def __init__(self, root, game_mode=None, prompt_mode_on_start=True):
+    def __init__(
+        self,
+        root,
+        game_mode=None,
+        prompt_mode_on_start=True,
+        human_color=HUMAN_COLOR_WHITE,
+        time_control="Untimed"
+    ):
         self.root = root
         self.root.title("Gambit Chess")
-        self.root.minsize(900, 680)
+        self.root.minsize(920, 720)
         self.root.configure(bg=THEME["bg"])
 
         self.engine = subprocess.Popen(
@@ -168,6 +234,24 @@ class GambitUI:
         self.game_mode = (
             game_mode if game_mode in GAME_MODE_LABELS else MODE_PVAI
         )
+        self.human_color = (
+            human_color
+            if human_color in (HUMAN_COLOR_WHITE, HUMAN_COLOR_BLACK)
+            else HUMAN_COLOR_WHITE
+        )
+        self.board_flipped = (
+            self.game_mode == MODE_PVAI
+            and self.human_color == HUMAN_COLOR_BLACK
+        )
+        self.time_control_name = (
+            time_control if time_control in TIME_CONTROLS else "Untimed"
+        )
+        self.white_time = None
+        self.black_time = None
+        self._clock_last_tick = None
+        self._clock_after_id = None
+        self._in_modal = False
+
         self.engine_eval = 0
 
         self.board = []
@@ -255,6 +339,63 @@ class GambitUI:
             command=lambda: self.select_mode_from_sidebar(MODE_PVP)
         )
         self.pvp_mode_btn.pack(side="left", fill="x", expand=True, padx=(4, 0))
+
+        # ---- Clocks Card ----
+        self.clock_frame = tk.Frame(
+            self.history_frame,
+            bg=THEME["card"],
+            highlightthickness=1,
+            highlightbackground=THEME["border"],
+            padx=8,
+            pady=6
+        )
+        self.clock_frame.pack(fill="x", padx=12, pady=(0, 8))
+
+        self.top_clock_box = tk.Frame(self.clock_frame, bg=THEME["list_bg"], padx=8, pady=4)
+        self.top_clock_box.pack(side="left", fill="x", expand=True, padx=(0, 4))
+
+        self.top_clock_name = tk.Label(
+            self.top_clock_box,
+            text="Black",
+            font=("Segoe UI", 9, "bold"),
+            fg=THEME["muted"],
+            bg=THEME["list_bg"],
+            anchor="w"
+        )
+        self.top_clock_name.pack(fill="x")
+
+        self.top_clock_time = tk.Label(
+            self.top_clock_box,
+            text="∞",
+            font=("Consolas", 13, "bold"),
+            fg=THEME["text"],
+            bg=THEME["list_bg"],
+            anchor="w"
+        )
+        self.top_clock_time.pack(fill="x")
+
+        self.bottom_clock_box = tk.Frame(self.clock_frame, bg=THEME["list_bg"], padx=8, pady=4)
+        self.bottom_clock_box.pack(side="left", fill="x", expand=True, padx=(4, 0))
+
+        self.bottom_clock_name = tk.Label(
+            self.bottom_clock_box,
+            text="White",
+            font=("Segoe UI", 9, "bold"),
+            fg=THEME["muted"],
+            bg=THEME["list_bg"],
+            anchor="w"
+        )
+        self.bottom_clock_name.pack(fill="x")
+
+        self.bottom_clock_time = tk.Label(
+            self.bottom_clock_box,
+            text="∞",
+            font=("Consolas", 13, "bold"),
+            fg=THEME["text"],
+            bg=THEME["list_bg"],
+            anchor="w"
+        )
+        self.bottom_clock_time.pack(fill="x")
 
         # ---- Evaluation Card ----
         self.eval_frame = tk.LabelFrame(
@@ -471,7 +612,23 @@ class GambitUI:
             command=self.jump_to_live,
             state="disabled"
         )
-        self.live_button.pack(side="left", fill="x", expand=True, padx=(3, 0))
+        self.live_button.pack(side="left", fill="x", expand=True, padx=3)
+
+        self.flip_button = tk.Button(
+            self.review_frame,
+            text="⇅ Flip",
+            font=("Segoe UI", 10, "bold"),
+            bg=THEME["btn_bg"],
+            fg=THEME["text"],
+            activebackground=THEME["btn_active"],
+            activeforeground="#FFFFFF",
+            relief="flat",
+            bd=0,
+            pady=6,
+            cursor="hand2",
+            command=self.flip_board
+        )
+        self.flip_button.pack(side="left", fill="x", expand=True, padx=(3, 0))
 
         self.action_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
         self.action_frame.pack(fill="x", padx=12, pady=(0, 12))
@@ -514,6 +671,7 @@ class GambitUI:
         self.canvas.bind("<Configure>", self.on_resize)
         self.canvas.bind("<Button-1>", self.on_click)
 
+        self._reset_clocks(self.time_control_name)
         self._refresh_mode_buttons()
         self.root.state("zoomed")
 
@@ -555,9 +713,208 @@ class GambitUI:
             board, moves, status, turn, engine_eval=engine_eval
         )
         if self.prompt_mode_on_start and not self.closing:
-            selected = self.choose_game_mode(allow_cancel=False)
-            if selected in GAME_MODE_LABELS:
-                self.set_game_mode(selected)
+            config = self.choose_game_mode(allow_cancel=False)
+            if config is not None:
+                mode, human_color, time_control = config
+                self._apply_game_config(mode, human_color, time_control)
+                self._reset_clocks(time_control)
+                self._start_clock()
+                self._maybe_start_ai_opening()
+        else:
+            self._reset_clocks(self.time_control_name)
+            self._start_clock()
+            self._maybe_start_ai_opening()
+
+    def _apply_game_config(self, mode, human_color=HUMAN_COLOR_WHITE, time_control="Untimed"):
+        if mode in GAME_MODE_LABELS:
+            self.game_mode = mode
+        if human_color in (HUMAN_COLOR_WHITE, HUMAN_COLOR_BLACK):
+            self.human_color = human_color
+        if time_control in TIME_CONTROLS:
+            self.time_control_name = time_control
+        self.board_flipped = (
+            self.game_mode == MODE_PVAI
+            and self.human_color == HUMAN_COLOR_BLACK
+        )
+        side_suffix = ""
+        if self.game_mode == MODE_PVAI:
+            side_suffix = " (White)" if self.human_color == HUMAN_COLOR_WHITE else " (Black)"
+        self.mode_label.config(
+            text=f"Mode: {GAME_MODE_LABELS[self.game_mode]}{side_suffix}"
+        )
+        self._refresh_mode_buttons()
+        self._refresh_clocks()
+        self._update_controls()
+        self.draw_board()
+
+    def _maybe_start_ai_opening(self):
+        if (
+            not self.closing
+            and self.game_mode == MODE_PVAI
+            and self.human_color == HUMAN_COLOR_BLACK
+            and self.white_turn
+            and self.game_status not in GAME_OVER_STATUSES
+            and not self.engine_busy
+        ):
+            self.engine_busy = True
+            self._update_controls()
+            self.draw_board()
+            board_copy = [r[:] for r in self.board]
+            moves_copy = list(self.legal_moves)
+            status_copy = self.game_status
+            threading.Thread(
+                target=self.process_ai_turn,
+                args=(board_copy, moves_copy, status_copy, "WHITE"),
+                daemon=True
+            ).start()
+
+    def _reset_clocks(self, time_control=None):
+        self._stop_clock()
+        if time_control in TIME_CONTROLS:
+            self.time_control_name = time_control
+        spec = TIME_CONTROLS.get(self.time_control_name)
+        if spec is None:
+            self.white_time = None
+            self.black_time = None
+        else:
+            base_seconds, _ = spec
+            self.white_time = float(base_seconds)
+            self.black_time = float(base_seconds)
+        self._refresh_clocks()
+
+    def _stop_clock(self):
+        if self._clock_after_id is not None:
+            try:
+                self.root.after_cancel(self._clock_after_id)
+            except Exception:
+                pass
+            self._clock_after_id = None
+        self._clock_last_tick = None
+
+    def _start_clock(self):
+        self._stop_clock()
+        if (
+            self.closing
+            or self._in_modal
+            or TIME_CONTROLS.get(self.time_control_name) is None
+            or self.game_status in GAME_OVER_STATUSES
+        ):
+            return
+        self._clock_last_tick = time.monotonic()
+        self._clock_after_id = self.root.after(100, self._tick_clock)
+
+    def _apply_increment(self, moved_white):
+        spec = TIME_CONTROLS.get(self.time_control_name)
+        if spec is None or self.game_status in GAME_OVER_STATUSES:
+            return
+        _, increment = spec
+        if increment <= 0:
+            return
+        if moved_white and self.white_time is not None:
+            self.white_time += increment
+        elif (not moved_white) and self.black_time is not None:
+            self.black_time += increment
+        self._refresh_clocks()
+
+    def _tick_clock(self):
+        self._clock_after_id = None
+        if (
+            self.closing
+            or self._in_modal
+            or TIME_CONTROLS.get(self.time_control_name) is None
+            or self.game_status in GAME_OVER_STATUSES
+            or not self.board
+        ):
+            self._clock_last_tick = None
+            return
+
+        now = time.monotonic()
+        if self._clock_last_tick is not None:
+            elapsed = max(0.0, now - self._clock_last_tick)
+            if self.white_turn and self.white_time is not None:
+                self.white_time = max(0.0, self.white_time - elapsed)
+                if self.white_time <= 0.0:
+                    self._handle_timeout(True)
+                    return
+            elif (not self.white_turn) and self.black_time is not None:
+                self.black_time = max(0.0, self.black_time - elapsed)
+                if self.black_time <= 0.0:
+                    self._handle_timeout(False)
+                    return
+
+        self._clock_last_tick = now
+        self._refresh_clocks()
+        self._clock_after_id = self.root.after(100, self._tick_clock)
+
+    def _handle_timeout(self, white_flagged):
+        self._stop_clock()
+        self.selected_square = None
+        self.selected_moves = []
+        self.game_status = "TIMEOUT_WHITE" if white_flagged else "TIMEOUT_BLACK"
+        if self.position_history:
+            self.position_history[-1]["status"] = self.game_status
+        self._refresh_clocks()
+        self._update_controls()
+        if self.is_viewing_live():
+            self.draw_board()
+
+    def _refresh_clocks(self):
+        if self.closing:
+            return
+        top_is_white = self.board_flipped
+        top_name = "White" if top_is_white else "Black"
+        bottom_name = "Black" if top_is_white else "White"
+        if self.game_mode == MODE_PVAI:
+            if (self.human_color == HUMAN_COLOR_WHITE) == top_is_white:
+                top_name += " (You)"
+            else:
+                top_name += " (AI)"
+            if (self.human_color == HUMAN_COLOR_WHITE) != top_is_white:
+                bottom_name += " (You)"
+            else:
+                bottom_name += " (AI)"
+
+        top_val = self.white_time if top_is_white else self.black_time
+        bottom_val = self.black_time if top_is_white else self.white_time
+
+        top_active = (
+            self.game_status not in GAME_OVER_STATUSES
+            and TIME_CONTROLS.get(self.time_control_name) is not None
+            and (self.white_turn == top_is_white)
+        )
+        bottom_active = (
+            self.game_status not in GAME_OVER_STATUSES
+            and TIME_CONTROLS.get(self.time_control_name) is not None
+            and (self.white_turn != top_is_white)
+        )
+
+        self.top_clock_name.config(
+            text=top_name,
+            fg="#93C5FD" if top_active else THEME["muted"]
+        )
+        self.top_clock_time.config(
+            text=format_clock_time(top_val),
+            fg="#F87171" if (top_val is not None and top_val < 15.0) else (
+                "#FFFFFF" if top_active else THEME["text"]
+            )
+        )
+        self.bottom_clock_name.config(
+            text=bottom_name,
+            fg="#93C5FD" if bottom_active else THEME["muted"]
+        )
+        self.bottom_clock_time.config(
+            text=format_clock_time(bottom_val),
+            fg="#F87171" if (bottom_val is not None and bottom_val < 15.0) else (
+                "#FFFFFF" if bottom_active else THEME["text"]
+            )
+        )
+
+    def flip_board(self):
+        if self.closing or self.animating:
+            return
+        self.board_flipped = not self.board_flipped
+        self._refresh_clocks()
+        self.draw_board()
 
     def _refresh_mode_buttons(self):
         if self.closing:
@@ -594,25 +951,29 @@ class GambitUI:
     def set_game_mode(self, mode):
         if mode not in GAME_MODE_LABELS:
             return
-        self.game_mode = mode
-        self.mode_label.config(text=f"Mode: {GAME_MODE_LABELS[mode]}")
-        self._refresh_mode_buttons()
-        self._update_controls()
-        self.draw_board()
+        self._apply_game_config(
+            mode,
+            self.human_color,
+            self.time_control_name
+        )
+        self._maybe_start_ai_opening()
 
     def choose_game_mode(self, allow_cancel=True):
+        self._in_modal = True
+        self._stop_clock()
+
         dialog = tk.Toplevel(self.root)
-        dialog.title("Select Game Mode")
+        dialog.title("New Game Setup")
         dialog.resizable(False, False)
         dialog.configure(bg=THEME["sidebar"])
         dialog.transient(self.root)
         dialog.grab_set()
 
-        chosen = {"mode": None if allow_cancel else self.game_mode}
+        chosen = {"result": None}
 
         tk.Label(
             dialog,
-            text="♟ Choose Game Mode",
+            text="♟ Game Setup",
             font=("Segoe UI", 15, "bold"),
             fg=THEME["text"],
             bg=THEME["sidebar"],
@@ -623,22 +984,95 @@ class GambitUI:
         tk.Label(
             dialog,
             text=(
-                "Player vs AI (PvAI): You play White against Gambit AI.\n"
-                "Player vs Player (PvP): Humans control both White and Black."
+                "Choose mode, your side (for PvAI), and time control."
             ),
             font=("Segoe UI", 10),
             fg=THEME["muted"],
             bg=THEME["sidebar"],
             justify="center",
             padx=24,
-            pady=(0, 14)
+            pady=(0, 10)
         ).pack()
+
+        options_frame = tk.Frame(dialog, bg=THEME["card"], padx=14, pady=10)
+        options_frame.pack(fill="x", padx=24, pady=(0, 10))
+
+        # Side selection for PvAI
+        side_row = tk.Frame(options_frame, bg=THEME["card"])
+        side_row.pack(fill="x", pady=(0, 8))
+        tk.Label(
+            side_row,
+            text="Play As (PvAI):",
+            font=("Segoe UI", 10, "bold"),
+            fg=THEME["text"],
+            bg=THEME["card"]
+        ).pack(side="left")
+
+        side_var = tk.StringVar(
+            value="White" if self.human_color == HUMAN_COLOR_WHITE else "Black"
+        )
+        side_menu = tk.OptionMenu(side_row, side_var, "White", "Black", "Random")
+        side_menu.config(
+            font=("Segoe UI", 10),
+            bg=THEME["btn_bg"],
+            fg=THEME["text"],
+            activebackground=THEME["btn_active"],
+            activeforeground="#FFFFFF",
+            highlightthickness=0,
+            bd=0
+        )
+        side_menu["menu"].config(
+            bg=THEME["card"],
+            fg=THEME["text"],
+            activebackground=THEME["accent_blue"],
+            activeforeground="#FFFFFF"
+        )
+        side_menu.pack(side="right")
+
+        # Time control selection
+        clock_row = tk.Frame(options_frame, bg=THEME["card"])
+        clock_row.pack(fill="x")
+        tk.Label(
+            clock_row,
+            text="Time Control:",
+            font=("Segoe UI", 10, "bold"),
+            fg=THEME["text"],
+            bg=THEME["card"]
+        ).pack(side="left")
+
+        clock_var = tk.StringVar(value=self.time_control_name)
+        clock_menu = tk.OptionMenu(clock_row, clock_var, *TIME_CONTROLS.keys())
+        clock_menu.config(
+            font=("Segoe UI", 10),
+            bg=THEME["btn_bg"],
+            fg=THEME["text"],
+            activebackground=THEME["btn_active"],
+            activeforeground="#FFFFFF",
+            highlightthickness=0,
+            bd=0
+        )
+        clock_menu["menu"].config(
+            bg=THEME["card"],
+            fg=THEME["text"],
+            activebackground=THEME["accent_blue"],
+            activeforeground="#FFFFFF"
+        )
+        clock_menu.pack(side="right")
 
         btn_frame = tk.Frame(dialog, bg=THEME["sidebar"], padx=24, pady=8)
         btn_frame.pack(fill="x")
 
         def select(mode):
-            chosen["mode"] = mode
+            side_choice = side_var.get()
+            if side_choice == "Random":
+                resolved_color = random.choice(
+                    (HUMAN_COLOR_WHITE, HUMAN_COLOR_BLACK)
+                )
+            elif side_choice == "Black":
+                resolved_color = HUMAN_COLOR_BLACK
+            else:
+                resolved_color = HUMAN_COLOR_WHITE
+            chosen["result"] = (mode, resolved_color, clock_var.get())
             dialog.destroy()
 
         tk.Button(
@@ -687,7 +1121,16 @@ class GambitUI:
                 command=dialog.destroy
             ).pack(fill="x", pady=(8, 8))
 
-        dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
+        def on_close():
+            if not allow_cancel and chosen["result"] is None:
+                chosen["result"] = (
+                    self.game_mode,
+                    self.human_color,
+                    self.time_control_name,
+                )
+            dialog.destroy()
+
+        dialog.protocol("WM_DELETE_WINDOW", on_close)
         dialog.update_idletasks()
         x = self.root.winfo_rootx() + (self.root.winfo_width() - dialog.winfo_width()) // 2
         y = self.root.winfo_rooty() + (self.root.winfo_height() - dialog.winfo_height()) // 2
@@ -696,7 +1139,8 @@ class GambitUI:
         dialog.focus_force()
 
         self.root.wait_window(dialog)
-        return chosen["mode"]
+        self._in_modal = False
+        return chosen["result"]
 
     def get_ai_depth(self):
         return AI_DIFFICULTY_DEPTHS.get(self.difficulty_var.get(), 3)
@@ -879,10 +1323,18 @@ class GambitUI:
 
         if appended_move is not None:
             self.update_move_history()
+            moved_white = (turn != "WHITE")
+            self._apply_increment(moved_white)
+            if self._clock_last_tick is not None:
+                self._clock_last_tick = time.monotonic()
 
         self.engine_busy = keep_busy
 
+        if self.game_status in GAME_OVER_STATUSES:
+            self._stop_clock()
+
         self.update_evaluation_panel(board, engine_eval=engine_eval)
+        self._refresh_clocks()
         self._update_controls()
         self.draw_board()
 
@@ -899,7 +1351,7 @@ class GambitUI:
         if self.game_status in GAME_OVER_STATUSES:
             return
 
-        if not can_human_interact(self.game_mode, self.white_turn):
+        if not can_human_interact(self.game_mode, self.white_turn, self.human_color):
             return
 
         if not self.board:
@@ -910,11 +1362,13 @@ class GambitUI:
 
         _, square_size, offset_x, offset_y = get_board_geometry(width, height)
 
-        col = int((event.x - offset_x) / square_size)
-        row = int((event.y - offset_y) / square_size)
+        disp_col = int((event.x - offset_x) / square_size)
+        disp_row = int((event.y - offset_y) / square_size)
 
-        if row < 0 or row >= 8 or col < 0 or col >= 8:
+        if disp_row < 0 or disp_row >= 8 or disp_col < 0 or disp_col >= 8:
             return
+
+        row, col = display_to_board_coords(disp_row, disp_col, self.board_flipped)
 
         clicked_square = self.square_to_notation(row, col)
 
@@ -1109,11 +1563,8 @@ class GambitUI:
                 )
                 engine_eval = get_engine_evaluation(self.engine)
 
-            game_over = status in GAME_OVER_STATUSES
-            should_ai_move = (
-                (self.game_mode == MODE_PVAI)
-                and (not game_over)
-                and (turn == "BLACK")
+            should_ai_move = should_ai_move_for_turn(
+                self.game_mode, status, turn, self.human_color
             )
 
             if not self.closing:
@@ -1240,6 +1691,7 @@ class GambitUI:
             if not ok:
                 return
 
+        self._stop_clock()
         self.selected_square = None
         self.selected_moves = []
         self.game_status = (
@@ -1247,6 +1699,7 @@ class GambitUI:
         )
         if self.position_history:
             self.position_history[-1]["status"] = self.game_status
+        self._refresh_clocks()
         self._update_controls()
         self.draw_board()
 
@@ -1328,10 +1781,16 @@ class GambitUI:
 
         from_r, from_c = notation_to_coords(from_sq)
         to_r, to_c = notation_to_coords(to_sq)
-        x_start = offset_x + (from_c + 0.5) * square_size
-        y_start = offset_y + (from_r + 0.5) * square_size
-        x_end = offset_x + (to_c + 0.5) * square_size
-        y_end = offset_y + (to_r + 0.5) * square_size
+        disp_from_r, disp_from_c = board_to_display_coords(
+            from_r, from_c, self.board_flipped
+        )
+        disp_to_r, disp_to_c = board_to_display_coords(
+            to_r, to_c, self.board_flipped
+        )
+        x_start = offset_x + (disp_from_c + 0.5) * square_size
+        y_start = offset_y + (disp_from_r + 0.5) * square_size
+        x_end = offset_x + (disp_to_c + 0.5) * square_size
+        y_end = offset_y + (disp_to_r + 0.5) * square_size
 
         t = step / total_steps
         ease = 1.0 - (1.0 - t) ** 2
@@ -1422,30 +1881,50 @@ class GambitUI:
         self._cancel_animation()
         self._apply_view_index(len(self.position_history) - 1)
 
-    def new_game(self, mode=None, prompt_mode=None):
+    def new_game(
+        self,
+        mode=None,
+        prompt_mode=None,
+        human_color=None,
+        time_control=None
+    ):
 
         if self.engine_busy:
             return
 
+        selected_mode = self.game_mode
+        selected_color = self.human_color
+        selected_clock = self.time_control_name
+
         if mode in GAME_MODE_LABELS:
             selected_mode = mode
+            if human_color in (HUMAN_COLOR_WHITE, HUMAN_COLOR_BLACK):
+                selected_color = human_color
+            if time_control in TIME_CONTROLS:
+                selected_clock = time_control
         elif prompt_mode is True or (prompt_mode is None and self.prompt_mode_on_start):
-            selected_mode = self.choose_game_mode(allow_cancel=True)
-            if selected_mode not in GAME_MODE_LABELS:
+            config = self.choose_game_mode(allow_cancel=True)
+            if config is None:
+                self._start_clock()
                 return
+            selected_mode, selected_color, selected_clock = config
         else:
-            selected_mode = self.game_mode
+            if human_color in (HUMAN_COLOR_WHITE, HUMAN_COLOR_BLACK):
+                selected_color = human_color
+            if time_control in TIME_CONTROLS:
+                selected_clock = time_control
 
+        self._stop_clock()
         self.engine_busy = True
         self._update_controls()
 
         threading.Thread(
             target=self.send_new_game,
-            args=(selected_mode,),
+            args=((selected_mode, selected_color, selected_clock),),
             daemon=True
         ).start()
 
-    def send_new_game(self, selected_mode=None):
+    def send_new_game(self, selected_config=None):
 
         try:
             with self.engine_lock:
@@ -1470,7 +1949,7 @@ class GambitUI:
                 self.root.after(
                     0,
                     lambda: self._apply_new_game_state(
-                        board, moves, status, turn, engine_eval, selected_mode
+                        board, moves, status, turn, engine_eval, selected_config
                     )
                 )
 
@@ -1488,15 +1967,23 @@ class GambitUI:
         status,
         turn,
         engine_eval=None,
-        selected_mode=None
+        selected_config=None
     ):
         if self.closing:
             return
 
-        if selected_mode in GAME_MODE_LABELS:
-            self.game_mode = selected_mode
-            self.mode_label.config(text=f"Mode: {GAME_MODE_LABELS[selected_mode]}")
-            self._refresh_mode_buttons()
+        if isinstance(selected_config, tuple) and len(selected_config) == 3:
+            mode, color, clock_name = selected_config
+            self._apply_game_config(mode, color, clock_name)
+            self._reset_clocks(clock_name)
+        else:
+            if selected_config in GAME_MODE_LABELS:
+                self._apply_game_config(
+                    selected_config,
+                    self.human_color,
+                    self.time_control_name
+                )
+            self._reset_clocks(self.time_control_name)
 
         self._cancel_animation()
         self.selected_square = None
@@ -1507,6 +1994,8 @@ class GambitUI:
         self.view_index = -1
         self.update_move_history()
         self.update_position(board, moves, status, turn, engine_eval=engine_eval)
+        self._start_clock()
+        self._maybe_start_ai_opening()
 
     # ---------------- MOVE HISTORY ----------------
 
@@ -1581,7 +2070,8 @@ class GambitUI:
                 self.game_status,
                 self.white_turn,
                 self.engine_busy,
-                game_mode=self.game_mode
+                game_mode=self.game_mode,
+                human_color=self.human_color
             )
 
         self.canvas.create_text(
@@ -1626,8 +2116,11 @@ class GambitUI:
 
             for col in range(8):
 
-                x1 = offset_x + col * square_size
-                y1 = offset_y + row * square_size
+                disp_row, disp_col = board_to_display_coords(
+                    row, col, self.board_flipped
+                )
+                x1 = offset_x + disp_col * square_size
+                y1 = offset_y + disp_row * square_size
                 x2 = x1 + square_size
                 y2 = y1 + square_size
 
@@ -1693,7 +2186,7 @@ class GambitUI:
                         square_size
                     )
 
-                if col == 0:
+                if disp_col == 0:
 
                     self.canvas.create_text(
                         x1 + 6,
@@ -1704,7 +2197,7 @@ class GambitUI:
                         fill=dark if is_light else light
                     )
 
-                if row == 7:
+                if disp_row == 7:
 
                     self.canvas.create_text(
                         x2 - 6,
@@ -1776,6 +2269,7 @@ class GambitUI:
 
     def close(self):
         self.closing = True
+        self._stop_clock()
         self._cancel_animation()
 
         try:

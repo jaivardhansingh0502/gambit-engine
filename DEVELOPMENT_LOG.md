@@ -181,6 +181,7 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 8 — Resign Support (PvP & PvAI) and Animated Move History Replay
 
 - **Status:** Completed
+- **Commit:** `dcc0f86`
 - **Changes Implemented:**
   - `ui.py`:
     - Removed the player-facing `Undo Move` button (`undo_last_turn()`, `get_undo_count()`) so players cannot take back moves during a game.
@@ -194,3 +195,22 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 - **Tests Performed:**
   - `python -m py_compile ai.py evaluation.py ui.py tests/test_engine.py tests/test_ai.py tests/test_evaluation.py tests/test_ui_logic.py` — Passed.
   - `python -m unittest discover -s tests -v` — 25 tests passed in 2.819s.
+
+---
+
+## Milestone 9 — Chess Clock, Play as Black vs AI & Flip Board
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - `ui.py`:
+    - Added selectable Chess Clocks (`TIME_CONTROLS`: `Untimed`, `Bullet (1+0)`, `Blitz (3+2)`, `Rapid (10+0)`) with Top/Bottom clock displays, active turn highlighting, low-time `<15s` warning, move increment (`_apply_increment`), live 100ms countdown (`_tick_clock`), and timeout termination (`TIMEOUT_WHITE`, `TIMEOUT_BLACK`).
+    - Added Play as White / Black / Random in `PvAI` via `human_color`, `should_ai_move_for_turn()`, automatic AI opening move when human plays Black (`_maybe_start_ai_opening()`), and updated `can_human_interact()` & `format_status_text()`.
+    - Added `⇅ Flip` board perspective toggle (`flip_board()`, `board_to_display_coords()`, `display_to_board_coords()`), updating board rendering, rank/file coordinates, mouse clicks, Back/Next animations, and Top/Bottom clock alignment.
+  - `tests/test_ui_logic.py`: Added tests for clock formatting, coordinate flipping, White/Black AI turn helpers, and full headless integration test (`test_play_as_black_flip_board_and_clock_timeout`).
+- **Files Modified:**
+  - `ui.py`
+  - `tests/test_ui_logic.py`
+  - `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `python -m py_compile ai.py evaluation.py ui.py tests/test_engine.py tests/test_ai.py tests/test_evaluation.py tests/test_ui_logic.py` — Passed.
+  - `python -m unittest discover -s tests -v` — 26 tests passed in 3.171s.

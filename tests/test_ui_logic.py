@@ -56,11 +56,38 @@ class GambitUIHelperTests(unittest.TestCase):
         text, _ = ui.format_status_text("RESIGNED_BLACK", False, False)
         self.assertEqual(text, "Black resigned — White wins")
 
+        text, _ = ui.format_status_text("TIMEOUT_WHITE", True, False)
+        self.assertEqual(text, "Time out — Black wins")
+
+        text, _ = ui.format_status_text("TIMEOUT_BLACK", False, False)
+        self.assertEqual(text, "Time out — White wins")
+
+        text, _ = ui.format_status_text(
+            "NORMAL", True, True, game_mode=ui.MODE_PVAI, human_color=ui.HUMAN_COLOR_BLACK
+        )
+        self.assertEqual(text, "White — AI thinking...")
+
     def test_mode_and_advantage_helpers(self):
         self.assertTrue(ui.can_human_interact(ui.MODE_PVP, True))
         self.assertTrue(ui.can_human_interact(ui.MODE_PVP, False))
-        self.assertTrue(ui.can_human_interact(ui.MODE_PVAI, True))
-        self.assertFalse(ui.can_human_interact(ui.MODE_PVAI, False))
+        self.assertTrue(ui.can_human_interact(ui.MODE_PVAI, True, ui.HUMAN_COLOR_WHITE))
+        self.assertFalse(ui.can_human_interact(ui.MODE_PVAI, False, ui.HUMAN_COLOR_WHITE))
+        self.assertFalse(ui.can_human_interact(ui.MODE_PVAI, True, ui.HUMAN_COLOR_BLACK))
+        self.assertTrue(ui.can_human_interact(ui.MODE_PVAI, False, ui.HUMAN_COLOR_BLACK))
+
+        self.assertTrue(ui.should_ai_move_for_turn(ui.MODE_PVAI, "NORMAL", "BLACK", ui.HUMAN_COLOR_WHITE))
+        self.assertFalse(ui.should_ai_move_for_turn(ui.MODE_PVAI, "NORMAL", "WHITE", ui.HUMAN_COLOR_WHITE))
+        self.assertTrue(ui.should_ai_move_for_turn(ui.MODE_PVAI, "NORMAL", "WHITE", ui.HUMAN_COLOR_BLACK))
+        self.assertFalse(ui.should_ai_move_for_turn(ui.MODE_PVP, "NORMAL", "BLACK", ui.HUMAN_COLOR_WHITE))
+
+        self.assertEqual(ui.board_to_display_coords(0, 0, False), (0, 0))
+        self.assertEqual(ui.board_to_display_coords(0, 0, True), (7, 7))
+        self.assertEqual(ui.display_to_board_coords(7, 7, True), (0, 0))
+
+        self.assertEqual(ui.format_clock_time(None), "∞")
+        self.assertEqual(ui.format_clock_time(180), "03:00")
+        self.assertEqual(ui.format_clock_time(5.4), "0:05.4")
+        self.assertEqual(ui.format_clock_time(0), "0:00.0")
 
         self.assertTrue(ui.is_own_piece("P", True))
         self.assertFalse(ui.is_own_piece("p", True))
@@ -312,6 +339,95 @@ class GambitUIFlowTests(unittest.TestCase):
         self.assertEqual(results["switched_diff_state"], "normal")
         self.assertEqual(len(results["pvai_history"]), 2)
         self.assertEqual(results["pvai_history"][0], "e2e4")
+
+    def test_play_as_black_flip_board_and_clock_timeout(self):
+        prev_cwd = os.getcwd()
+        os.chdir(ROOT_DIR)
+        root = tk.Tk()
+        root.withdraw()
+        app = ui.GambitUI(
+            root,
+            game_mode=ui.MODE_PVAI,
+            prompt_mode_on_start=False,
+            human_color=ui.HUMAN_COLOR_BLACK,
+            time_control="Blitz (3+2)"
+        )
+        app.difficulty_var.set("Easy (Depth 1)")
+        results = {}
+
+        def step_wait_ai_opening():
+            if app.engine_busy or len(app.move_history) < 1:
+                root.after(40, step_wait_ai_opening)
+                return
+            results["ai_opened_history"] = list(app.move_history)
+            results["auto_flipped"] = app.board_flipped
+            results["turn_after_ai_open"] = app.white_turn
+            results["white_time_after_open"] = app.white_time
+            results["top_clock_before_flip"] = app.top_clock_name.cget("text")
+            app.flip_board()
+            results["flipped_off"] = app.board_flipped
+            results["top_clock_after_flip"] = app.top_clock_name.cget("text")
+            app.flip_board()
+            app.make_move("e7e5")
+            root.after(40, step_wait_ai_reply)
+
+        def step_wait_ai_reply():
+            if app.engine_busy or len(app.move_history) < 3:
+                root.after(40, step_wait_ai_reply)
+                return
+            results["after_black_move_history"] = list(app.move_history)
+            results["turn_after_ai_reply"] = app.white_turn
+            # Trigger timeout for Black
+            app._handle_timeout(False)
+            results["timeout_status"] = app.game_status
+            results["resign_btn_after_timeout"] = str(app.resign_button["state"])
+            app.make_move("d7d5")
+            results["history_len_after_timeout_move"] = len(app.move_history)
+            app.new_game(mode=ui.MODE_PVP, time_control="Untimed")
+            root.after(40, step_wait_reset)
+
+        def step_wait_reset():
+            if app.engine_busy:
+                root.after(40, step_wait_reset)
+                return
+            results["reset_mode"] = app.game_mode
+            results["reset_flipped"] = app.board_flipped
+            results["reset_clock_text"] = app.top_clock_time.cget("text")
+            results["reset_status"] = app.game_status
+            results["done"] = True
+            app.close()
+
+        try:
+            root.after(100, step_wait_ai_opening)
+            root.mainloop()
+        finally:
+            os.chdir(prev_cwd)
+            if app.engine.poll() is None:
+                app.engine.terminate()
+                app.engine.wait(timeout=2)
+            if app.engine.stdin:
+                app.engine.stdin.close()
+            if app.engine.stdout:
+                app.engine.stdout.close()
+
+        self.assertTrue(results.get("done"))
+        self.assertEqual(len(results["ai_opened_history"]), 1)
+        self.assertTrue(results["auto_flipped"])
+        self.assertFalse(results["turn_after_ai_open"])
+        self.assertGreater(results["white_time_after_open"], 180.0)
+        self.assertIn("White", results["top_clock_before_flip"])
+        self.assertFalse(results["flipped_off"])
+        self.assertIn("Black", results["top_clock_after_flip"])
+        self.assertEqual(len(results["after_black_move_history"]), 3)
+        self.assertEqual(results["after_black_move_history"][1], "e7e5")
+        self.assertFalse(results["turn_after_ai_reply"])
+        self.assertEqual(results["timeout_status"], "TIMEOUT_BLACK")
+        self.assertEqual(results["resign_btn_after_timeout"], "disabled")
+        self.assertEqual(results["history_len_after_timeout_move"], 3)
+        self.assertEqual(results["reset_mode"], ui.MODE_PVP)
+        self.assertFalse(results["reset_flipped"])
+        self.assertEqual(results["reset_clock_text"], "∞")
+        self.assertEqual(results["reset_status"], "NORMAL")
 
 
 if __name__ == "__main__":
