@@ -16,6 +16,8 @@ GAME_OVER_STATUSES = (
     "CHECKMATE",
     "STALEMATE",
     "DRAW_INSUFFICIENT_MATERIAL",
+    "RESIGNED_WHITE",
+    "RESIGNED_BLACK",
 )
 
 MODE_PVP = "PvP"
@@ -47,6 +49,7 @@ THEME = {
     "muted": "#9CA3AF",
     "accent_blue": "#2563EB",
     "accent_green": "#059669",
+    "accent_red": "#DC2626",
     "btn_bg": "#313644",
     "btn_active": "#3E4556",
     "list_bg": "#1B1E26",
@@ -63,12 +66,10 @@ def is_own_piece(piece, white_turn):
     return piece.isupper() if white_turn else piece.islower()
 
 
-def get_undo_count(game_mode, history_len):
-    if history_len <= 0:
-        return 0
-    if game_mode == MODE_PVP:
-        return 1
-    return 1 if history_len % 2 == 1 else 2
+def notation_to_coords(square):
+    col = ord(square[0]) - ord("a")
+    row = 8 - int(square[1])
+    return row, col
 
 
 def compute_advantage_ratio(score, max_pawns=10.0):
@@ -125,6 +126,12 @@ def format_status_text(game_status, white_turn, engine_busy, game_mode=MODE_PVAI
     if game_status == "DRAW_INSUFFICIENT_MATERIAL":
         return "DRAW — Insufficient Material", "#FBBF24"
 
+    if game_status == "RESIGNED_WHITE":
+        return "White resigned — Black wins", "#F87171"
+
+    if game_status == "RESIGNED_BLACK":
+        return "Black resigned — White wins", "#F87171"
+
     text = "White to move" if white_turn else "Black to move"
     return text, "#F3F4F6"
 
@@ -170,6 +177,10 @@ class GambitUI:
         self.last_move = None
         self.white_turn = True
         self.move_history = []
+        self.position_history = []
+        self.view_index = -1
+        self.animating = False
+        self._anim_after_id = None
         self.game_status = "NORMAL"
         self.engine_busy = True
         self.closing = False
@@ -405,13 +416,13 @@ class GambitUI:
         )
         self.difficulty_menu.pack(side="right", fill="x", expand=True, padx=(8, 0))
 
-        self.action_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
-        self.action_frame.pack(fill="x", padx=12, pady=(0, 12))
+        self.review_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
+        self.review_frame.pack(fill="x", padx=12, pady=(0, 8))
 
-        self.undo_button = tk.Button(
-            self.action_frame,
-            text="↩ Undo Move",
-            font=("Segoe UI", 11, "bold"),
+        self.back_button = tk.Button(
+            self.review_frame,
+            text="◀ Back",
+            font=("Segoe UI", 10, "bold"),
             bg=THEME["btn_bg"],
             fg=THEME["text"],
             activebackground=THEME["btn_active"],
@@ -419,12 +430,69 @@ class GambitUI:
             disabledforeground="#6B7280",
             relief="flat",
             bd=0,
-            pady=8,
+            pady=6,
             cursor="hand2",
-            command=self.undo_last_turn,
+            command=self.step_back,
             state="disabled"
         )
-        self.undo_button.pack(side="left", fill="x", expand=True, padx=(0, 4))
+        self.back_button.pack(side="left", fill="x", expand=True, padx=(0, 3))
+
+        self.forward_button = tk.Button(
+            self.review_frame,
+            text="Next ▶",
+            font=("Segoe UI", 10, "bold"),
+            bg=THEME["btn_bg"],
+            fg=THEME["text"],
+            activebackground=THEME["btn_active"],
+            activeforeground="#FFFFFF",
+            disabledforeground="#6B7280",
+            relief="flat",
+            bd=0,
+            pady=6,
+            cursor="hand2",
+            command=self.step_forward,
+            state="disabled"
+        )
+        self.forward_button.pack(side="left", fill="x", expand=True, padx=3)
+
+        self.live_button = tk.Button(
+            self.review_frame,
+            text="⏭ Live",
+            font=("Segoe UI", 10, "bold"),
+            bg=THEME["btn_bg"],
+            fg=THEME["text"],
+            activebackground=THEME["btn_active"],
+            activeforeground="#FFFFFF",
+            disabledforeground="#6B7280",
+            relief="flat",
+            bd=0,
+            pady=6,
+            cursor="hand2",
+            command=self.jump_to_live,
+            state="disabled"
+        )
+        self.live_button.pack(side="left", fill="x", expand=True, padx=(3, 0))
+
+        self.action_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
+        self.action_frame.pack(fill="x", padx=12, pady=(0, 12))
+
+        self.resign_button = tk.Button(
+            self.action_frame,
+            text="🏳 Resign",
+            font=("Segoe UI", 11, "bold"),
+            bg=THEME["accent_red"],
+            fg="#FFFFFF",
+            activebackground="#B91C1C",
+            activeforeground="#FFFFFF",
+            disabledforeground="#FCA5A5",
+            relief="flat",
+            bd=0,
+            pady=8,
+            cursor="hand2",
+            command=self.resign_game,
+            state="disabled"
+        )
+        self.resign_button.pack(side="left", fill="x", expand=True, padx=(0, 4))
 
         self.new_game_button = tk.Button(
             self.action_frame,
@@ -636,6 +704,12 @@ class GambitUI:
     def get_ai_time_limit(self):
         return AI_DIFFICULTY_TIME_LIMITS.get(self.difficulty_var.get(), 2.0)
 
+    def is_viewing_live(self):
+        return (
+            not self.position_history
+            or self.view_index == len(self.position_history) - 1
+        )
+
     def _update_controls(self):
         if self.closing:
             return
@@ -649,9 +723,36 @@ class GambitUI:
             else "disabled"
         )
         self.difficulty_menu.config(state=ai_state)
-        can_undo = (not self.engine_busy) and len(self.move_history) > 0
-        self.undo_button.config(
-            state="normal" if can_undo else "disabled"
+
+        can_resign = (
+            not self.engine_busy
+            and not self.animating
+            and bool(self.board)
+            and self.is_viewing_live()
+            and self.game_status not in GAME_OVER_STATUSES
+        )
+        self.resign_button.config(
+            state="normal" if can_resign else "disabled"
+        )
+
+        can_back = (
+            not self.engine_busy
+            and len(self.position_history) > 1
+            and self.view_index > 0
+        )
+        can_forward = (
+            not self.engine_busy
+            and len(self.position_history) > 1
+            and self.view_index < len(self.position_history) - 1
+        )
+        self.back_button.config(
+            state="normal" if can_back else "disabled"
+        )
+        self.forward_button.config(
+            state="normal" if can_forward else "disabled"
+        )
+        self.live_button.config(
+            state="normal" if can_forward else "disabled"
         )
 
     def _draw_eval_bar(self, score):
@@ -753,7 +854,8 @@ class GambitUI:
         if self.closing:
             return
 
-        self.board = board
+        self._cancel_animation()
+        self.board = [row[:] for row in board]
         self.legal_moves = moves
         self.game_status = status
         self.white_turn = turn == "WHITE"
@@ -761,7 +863,23 @@ class GambitUI:
             self.last_move = last_move
         if appended_move is not None:
             self.move_history.append(appended_move)
+
+        snapshot = {
+            "board": [row[:] for row in board],
+            "status": status,
+            "white_turn": (turn == "WHITE"),
+            "last_move": self.last_move,
+            "engine_eval": self.engine_eval if engine_eval is None else engine_eval,
+        }
+        if appended_move is not None or not self.position_history:
+            self.position_history.append(snapshot)
+        else:
+            self.position_history[-1] = snapshot
+        self.view_index = len(self.position_history) - 1
+
+        if appended_move is not None:
             self.update_move_history()
+
         self.engine_busy = keep_busy
 
         self.update_evaluation_panel(board, engine_eval=engine_eval)
@@ -772,7 +890,10 @@ class GambitUI:
 
     def on_click(self, event):
 
-        if self.engine_busy:
+        if self.engine_busy or self.animating:
+            return
+
+        if not self.is_viewing_live():
             return
 
         if self.game_status in GAME_OVER_STATUSES:
@@ -952,7 +1073,12 @@ class GambitUI:
 
     def make_move(self, move):
 
-        if self.engine_busy:
+        if (
+            self.engine_busy
+            or self.animating
+            or not self.is_viewing_live()
+            or self.game_status in GAME_OVER_STATUSES
+        ):
             return
 
         self.engine_busy = True
@@ -1093,65 +1219,208 @@ class GambitUI:
                     lambda err=str(e): self._handle_move_error("AI Error", err)
                 )
 
-    # ---------------- UNDO & NEW GAME ----------------
+    # ---------------- RESIGN, REPLAY & NEW GAME ----------------
 
-    def undo_last_turn(self):
-        if self.engine_busy or not self.move_history:
+    def resign_game(self, confirm=True):
+        if (
+            self.engine_busy
+            or self.animating
+            or not self.board
+            or not self.is_viewing_live()
+            or self.game_status in GAME_OVER_STATUSES
+        ):
             return
 
-        undo_count = get_undo_count(self.game_mode, len(self.move_history))
-        if undo_count <= 0:
-            return
-        self.engine_busy = True
-        self._update_controls()
-
-        threading.Thread(
-            target=self._process_undo,
-            args=(undo_count,),
-            daemon=True
-        ).start()
-
-    def _process_undo(self, undo_count):
-        try:
-            with self.engine_lock:
-                for _ in range(undo_count):
-                    self.engine.stdin.write("UNDO_MOVE\n")
-                    self.engine.stdin.flush()
-                    response = self.engine.stdout.readline().strip()
-                    if response != "UNDO_OK":
-                        raise RuntimeError(f"Undo failed: {response}")
-
-                board, moves, status, turn = get_position(self.engine)
-                engine_eval = get_engine_evaluation(self.engine)
-
-            if not self.closing:
-                self.root.after(
-                    0,
-                    lambda: self._apply_undo_state(
-                        undo_count, board, moves, status, turn, engine_eval
-                    )
-                )
-
-        except Exception as e:
-            if not self.closing:
-                self.root.after(
-                    0,
-                    lambda err=str(e): self._handle_move_error("Undo Error", err)
-                )
-
-    def _apply_undo_state(self, undo_count, board, moves, status, turn, engine_eval):
-        if self.closing:
-            return
-
-        for _ in range(undo_count):
-            if self.move_history:
-                self.move_history.pop()
+        resigning_side = "White" if self.white_turn else "Black"
+        if confirm:
+            ok = messagebox.askyesno(
+                "Resign Game",
+                f"{resigning_side} will resign and forfeit the game.\n\nAre you sure?"
+            )
+            if not ok:
+                return
 
         self.selected_square = None
         self.selected_moves = []
-        self.last_move = self.move_history[-1] if self.move_history else None
-        self.update_move_history()
-        self.update_position(board, moves, status, turn, engine_eval=engine_eval)
+        self.game_status = (
+            "RESIGNED_WHITE" if self.white_turn else "RESIGNED_BLACK"
+        )
+        if self.position_history:
+            self.position_history[-1]["status"] = self.game_status
+        self._update_controls()
+        self.draw_board()
+
+    def _cancel_animation(self):
+        if self._anim_after_id is not None:
+            try:
+                self.root.after_cancel(self._anim_after_id)
+            except Exception:
+                pass
+            self._anim_after_id = None
+        if self.animating:
+            self.animating = False
+            pending = getattr(self, "_pending_target_index", None)
+            self._pending_target_index = None
+            if pending is not None and 0 <= pending < len(self.position_history):
+                self._apply_view_index(pending)
+
+    def _apply_view_index(self, idx):
+        if self.closing or not (0 <= idx < len(self.position_history)):
+            return
+
+        self.view_index = idx
+        snapshot = self.position_history[idx]
+        self.board = [row[:] for row in snapshot["board"]]
+        self.game_status = snapshot["status"]
+        self.white_turn = snapshot["white_turn"]
+        self.last_move = snapshot["last_move"]
+        self.selected_square = None
+        self.selected_moves = []
+
+        self.update_evaluation_panel(
+            self.board,
+            engine_eval=snapshot["engine_eval"]
+        )
+        self._highlight_history_for_view(idx)
+        self._update_controls()
+        self.draw_board()
+
+    def _highlight_history_for_view(self, idx):
+        self.history_list.selection_clear(0, tk.END)
+        if idx > 0:
+            list_row = (idx - 1) // 2
+            if 0 <= list_row < self.history_list.size():
+                self.history_list.selection_set(list_row)
+                self.history_list.see(list_row)
+
+    def _animate_move_step(
+        self,
+        target_index,
+        target_board,
+        moving_piece,
+        from_sq,
+        to_sq,
+        step=0,
+        total_steps=8
+    ):
+        if self.closing:
+            return
+
+        if step >= total_steps:
+            self.animating = False
+            self._anim_after_id = None
+            self._pending_target_index = None
+            self._apply_view_index(target_index)
+            return
+
+        self.animating = True
+        self._pending_target_index = target_index
+        self.board = [row[:] for row in target_board]
+        self.last_move = self.position_history[target_index]["last_move"]
+        self.selected_square = None
+        self.selected_moves = []
+
+        self.draw_board(hidden_square=to_sq, view_index_override=target_index)
+
+        width = self.canvas.winfo_width()
+        height = self.canvas.winfo_height()
+        _, square_size, offset_x, offset_y = get_board_geometry(width, height)
+
+        from_r, from_c = notation_to_coords(from_sq)
+        to_r, to_c = notation_to_coords(to_sq)
+        x_start = offset_x + (from_c + 0.5) * square_size
+        y_start = offset_y + (from_r + 0.5) * square_size
+        x_end = offset_x + (to_c + 0.5) * square_size
+        y_end = offset_y + (to_r + 0.5) * square_size
+
+        t = step / total_steps
+        ease = 1.0 - (1.0 - t) ** 2
+        cur_x = x_start + (x_end - x_start) * ease
+        cur_y = y_start + (y_end - y_start) * ease
+
+        if moving_piece not in (".", " "):
+            self.draw_piece(moving_piece, cur_x, cur_y, square_size)
+
+        self._anim_after_id = self.root.after(
+            15,
+            lambda: self._animate_move_step(
+                target_index,
+                target_board,
+                moving_piece,
+                from_sq,
+                to_sq,
+                step=step + 1,
+                total_steps=total_steps
+            )
+        )
+
+    def step_back(self, animate=True):
+        if self.engine_busy or not self.position_history:
+            return
+
+        self._cancel_animation()
+        if self.view_index <= 0:
+            return
+
+        cur_idx = self.view_index
+        target_idx = cur_idx - 1
+        move = self.position_history[cur_idx]["last_move"]
+
+        if animate and move and len(move) >= 4:
+            start_sq = move[:2]
+            end_sq = move[2:4]
+            end_r, end_c = notation_to_coords(end_sq)
+            start_r, start_c = notation_to_coords(start_sq)
+            target_board = self.position_history[target_idx]["board"]
+            moving_piece = self.position_history[cur_idx]["board"][end_r][end_c]
+            if moving_piece in (".", " "):
+                moving_piece = target_board[start_r][start_c]
+            self._animate_move_step(
+                target_idx,
+                target_board,
+                moving_piece,
+                end_sq,
+                start_sq,
+            )
+        else:
+            self._apply_view_index(target_idx)
+
+    def step_forward(self, animate=True):
+        if self.engine_busy or not self.position_history:
+            return
+
+        self._cancel_animation()
+        if self.view_index >= len(self.position_history) - 1:
+            return
+
+        cur_idx = self.view_index
+        target_idx = cur_idx + 1
+        move = self.position_history[target_idx]["last_move"]
+
+        if animate and move and len(move) >= 4:
+            start_sq = move[:2]
+            end_sq = move[2:4]
+            start_r, start_c = notation_to_coords(start_sq)
+            end_r, end_c = notation_to_coords(end_sq)
+            target_board = self.position_history[target_idx]["board"]
+            moving_piece = self.position_history[cur_idx]["board"][start_r][start_c]
+            if moving_piece in (".", " "):
+                moving_piece = target_board[end_r][end_c]
+            self._animate_move_step(
+                target_idx,
+                target_board,
+                moving_piece,
+                start_sq,
+                end_sq,
+            )
+        else:
+            self._apply_view_index(target_idx)
+
+    def jump_to_live(self):
+        if self.engine_busy or not self.position_history:
+            return
+        self._cancel_animation()
+        self._apply_view_index(len(self.position_history) - 1)
 
     def new_game(self, mode=None, prompt_mode=None):
 
@@ -1229,10 +1498,13 @@ class GambitUI:
             self.mode_label.config(text=f"Mode: {GAME_MODE_LABELS[selected_mode]}")
             self._refresh_mode_buttons()
 
+        self._cancel_animation()
         self.selected_square = None
         self.selected_moves = []
         self.last_move = None
         self.move_history = []
+        self.position_history = []
+        self.view_index = -1
         self.update_move_history()
         self.update_position(board, moves, status, turn, engine_eval=engine_eval)
 
@@ -1280,7 +1552,7 @@ class GambitUI:
         if self.board:
             self.draw_board()
 
-    def draw_board(self):
+    def draw_board(self, hidden_square=None, view_index_override=None):
 
         if not self.board:
             return
@@ -1290,12 +1562,27 @@ class GambitUI:
         width = self.canvas.winfo_width()
         height = self.canvas.winfo_height()
 
-        turn_text, status_color = format_status_text(
-            self.game_status,
-            self.white_turn,
-            self.engine_busy,
-            game_mode=self.game_mode
+        active_view_index = (
+            self.view_index if view_index_override is None else view_index_override
         )
+        viewing_live = (
+            not self.position_history
+            or active_view_index == len(self.position_history) - 1
+        )
+
+        if not viewing_live:
+            turn_text = (
+                f"Reviewing Move {active_view_index} / "
+                f"{len(self.position_history) - 1} — Click Next or Live"
+            )
+            status_color = "#FBBF24"
+        else:
+            turn_text, status_color = format_status_text(
+                self.game_status,
+                self.white_turn,
+                self.engine_busy,
+                game_mode=self.game_mode
+            )
 
         self.canvas.create_text(
             width / 2,
@@ -1397,7 +1684,7 @@ class GambitUI:
                             outline=""
                         )
 
-                if has_piece:
+                if has_piece and square != hidden_square:
 
                     self.draw_piece(
                         piece,
@@ -1489,6 +1776,7 @@ class GambitUI:
 
     def close(self):
         self.closing = True
+        self._cancel_animation()
 
         try:
             if self.engine.poll() is None:

@@ -11,10 +11,13 @@ import ui
 
 
 class GambitUIHelperTests(unittest.TestCase):
-    def test_square_to_notation(self):
+    def test_square_to_notation_and_notation_to_coords(self):
         self.assertEqual(ui.square_to_notation(0, 0), "a8")
         self.assertEqual(ui.square_to_notation(7, 4), "e1")
         self.assertEqual(ui.square_to_notation(3, 7), "h5")
+        self.assertEqual(ui.notation_to_coords("a8"), (0, 0))
+        self.assertEqual(ui.notation_to_coords("e1"), (7, 4))
+        self.assertEqual(ui.notation_to_coords("h5"), (3, 7))
 
     def test_find_king_square(self):
         board = [["." for _ in range(8)] for _ in range(8)]
@@ -47,6 +50,12 @@ class GambitUIHelperTests(unittest.TestCase):
         text, _ = ui.format_status_text("STALEMATE", False, False)
         self.assertEqual(text, "STALEMATE — Draw")
 
+        text, _ = ui.format_status_text("RESIGNED_WHITE", True, False)
+        self.assertEqual(text, "White resigned — Black wins")
+
+        text, _ = ui.format_status_text("RESIGNED_BLACK", False, False)
+        self.assertEqual(text, "Black resigned — White wins")
+
     def test_mode_and_advantage_helpers(self):
         self.assertTrue(ui.can_human_interact(ui.MODE_PVP, True))
         self.assertTrue(ui.can_human_interact(ui.MODE_PVP, False))
@@ -57,10 +66,6 @@ class GambitUIHelperTests(unittest.TestCase):
         self.assertFalse(ui.is_own_piece("p", True))
         self.assertTrue(ui.is_own_piece("p", False))
         self.assertFalse(ui.is_own_piece(".", False))
-
-        self.assertEqual(ui.get_undo_count(ui.MODE_PVP, 2), 1)
-        self.assertEqual(ui.get_undo_count(ui.MODE_PVAI, 2), 2)
-        self.assertEqual(ui.get_undo_count(ui.MODE_PVAI, 1), 1)
 
         self.assertAlmostEqual(ui.compute_advantage_ratio(0), 0.5)
         self.assertGreater(ui.compute_advantage_ratio(4), 0.5)
@@ -73,8 +78,8 @@ class GambitUIHelperTests(unittest.TestCase):
         self.assertGreaterEqual(offset_y, 44)
 
 
-class GambitUIUndoFlowTests(unittest.TestCase):
-    def test_move_undo_and_new_game_flow(self):
+class GambitUIFlowTests(unittest.TestCase):
+    def test_pvai_replay_back_forward_resign_and_no_undo(self):
         prev_cwd = os.getcwd()
         os.chdir(ROOT_DIR)
         root = tk.Tk()
@@ -86,6 +91,8 @@ class GambitUIUndoFlowTests(unittest.TestCase):
             if app.engine_busy:
                 root.after(40, step_wait_init)
                 return
+            results["has_undo_button"] = hasattr(app, "undo_button")
+            results["has_undo_method"] = hasattr(app, "undo_last_turn")
             results["init_moves"] = len(app.legal_moves)
             results["default_depth"] = app.get_ai_depth()
             results["default_time_limit"] = app.get_ai_time_limit()
@@ -100,18 +107,47 @@ class GambitUIUndoFlowTests(unittest.TestCase):
                 root.after(40, step_wait_ai)
                 return
             results["after_ai_history"] = list(app.move_history)
-            results["undo_state_before"] = str(app.undo_button["state"])
             results["ai_eval_text"] = app.ai_eval_label.cget("text")
-            app.undo_last_turn()
-            root.after(40, step_wait_undo)
+            results["live_view_index"] = app.view_index
+            # Animated step back twice to move 0
+            app.step_back(animate=True)
+            root.after(40, step_wait_back1)
 
-        def step_wait_undo():
-            if app.engine_busy:
-                root.after(40, step_wait_undo)
+        def step_wait_back1():
+            if app.animating:
+                root.after(30, step_wait_back1)
                 return
-            results["after_undo_history"] = list(app.move_history)
-            results["after_undo_moves"] = len(app.legal_moves)
-            results["after_undo_turn"] = app.white_turn
+            results["back1_view_index"] = app.view_index
+            results["back1_is_live"] = app.is_viewing_live()
+            # Cannot play move while reviewing history
+            app.make_move("d2d4")
+            results["blocked_move_history_len"] = len(app.move_history)
+            app.step_back(animate=True)
+            root.after(40, step_wait_back2)
+
+        def step_wait_back2():
+            if app.animating:
+                root.after(30, step_wait_back2)
+                return
+            results["back2_view_index"] = app.view_index
+            results["back2_e2_piece"] = app.board[6][4]
+            app.step_forward(animate=True)
+            root.after(40, step_wait_fwd1)
+
+        def step_wait_fwd1():
+            if app.animating:
+                root.after(30, step_wait_fwd1)
+                return
+            results["fwd1_view_index"] = app.view_index
+            app.jump_to_live()
+            results["jumped_live"] = app.is_viewing_live()
+            results["jumped_view_index"] = app.view_index
+            # Resign in PvAI (White resigns)
+            app.resign_game(confirm=False)
+            results["pvai_resign_status"] = app.game_status
+            results["pvai_resign_btn_after"] = str(app.resign_button["state"])
+            app.make_move("d2d4")
+            results["post_resign_history_len"] = len(app.move_history)
             app.new_game(mode=ui.MODE_PVAI)
             root.after(40, step_wait_new_game)
 
@@ -119,6 +155,8 @@ class GambitUIUndoFlowTests(unittest.TestCase):
             if app.engine_busy:
                 root.after(40, step_wait_new_game)
                 return
+            results["reset_status"] = app.game_status
+            results["reset_history_len"] = len(app.move_history)
             results["done"] = True
             app.close()
 
@@ -136,6 +174,8 @@ class GambitUIUndoFlowTests(unittest.TestCase):
                 app.engine.stdout.close()
 
         self.assertTrue(results.get("done"))
+        self.assertFalse(results["has_undo_button"])
+        self.assertFalse(results["has_undo_method"])
         self.assertEqual(results["init_moves"], 20)
         self.assertEqual(results["init_eval_headline"], "Position is equal: 0.0")
         self.assertEqual(results["default_depth"], 3)
@@ -143,13 +183,23 @@ class GambitUIUndoFlowTests(unittest.TestCase):
         self.assertEqual(results["easy_depth"], 1)
         self.assertEqual(len(results["after_ai_history"]), 2)
         self.assertEqual(results["after_ai_history"][0], "e2e4")
-        self.assertEqual(results["undo_state_before"], "normal")
         self.assertIn("AI Positional Eval", results["ai_eval_text"])
-        self.assertEqual(results["after_undo_history"], [])
-        self.assertEqual(results["after_undo_moves"], 20)
-        self.assertTrue(results["after_undo_turn"])
+        self.assertEqual(results["live_view_index"], 2)
+        self.assertEqual(results["back1_view_index"], 1)
+        self.assertFalse(results["back1_is_live"])
+        self.assertEqual(results["blocked_move_history_len"], 2)
+        self.assertEqual(results["back2_view_index"], 0)
+        self.assertEqual(results["back2_e2_piece"], "P")
+        self.assertEqual(results["fwd1_view_index"], 1)
+        self.assertTrue(results["jumped_live"])
+        self.assertEqual(results["jumped_view_index"], 2)
+        self.assertEqual(results["pvai_resign_status"], "RESIGNED_WHITE")
+        self.assertEqual(results["pvai_resign_btn_after"], "disabled")
+        self.assertEqual(results["post_resign_history_len"], 2)
+        self.assertEqual(results["reset_status"], "NORMAL")
+        self.assertEqual(results["reset_history_len"], 0)
 
-    def test_pvp_mode_no_ai_capture_eval_and_mode_switch(self):
+    def test_pvp_mode_replay_eval_and_resign_both_sides(self):
         prev_cwd = os.getcwd()
         os.chdir(ROOT_DIR)
         root = tk.Tk()
@@ -195,15 +245,15 @@ class GambitUIUndoFlowTests(unittest.TestCase):
             results["capture_headline"] = app.eval_headline_label.cget("text")
             results["capture_cpp_eval"] = app.engine_eval_label.cget("text")
             results["capture_diff"] = app.material_diff_label.cget("text")
-            app.undo_last_turn()
-            root.after(40, step_after_pvp_undo)
-
-        def step_after_pvp_undo():
-            if app.engine_busy:
-                root.after(40, step_after_pvp_undo)
-                return
-            results["undo_pvp_history"] = list(app.move_history)
-            results["undo_pvp_headline"] = app.eval_headline_label.cget("text")
+            # Step back 1 move -> evaluation updates to 0.0 without altering move_history
+            app.step_back(animate=False)
+            results["review_headline"] = app.eval_headline_label.cget("text")
+            results["review_history_intact"] = list(app.move_history)
+            app.jump_to_live()
+            results["live_headline_restored"] = app.eval_headline_label.cget("text")
+            # Black's turn in PvP -> Black resigns
+            app.resign_game(confirm=False)
+            results["pvp_black_resign_status"] = app.game_status
             app.new_game(mode=ui.MODE_PVAI)
             root.after(40, step_after_switch)
 
@@ -252,8 +302,10 @@ class GambitUIUndoFlowTests(unittest.TestCase):
         self.assertEqual(results["capture_headline"], "White is better: +1.0")
         self.assertIn("+1.0", results["capture_cpp_eval"])
         self.assertIn("pawn", results["capture_diff"])
-        self.assertEqual(results["undo_pvp_history"], ["e2e4", "d7d5"])
-        self.assertEqual(results["undo_pvp_headline"], "Position is equal: 0.0")
+        self.assertEqual(results["review_headline"], "Position is equal: 0.0")
+        self.assertEqual(results["review_history_intact"], ["e2e4", "d7d5", "e4d5"])
+        self.assertEqual(results["live_headline_restored"], "White is better: +1.0")
+        self.assertEqual(results["pvp_black_resign_status"], "RESIGNED_BLACK")
         self.assertEqual(results["switched_mode"], ui.MODE_PVAI)
         self.assertIn("Player vs AI", results["switched_label"])
         self.assertEqual(results["switched_history"], [])

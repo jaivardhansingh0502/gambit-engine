@@ -156,6 +156,7 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 7 — Modern Tkinter UI Overhaul, Inline Mode Switcher & Competitive AI
 
 - **Status:** Completed
+- **Commit:** `60570c1`
 - **Changes Implemented:**
   - `evaluation.py`: Switched `evaluate_board()` to balanced centipawn `AI_PIECE_VALUES` (`P=100, N=320, B=330, R=500, Q=900`), added full piece-square tables (`PAWN_TABLE`, `KNIGHT_TABLE`, `BISHOP_TABLE`, `ROOK_TABLE`, `QUEEN_TABLE`, `KING_MIDDLE_TABLE`, `KING_END_TABLE`), bishop pair bonus (`+30` cp), and endgame king centralization, while preserving conventional `1/3/5/9` `PIECE_VALUES` for `analyze_material()`.
   - `ai.py`: Upgraded `AI` with iterative deepening (`depth` + optional `time_limit`), best-move transposition hint table (`best_move_table`), killer-move ordering (`killer_moves`), en passant capture ordering, and PST-delta quiet move ordering (`68.71%` alpha-beta node reduction vs minimax).
@@ -174,3 +175,22 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 - **Tests Performed:**
   - `python -m py_compile ai.py evaluation.py ui.py tests/test_engine.py tests/test_ai.py tests/test_evaluation.py tests/test_ui_logic.py` — Passed.
   - `python -m unittest discover -s tests -v` — 25 tests passed in 1.634s (68.71% Alpha-Beta node reduction).
+
+---
+
+## Milestone 8 — Resign Support (PvP & PvAI) and Animated Move History Replay
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - `ui.py`:
+    - Removed the player-facing `Undo Move` button (`undo_last_turn()`, `get_undo_count()`) so players cannot take back moves during a game.
+    - Added `🏳 Resign` (`resign_game()`, `RESIGNED_WHITE`, `RESIGNED_BLACK`) working in both `PvP` (active player resigns) and `PvAI` (human resigns), disabling further moves until `New Game`.
+    - Added non-destructive move history navigation (`◀ Back`, `Next ▶`, `⏭ Live`) backed by `position_history`, `view_index`, `is_viewing_live()`, and smooth canvas piece animation (`_animate_move_step()`, `step_back()`, `step_forward()`, `jump_to_live()`), keeping evaluation and move-history highlight synchronized while blocking new moves during review.
+  - `tests/test_ui_logic.py`: Updated tests to confirm Undo removal and verify animated Back/Forward replay, `jump_to_live()`, and `resign_game()` in both `PvAI` and `PvP`.
+- **Files Modified:**
+  - `ui.py`
+  - `tests/test_ui_logic.py`
+  - `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `python -m py_compile ai.py evaluation.py ui.py tests/test_engine.py tests/test_ai.py tests/test_evaluation.py tests/test_ui_logic.py` — Passed.
+  - `python -m unittest discover -s tests -v` — 25 tests passed in 2.819s.
