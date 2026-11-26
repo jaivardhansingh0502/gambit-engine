@@ -141,8 +141,24 @@ int main()
 
 
 
+            if(moveString.length() < 4 || moveString.length() > 5)
+            {
+                cout << "MOVE_INVALID" << endl;
+                continue;
+            }
+
+            if(moveString.length() == 5)
+            {
+                char promo = tolower(moveString[4]);
+                if(promo != 'q' && promo != 'r' && promo != 'b' && promo != 'n')
+                {
+                    cout << "MOVE_INVALID" << endl;
+                    continue;
+                }
+            }
+
             string from = moveString.substr(0, 2);
-            string to = moveString.substr(2, 2);
+            string to = moveString.substr(2);
 
 
 

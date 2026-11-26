@@ -24,6 +24,7 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 1 — Baseline Stabilization & Thread-Safe Human-vs-AI Integration
 
 - **Status:** Completed
+- **Commit:** `ae1edd5`
 - **Changes Implemented:**
   - `ai.py`: Added `verbose=False` parameter to `send_move_to_engine()` and `AI.__init__()` so minimax/quiescence search no longer floods stdout on every node while preserving optional debug output.
   - `ui.py`:
@@ -40,3 +41,20 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
   - `python -m py_compile ai.py evaluation.py ui.py` — Passed.
   - AI smoke test (`e2e4` followed by `AI.find_best_move` and engine state verification) — Passed (`best=b8c6`, `nodes=1790`, engine turn/moves preserved).
   - Headless `GambitUI` smoke test (initial position load → `make_move('e2e4')` → AI reply → `new_game()` → `close()`) — Passed.
+
+---
+
+## Milestone 2 — Fix C++ Engine Promotion Bug & Add Automated Engine/Protocol Tests
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - `main.cpp`: Fixed `MAKE_MOVE` parsing (`moveString.substr(2)` instead of `moveString.substr(2, 2)`) so 5-character promotion moves (e.g., `a7b8n`) preserve the promotion piece, and added input length/promotion-character validation returning `MOVE_INVALID` on malformed input.
+  - Recompiled `gambit.exe` with `g++ -std=c++17 -O2` (note: `*.exe` is gitignored).
+  - `tests/test_engine.py`: Added 7 unit tests covering initial board/protocol, invalid & malformed moves, `UNDO_MOVE` & `NEW_GAME`, kingside & queenside castling, en passant capture, under-promotion preservation, and checkmate/`GAME_OVER` guard.
+- **Files Modified:**
+  - `main.cpp`
+  - `tests/test_engine.py`
+  - `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `g++ -std=c++17 -O2 main.cpp Board.cpp Move.cpp Pawn.cpp Knight.cpp Bishop.cpp Rook.cpp Queen.cpp King.cpp Evaluation.cpp -o gambit.exe` — Passed.
+  - `python -m unittest discover -s tests -v` — 7 tests passed in 0.104s.
