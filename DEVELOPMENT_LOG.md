@@ -85,6 +85,7 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 4 — AI Search Depth Control, Search Polish & AI Tests
 
 - **Status:** Completed
+- **Commit:** `59ed906`
 - **Changes Implemented:**
   - `ai.py`:
     - Added configurable `depth=2` parameter to `AI.find_best_move()`.
@@ -103,3 +104,20 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
   - `DEVELOPMENT_LOG.md`
 - **Tests Performed:**
   - `python -m unittest discover -s tests -v` — 17 tests passed in 1.249s.
+
+---
+
+## Milestone 5 — Final Stability Testing, Documentation & Project Cleanup
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - `README.md`: Updated project documentation with current features, architecture diagram, project structure (including `tests/` and `DEVELOPMENT_LOG.md`), C++17 build instructions, desktop GUI launch command, and `unittest` suite instructions; fixed an unclosed code block in the Markdown.
+  - Verified clean tracked repository file list via `git ls-files` (no untracked temporary files or binaries committed).
+  - Recompiled `gambit.exe` and ran full syntax checks and test suite end-to-end.
+- **Files Modified:**
+  - `README.md`
+  - `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `g++ -std=c++17 -O2 main.cpp Board.cpp Move.cpp Pawn.cpp Knight.cpp Bishop.cpp Rook.cpp Queen.cpp King.cpp Evaluation.cpp -o gambit.exe` — Passed.
+  - `python -m py_compile ai.py evaluation.py ui.py tests/test_engine.py tests/test_ai.py tests/test_ui_logic.py` — Passed.
+  - `python -m unittest discover -s tests -v` — 17 tests passed in 1.321s.
