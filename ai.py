@@ -232,6 +232,50 @@ def get_engine_evaluation(engine):
     return int(parts[1])
 
 
+def get_cpp_best_move(engine, depth=5, time_limit_ms=1500):
+    engine.stdin.write(f"BEST_MOVE {int(depth)} {int(time_limit_ms)}\n")
+    engine.stdin.flush()
+
+    line = engine.stdout.readline()
+    if line == "":
+        raise RuntimeError("C++ engine closed its output during BEST_MOVE.")
+
+    parts = line.strip().split()
+    if len(parts) < 4 or parts[0] != "BEST_MOVE":
+        raise RuntimeError(f"Unexpected BEST_MOVE response: {line.strip()}")
+
+    move = None if parts[1] == "NONE" else parts[1]
+    score = int(parts[2])
+    nodes = int(parts[3])
+    return move, score, nodes
+
+
+def get_fen(engine):
+    engine.stdin.write("GET_FEN\n")
+    engine.stdin.flush()
+
+    line = engine.stdout.readline()
+    if line == "":
+        raise RuntimeError("C++ engine closed its output during GET_FEN.")
+
+    stripped = line.strip()
+    if not stripped.startswith("FEN "):
+        raise RuntimeError(f"Unexpected GET_FEN response: {stripped}")
+
+    return stripped[4:]
+
+
+def set_fen(engine, fen):
+    engine.stdin.write(f"SET_FEN {fen.strip()}\n")
+    engine.stdin.flush()
+
+    line = engine.stdout.readline()
+    if line == "":
+        raise RuntimeError("C++ engine closed its output during SET_FEN.")
+
+    return line.strip() == "FEN_OK"
+
+
 
 
 class AI:

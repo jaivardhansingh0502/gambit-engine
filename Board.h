@@ -32,6 +32,8 @@ struct BoardState
     int lastPawnRow;
     int lastPawnCol;
     bool lastMoveWasDoublePawn;
+    int halfmoveClock;
+    int fullmoveNumber;
 } ;
 class Board {
 private:
@@ -59,6 +61,8 @@ private:
     int lastPawnRow;
     int lastPawnCol;
     bool lastMoveWasDoublePawn;
+    int halfmoveClock;
+    int fullmoveNumber;
 
 public:
 
@@ -99,6 +103,11 @@ public:
 
     bool getWhiteTurn();
     bool isInsufficientMaterial();
+    bool isFiftyMoveDraw();
+    int getHalfmoveClock();
+    string getPositionKey();
+    string getFEN();
+    bool loadFEN(const string& fen);
 
     
 };

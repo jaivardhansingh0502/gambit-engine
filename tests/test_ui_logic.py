@@ -124,7 +124,7 @@ class GambitUIFlowTests(unittest.TestCase):
             results["default_depth"] = app.get_ai_depth()
             results["default_time_limit"] = app.get_ai_time_limit()
             results["init_eval_headline"] = app.eval_headline_label.cget("text")
-            app.difficulty_var.set("Easy (Depth 1)")
+            app.difficulty_var.set("Easy (Depth 2)")
             results["easy_depth"] = app.get_ai_depth()
             app.make_move("e2e4")
             root.after(40, step_wait_ai)
@@ -205,9 +205,9 @@ class GambitUIFlowTests(unittest.TestCase):
         self.assertFalse(results["has_undo_method"])
         self.assertEqual(results["init_moves"], 20)
         self.assertEqual(results["init_eval_headline"], "Position is equal: 0.0")
-        self.assertEqual(results["default_depth"], 3)
-        self.assertEqual(results["default_time_limit"], 2.0)
-        self.assertEqual(results["easy_depth"], 1)
+        self.assertEqual(results["default_depth"], 4)
+        self.assertEqual(results["default_time_limit"], 1.5)
+        self.assertEqual(results["easy_depth"], 2)
         self.assertEqual(len(results["after_ai_history"]), 2)
         self.assertEqual(results["after_ai_history"][0], "e2e4")
         self.assertIn("AI Positional Eval", results["ai_eval_text"])
@@ -352,7 +352,7 @@ class GambitUIFlowTests(unittest.TestCase):
             human_color=ui.HUMAN_COLOR_BLACK,
             time_control="Blitz (3+2)"
         )
-        app.difficulty_var.set("Easy (Depth 1)")
+        app.difficulty_var.set("Easy (Depth 2)")
         results = {}
 
         def step_wait_ai_opening():
@@ -435,7 +435,7 @@ class GambitUIFlowTests(unittest.TestCase):
         root = tk.Tk()
         root.withdraw()
         app = ui.GambitUI(root, game_mode=ui.MODE_PVAI, prompt_mode_on_start=False)
-        app.difficulty_var.set("Easy (Depth 1)")
+        app.difficulty_var.set("Easy (Depth 2)")
         results = {}
 
         def step_init():
@@ -525,6 +525,143 @@ class GambitUIFlowTests(unittest.TestCase):
         self.assertFalse(results["in_modal"])
         self.assertEqual(results["time_control"], "Blitz (3+2)")
         self.assertLess(results["white_time_after"], 179.6)
+
+    def test_san_captures_draw_offer_fen_pgn_hint_and_drag_drop(self):
+        prev_cwd = os.getcwd()
+        os.chdir(ROOT_DIR)
+        root = tk.Tk()
+        root.deiconify()
+        root.geometry("1280x680")
+        app = ui.GambitUI(root, game_mode=ui.MODE_PVP, prompt_mode_on_start=False)
+        results = {}
+
+        class DummyEvent:
+            def __init__(self, x, y):
+                self.x = x
+                self.y = y
+
+        def sq_center(sq):
+            width = app.canvas.winfo_width()
+            height = app.canvas.winfo_height()
+            _, sq_size, ox, oy = ui.get_board_geometry(width, height)
+            r, c = ui.notation_to_coords(sq)
+            dr, dc = ui.board_to_display_coords(r, c, app.board_flipped)
+            return ox + (dc + 0.5) * sq_size, oy + (dr + 0.5) * sq_size
+
+        def step_init():
+            if app.engine_busy:
+                root.after(40, step_init)
+                return
+            root.update_idletasks()
+            app.toggle_sound()
+            results["sound_toggled_on"] = app.sound_enabled
+            app.toggle_sound()
+            results["sound_toggled_off"] = app.sound_enabled
+            # Drag e2 to e4
+            x1, y1 = sq_center("e2")
+            x2, y2 = sq_center("e4")
+            app.on_mouse_down(DummyEvent(x1, y1))
+            app.on_mouse_drag(DummyEvent((x1 + x2) / 2, (y1 + y2) / 2))
+            app.on_mouse_up(DummyEvent(x2, y2))
+            root.after(40, step_after_drag)
+
+        def step_after_drag():
+            if app.engine_busy:
+                root.after(40, step_after_drag)
+                return
+            results["after_drag_move"] = list(app.move_history)
+            results["after_drag_san"] = list(app.san_history)
+            app.make_move("d7d5")
+            root.after(40, step_after_d5)
+
+        def step_after_d5():
+            if app.engine_busy:
+                root.after(40, step_after_d5)
+                return
+            app.make_move("e4d5")
+            root.after(40, step_after_capture)
+
+        def step_after_capture():
+            if app.engine_busy:
+                root.after(40, step_after_capture)
+                return
+            results["san_after_capture"] = list(app.san_history)
+            results["captured_by_white"] = list(app.captured_by_white)
+            results["bottom_tray_live"] = app.bottom_captured_label.cget("text")
+            # Check replay restores captured tray to empty at index 0
+            app._apply_view_index(0)
+            results["bottom_tray_at_0"] = app.bottom_captured_label.cget("text")
+            app.jump_to_live()
+            results["bottom_tray_re_live"] = app.bottom_captured_label.cget("text")
+            # Test hint arrow on live board
+            app.request_hint()
+            root.after(40, step_after_hint)
+
+        def step_after_hint():
+            if app.engine_busy:
+                root.after(40, step_after_hint)
+                return
+            results["hint_move"] = app.hint_move
+            # Export PGN while active
+            results["pgn_before_draw"] = app.export_pgn(save_dialog=False)
+            # Test draw offer
+            app.offer_draw(confirm=False)
+            results["status_after_draw"] = app.game_status
+            results["draw_btn_after"] = str(app.draw_button["state"])
+            # Test loading custom Scholar's Mate FEN
+            app.load_fen("r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4")
+            root.after(40, step_after_fen)
+
+        def step_after_fen():
+            if app.engine_busy:
+                root.after(40, step_after_fen)
+                return
+            results["fen_loaded_status"] = app.game_status
+            results["fen_loaded_h5"] = app.board[3][7]
+            results["fen_initial_stored"] = app.initial_fen
+            # Request hint in Scholar's mate -> should suggest h5f7
+            app.request_hint()
+            root.after(40, step_after_mate_hint)
+
+        def step_after_mate_hint():
+            if app.engine_busy:
+                root.after(40, step_after_mate_hint)
+                return
+            results["mate_hint_move"] = app.hint_move
+            results["done"] = True
+            app.close()
+
+        try:
+            root.after(120, step_init)
+            root.mainloop()
+        finally:
+            os.chdir(prev_cwd)
+            if app.engine.poll() is None:
+                app.engine.terminate()
+                app.engine.wait(timeout=2)
+            if app.engine.stdin:
+                app.engine.stdin.close()
+            if app.engine.stdout:
+                app.engine.stdout.close()
+
+        self.assertTrue(results.get("done"))
+        self.assertTrue(results["sound_toggled_on"])
+        self.assertFalse(results["sound_toggled_off"])
+        self.assertEqual(results["after_drag_move"], ["e2e4"])
+        self.assertEqual(results["after_drag_san"], ["e4"])
+        self.assertEqual(results["san_after_capture"], ["e4", "d5", "exd5"])
+        self.assertEqual(results["captured_by_white"], ["p"])
+        self.assertIn("♟", results["bottom_tray_live"])
+        self.assertEqual(results["bottom_tray_at_0"], "—")
+        self.assertIn("♟", results["bottom_tray_re_live"])
+        self.assertIsNotNone(results["hint_move"])
+        self.assertIn("1. e4 d5 2. exd5 *", results["pgn_before_draw"])
+        self.assertEqual(results["status_after_draw"], "DRAW_AGREED")
+        self.assertEqual(results["draw_btn_after"], "disabled")
+        self.assertEqual(results["fen_loaded_status"], "NORMAL")
+        self.assertEqual(results["fen_loaded_h5"], "Q")
+        self.assertIn("4 4", results["fen_initial_stored"])
+        self.assertEqual(results["mate_hint_move"], "h5f7")
 
 
 if __name__ == "__main__":

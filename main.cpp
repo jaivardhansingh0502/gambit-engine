@@ -2,14 +2,32 @@
 #define WIN32_LEAN_AND_MEAN
 
 #include <windows.h>
+#include <algorithm>
 #include <iostream>
 #include <string>
 #include <vector>
 
 #include "Board.h"
 #include "Evaluation.h"
+#include "Search.h"
 
 using namespace std;
+
+static bool isThreefoldRepetition(const vector<string>& positionHistory)
+{
+    if(positionHistory.empty()) return false;
+    const string& current = positionHistory.back();
+    int count = 0;
+    for(const string& key : positionHistory)
+    {
+        if(key == current)
+        {
+            count++;
+            if(count >= 3) return true;
+        }
+    }
+    return false;
+}
 
 int main()
 {
@@ -23,12 +41,15 @@ int main()
 
     Board chessboard;
     Evaluation evaluation;
+    Search searchEngine;
 
 
 
     chessboard.initializeBoard();
 
     vector<BoardState> stateStack;
+    vector<string> positionHistory;
+    positionHistory.push_back(chessboard.getPositionKey());
 
 
 
@@ -41,23 +62,22 @@ int main()
 
         if(command == "GET_MOVES")
         {
-
+            bool isDrawOver = (
+                chessboard.isInsufficientMaterial() ||
+                chessboard.isFiftyMoveDraw() ||
+                isThreefoldRepetition(positionHistory)
+            );
 
             cout << "BOARD" << endl;
 
-
-
             chessboard.printBoardForAI();
-
-
 
             cout << "MOVES" << endl;
 
-
-
-            chessboard.printLegalMovesForAI();
-
-
+            if(!isDrawOver)
+            {
+                chessboard.printLegalMovesForAI();
+            }
 
             cout << "STATUS" << endl;
 
@@ -80,6 +100,20 @@ int main()
             else if(chessboard.isInsufficientMaterial())
             {
                 cout << "DRAW_INSUFFICIENT_MATERIAL" << endl;
+            }
+
+
+
+            else if(chessboard.isFiftyMoveDraw())
+            {
+                cout << "DRAW_FIFTY_MOVE" << endl;
+            }
+
+
+
+            else if(isThreefoldRepetition(positionHistory))
+            {
+                cout << "DRAW_THREEFOLD_REPETITION" << endl;
             }
 
 
@@ -127,7 +161,9 @@ int main()
 
             if(chessboard.isCheckmate(chessboard.getWhiteTurn()) ||
                chessboard.isStalemate(chessboard.getWhiteTurn()) ||
-               chessboard.isInsufficientMaterial())
+               chessboard.isInsufficientMaterial() ||
+               chessboard.isFiftyMoveDraw() ||
+               isThreefoldRepetition(positionHistory))
             {
 
 
@@ -178,6 +214,7 @@ int main()
 
 
                 chessboard.makeMove(move);
+                positionHistory.push_back(chessboard.getPositionKey());
 
 
 
@@ -228,6 +265,11 @@ int main()
 
                 );
 
+                if(!positionHistory.empty())
+                {
+                    positionHistory.pop_back();
+                }
+
                 cout << "UNDO_OK" << endl;
 
 
@@ -242,6 +284,8 @@ int main()
             chessboard.initializeBoard();
 
             stateStack.clear();
+            positionHistory.clear();
+            positionHistory.push_back(chessboard.getPositionKey());
 
             cout << "NEW_GAME_OK" << endl;
 
@@ -252,6 +296,45 @@ int main()
         {
             int score = evaluation.evaluateBoard(chessboard.getBoard());
             cout << "EVAL " << score << endl;
+        }
+
+        else if(command == "GET_FEN")
+        {
+            cout << "FEN " << chessboard.getFEN() << endl;
+        }
+
+        else if(command == "SET_FEN")
+        {
+            string fenLine;
+            getline(cin >> ws, fenLine);
+            if(chessboard.loadFEN(fenLine))
+            {
+                stateStack.clear();
+                positionHistory.clear();
+                positionHistory.push_back(chessboard.getPositionKey());
+                cout << "FEN_OK" << endl;
+            }
+            else
+            {
+                cout << "FEN_INVALID" << endl;
+            }
+        }
+
+        else if(command == "BEST_MOVE")
+        {
+            int maxDepth = 4;
+            int timeLimitMs = 1500;
+            cin >> maxDepth >> timeLimitMs;
+
+            SearchResult res = searchEngine.findBestMove(chessboard, maxDepth, timeLimitMs);
+            if(res.bestMove.empty())
+            {
+                cout << "BEST_MOVE NONE 0 0" << endl;
+            }
+            else
+            {
+                cout << "BEST_MOVE " << res.bestMove << " " << res.score << " " << res.nodes << endl;
+            }
         }
 
     }

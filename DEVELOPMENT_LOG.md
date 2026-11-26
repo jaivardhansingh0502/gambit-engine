@@ -241,6 +241,7 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 11 — Fix Modal `pady` Crash Blocking Startup Setup and Clock Ticking
 
 - **Status:** Completed
+- **Commit:** `65a55b6`
 - **Changes Implemented:**
   - `ui.py`:
     - Moved tuple `pady=(16, 4)`, `pady=(0, 10)`, and `pady=(14, 6)` from `tk.Label(...)` constructors into `.pack(...)` in `choose_game_mode()` and `choose_promotion()` (fixing the `TclError` that prevented the Game Setup modal from opening and left `_in_modal = True`, which blocked `_start_clock()`).
@@ -254,3 +255,31 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 - **Tests Performed:**
   - `python -m py_compile ai.py evaluation.py ui.py tests/test_engine.py tests/test_ai.py tests/test_evaluation.py tests/test_ui_logic.py` — Passed.
   - `python -m unittest discover -s tests -v` — 28 tests passed in 4.777s.
+
+---
+
+## Milestone 12 — SAN & Captured Tray, Sound Effects, FIDE Draws, FEN/PGN, C++17 Search Engine, Drag-and-Drop, Live Animation & Hints
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - **C++ Rules, FEN & Search Engine (`Board.h`, `Board.cpp`, `Search.h`, `Search.cpp`, `main.cpp`):**
+    - Tracked `halfmoveClock` and `fullmoveNumber` across `initializeBoard()`, `makeMove()`, `saveState()`, `restoreState()`; added `isFiftyMoveDraw()`, `getPositionKey()`, `getFEN()`, and `loadFEN()`.
+    - Tracked position repetition history in `main.cpp`, added `DRAW_FIFTY_MOVE` & `DRAW_THREEFOLD_REPETITION` (suppressing further legal moves when drawn), and added protocol commands `GET_FEN`, `SET_FEN <fen>`, and `BEST_MOVE <depth> <time_ms>`.
+    - Implemented C++17 iterative-deepening Alpha-Beta search with Quiescence search, 64-bit Zobrist 65,536-entry Transposition Table, MVV-LVA, Killer Moves, and PST evaluation in `Search.h` / `Search.cpp`.
+  - **Python Utilities & Engine Bridge (`chess_utils.py`, `ai.py`):**
+    - Added `chess_utils.py` for Standard Algebraic Notation (`format_san_move`), capture extraction (`get_captured_piece`, including en passant), sorted captured-piece trays (`format_captured_tray`), PGN export (`pgn_result`, `build_pgn`), and non-blocking Windows audio (`play_sound`).
+    - Added `get_cpp_best_move()`, `get_fen()`, and `set_fen()` to `ai.py`.
+  - **Tkinter GUI Upgrades (`ui.py`):**
+    - Switched PvAI move search to C++ `BEST_MOVE` (`Easy (Depth 2)`, `Medium (Depth 4)`, `Hard (Depth 6)`), while retaining `AI` fallback cleanly.
+    - Added SAN move history display, per-side captured piece trays synchronized during `Back`/`Next`/`Live` review, `FEN` load button, `PGN` export button, `🔊`/`🔇` sound mute button, `½ Draw` agreement button in PvP mode, and `💡 Hint` button drawing a gold best-move arrow on the board.
+    - Added smooth drag-and-drop (`on_mouse_down`, `on_mouse_drag`, `on_mouse_up`) alongside click-to-move and smooth live move animations (`animate_from`) without blocking rapid follow-up clicks or board flips.
+- **Files Created / Modified:**
+  - `Board.h`, `Board.cpp`, `Search.h`, `Search.cpp`, `main.cpp`
+  - `ai.py`, `chess_utils.py`, `ui.py`
+  - `tests/test_chess_utils.py`, `tests/test_engine.py`, `tests/test_ui_logic.py`
+  - `README.md`, `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `g++ -std=c++17 -O2 main.cpp Board.cpp Move.cpp Pawn.cpp Knight.cpp Bishop.cpp Rook.cpp Queen.cpp King.cpp Evaluation.cpp Search.cpp -o gambit.exe` — Compiled cleanly (exit code 0).
+  - `python -m py_compile ai.py chess_utils.py evaluation.py ui.py tests/test_chess_utils.py tests/test_engine.py tests/test_ui_logic.py tests/test_ai.py tests/test_evaluation.py` — Passed.
+  - `python -m unittest discover -s tests -v` — 37 tests passed in 5.861s (`OK`).
+  - `1280x680` sidebar layout verification (`fen_button` through `new_game_button` bottom <= 710px within 729px window height) — Passed (`ALL_FIT_OK`).

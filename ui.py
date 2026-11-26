@@ -4,9 +4,25 @@ import subprocess
 import threading
 import time
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import filedialog, messagebox
 
-from ai import AI, get_engine_evaluation, get_position, send_move_to_engine
+from ai import (
+    AI,
+    get_cpp_best_move,
+    get_engine_evaluation,
+    get_fen,
+    get_position,
+    send_move_to_engine,
+    set_fen,
+)
+from chess_utils import (
+    STANDARD_START_FEN,
+    build_pgn,
+    format_captured_tray,
+    format_san_move,
+    get_captured_piece,
+    play_sound,
+)
 from evaluation import (
     analyze_material,
     evaluate_board,
@@ -18,6 +34,9 @@ GAME_OVER_STATUSES = (
     "CHECKMATE",
     "STALEMATE",
     "DRAW_INSUFFICIENT_MATERIAL",
+    "DRAW_FIFTY_MOVE",
+    "DRAW_THREEFOLD_REPETITION",
+    "DRAW_AGREED",
     "RESIGNED_WHITE",
     "RESIGNED_BLACK",
     "TIMEOUT_WHITE",
@@ -43,15 +62,15 @@ TIME_CONTROLS = {
 }
 
 AI_DIFFICULTY_DEPTHS = {
-    "Easy (Depth 1)": 1,
-    "Medium (Depth 3)": 3,
-    "Hard (Depth 4)": 4,
+    "Easy (Depth 2)": 2,
+    "Medium (Depth 4)": 4,
+    "Hard (Depth 6)": 6,
 }
 
 AI_DIFFICULTY_TIME_LIMITS = {
-    "Easy (Depth 1)": 0.5,
-    "Medium (Depth 3)": 2.0,
-    "Hard (Depth 4)": 4.5,
+    "Easy (Depth 2)": 0.4,
+    "Medium (Depth 4)": 1.5,
+    "Hard (Depth 6)": 2.5,
 }
 
 THEME = {
@@ -179,6 +198,15 @@ def format_status_text(
     if game_status == "DRAW_INSUFFICIENT_MATERIAL":
         return "DRAW — Insufficient Material", "#FBBF24"
 
+    if game_status == "DRAW_FIFTY_MOVE":
+        return "DRAW — 50-Move Rule", "#FBBF24"
+
+    if game_status == "DRAW_THREEFOLD_REPETITION":
+        return "DRAW — Threefold Repetition", "#FBBF24"
+
+    if game_status == "DRAW_AGREED":
+        return "DRAW — Agreed", "#FBBF24"
+
     if game_status == "RESIGNED_WHITE":
         return "White resigned — Black wins", "#F87171"
 
@@ -261,10 +289,18 @@ class GambitUI:
         self.last_move = None
         self.white_turn = True
         self.move_history = []
+        self.san_history = []
+        self.captured_by_white = []
+        self.captured_by_black = []
+        self.initial_fen = STANDARD_START_FEN
         self.position_history = []
         self.view_index = -1
         self.animating = False
         self._anim_after_id = None
+        self._pending_live_animate = False
+        self._drag_state = None
+        self.hint_move = None
+        self.sound_enabled = bool(prompt_mode_on_start)
         self.game_status = "NORMAL"
         self.engine_busy = True
         self.closing = False
@@ -294,14 +330,68 @@ class GambitUI:
         self.header_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
         self.header_frame.pack(fill="x", padx=12, pady=(8, 6))
 
+        self.title_row = tk.Frame(self.header_frame, bg=THEME["sidebar"])
+        self.title_row.pack(fill="x")
+
         tk.Label(
-            self.header_frame,
+            self.title_row,
             text="♟ GAMBIT CHESS",
-            font=("Segoe UI", 14, "bold"),
+            font=("Segoe UI", 13, "bold"),
             fg=THEME["text"],
             bg=THEME["sidebar"],
             anchor="w"
-        ).pack(fill="x")
+        ).pack(side="left")
+
+        self.fen_button = tk.Button(
+            self.title_row,
+            text="FEN",
+            font=("Segoe UI", 8, "bold"),
+            bg=THEME["btn_bg"],
+            fg=THEME["text"],
+            activebackground=THEME["btn_active"],
+            activeforeground="#FFFFFF",
+            relief="flat",
+            bd=0,
+            padx=6,
+            pady=2,
+            cursor="hand2",
+            command=self.prompt_load_fen
+        )
+        self.fen_button.pack(side="right", padx=(3, 0))
+
+        self.pgn_button = tk.Button(
+            self.title_row,
+            text="PGN",
+            font=("Segoe UI", 8, "bold"),
+            bg=THEME["btn_bg"],
+            fg=THEME["text"],
+            activebackground=THEME["btn_active"],
+            activeforeground="#FFFFFF",
+            relief="flat",
+            bd=0,
+            padx=6,
+            pady=2,
+            cursor="hand2",
+            command=self.export_pgn
+        )
+        self.pgn_button.pack(side="right", padx=(3, 0))
+
+        self.sound_button = tk.Button(
+            self.title_row,
+            text="🔊" if self.sound_enabled else "🔇",
+            font=("Segoe UI", 9),
+            bg=THEME["btn_bg"],
+            fg=THEME["text"],
+            activebackground=THEME["btn_active"],
+            activeforeground="#FFFFFF",
+            relief="flat",
+            bd=0,
+            padx=5,
+            pady=1,
+            cursor="hand2",
+            command=self.toggle_sound
+        )
+        self.sound_button.pack(side="right")
 
         self.mode_label = tk.Label(
             self.header_frame,
@@ -374,6 +464,16 @@ class GambitUI:
         )
         self.top_clock_time.pack(fill="x")
 
+        self.top_captured_label = tk.Label(
+            self.top_clock_box,
+            text="—",
+            font=("Segoe UI Symbol", 9),
+            fg="#CBD5E1",
+            bg=THEME["list_bg"],
+            anchor="w"
+        )
+        self.top_captured_label.pack(fill="x")
+
         self.bottom_clock_box = tk.Frame(self.clock_frame, bg=THEME["list_bg"], padx=8, pady=3)
         self.bottom_clock_box.pack(side="left", fill="x", expand=True, padx=(3, 0))
 
@@ -396,6 +496,16 @@ class GambitUI:
             anchor="w"
         )
         self.bottom_clock_time.pack(fill="x")
+
+        self.bottom_captured_label = tk.Label(
+            self.bottom_clock_box,
+            text="—",
+            font=("Segoe UI Symbol", 9),
+            fg="#CBD5E1",
+            bg=THEME["list_bg"],
+            anchor="w"
+        )
+        self.bottom_captured_label.pack(fill="x")
 
         # ---- Evaluation Card ----
         self.eval_frame = tk.LabelFrame(
@@ -492,7 +602,7 @@ class GambitUI:
         self.resign_button = tk.Button(
             self.action_frame,
             text="🏳 Resign",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 9, "bold"),
             bg=THEME["accent_red"],
             fg="#FFFFFF",
             activebackground="#B91C1C",
@@ -505,12 +615,30 @@ class GambitUI:
             command=self.resign_game,
             state="disabled"
         )
-        self.resign_button.pack(side="left", fill="x", expand=True, padx=(0, 4))
+        self.resign_button.pack(side="left", fill="x", expand=True, padx=(0, 3))
+
+        self.draw_button = tk.Button(
+            self.action_frame,
+            text="½ Draw",
+            font=("Segoe UI", 9, "bold"),
+            bg=THEME["btn_bg"],
+            fg=THEME["text"],
+            activebackground=THEME["btn_active"],
+            activeforeground="#FFFFFF",
+            disabledforeground="#6B7280",
+            relief="flat",
+            bd=0,
+            pady=7,
+            cursor="hand2",
+            command=self.offer_draw,
+            state="disabled"
+        )
+        self.draw_button.pack(side="left", fill="x", expand=True, padx=3)
 
         self.new_game_button = tk.Button(
             self.action_frame,
-            text="⟳ New Game",
-            font=("Segoe UI", 10, "bold"),
+            text="⟳ New",
+            font=("Segoe UI", 9, "bold"),
             bg=THEME["accent_blue"],
             fg="#FFFFFF",
             activebackground="#1D4ED8",
@@ -522,7 +650,7 @@ class GambitUI:
             cursor="hand2",
             command=self.new_game
         )
-        self.new_game_button.pack(side="left", fill="x", expand=True, padx=(4, 0))
+        self.new_game_button.pack(side="left", fill="x", expand=True, padx=(3, 0))
 
         self.review_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
         self.review_frame.pack(side="bottom", fill="x", padx=12, pady=(0, 6))
@@ -595,7 +723,25 @@ class GambitUI:
             cursor="hand2",
             command=self.flip_board
         )
-        self.flip_button.pack(side="left", fill="x", expand=True, padx=(3, 0))
+        self.flip_button.pack(side="left", fill="x", expand=True, padx=3)
+
+        self.hint_button = tk.Button(
+            self.review_frame,
+            text="💡 Hint",
+            font=("Segoe UI", 9, "bold"),
+            bg=THEME["btn_bg"],
+            fg="#FDE047",
+            activebackground=THEME["btn_active"],
+            activeforeground="#FEF08A",
+            disabledforeground="#6B7280",
+            relief="flat",
+            bd=0,
+            pady=5,
+            cursor="hand2",
+            command=self.request_hint,
+            state="disabled"
+        )
+        self.hint_button.pack(side="left", fill="x", expand=True, padx=(3, 0))
 
         self.settings_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
         self.settings_frame.pack(side="bottom", fill="x", padx=12, pady=(0, 6))
@@ -684,7 +830,7 @@ class GambitUI:
             bg=THEME["sidebar"]
         ).pack(side="left")
 
-        self.difficulty_var = tk.StringVar(value="Medium (Depth 3)")
+        self.difficulty_var = tk.StringVar(value="Medium (Depth 4)")
         self.difficulty_menu = tk.OptionMenu(
             self.difficulty_frame,
             self.difficulty_var,
@@ -746,7 +892,9 @@ class GambitUI:
         self.history_scroll.config(command=self.history_list.yview)
 
         self.canvas.bind("<Configure>", self.on_resize)
-        self.canvas.bind("<Button-1>", self.on_click)
+        self.canvas.bind("<ButtonPress-1>", self.on_mouse_down)
+        self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
+        self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
 
         self._reset_clocks(self.time_control_name)
         self._refresh_mode_buttons()
@@ -1044,9 +1192,215 @@ class GambitUI:
             )
         )
 
-    def flip_board(self):
-        if self.closing or self.animating:
+        top_caps = self.captured_by_white if top_is_white else self.captured_by_black
+        bottom_caps = self.captured_by_black if top_is_white else self.captured_by_white
+        self.top_captured_label.config(text=format_captured_tray(top_caps))
+        self.bottom_captured_label.config(text=format_captured_tray(bottom_caps))
+
+    def toggle_sound(self):
+        self.sound_enabled = not self.sound_enabled
+        self.sound_button.config(text="🔊" if self.sound_enabled else "🔇")
+
+    def export_pgn(self, save_dialog=True):
+        white_name = (
+            "Human"
+            if (self.game_mode == MODE_PVP or self.human_color == HUMAN_COLOR_WHITE)
+            else "Gambit AI"
+        )
+        black_name = (
+            "Human"
+            if (self.game_mode == MODE_PVP or self.human_color == HUMAN_COLOR_BLACK)
+            else "Gambit AI"
+        )
+        pgn_text = build_pgn(
+            self.san_history,
+            self.game_status,
+            self.white_turn,
+            white_name=white_name,
+            black_name=black_name,
+            initial_fen=self.initial_fen,
+        )
+        try:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(pgn_text)
+        except Exception:
+            pass
+
+        if save_dialog and not self.closing:
+            path = filedialog.asksaveasfilename(
+                parent=self.root,
+                title="Export Game as PGN",
+                defaultextension=".pgn",
+                filetypes=[("PGN Files", "*.pgn"), ("All Files", "*.*")],
+                initialfile="gambit_game.pgn",
+            )
+            if path:
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(pgn_text + "\n")
+                messagebox.showinfo("PGN Exported", f"Saved PGN to {path}\n(Also copied to clipboard.)")
+            else:
+                messagebox.showinfo("PGN Copied", "PGN copied to clipboard.")
+        return pgn_text
+
+    def prompt_load_fen(self):
+        if self.engine_busy or self.animating:
             return
+        self._in_modal = True
+        self._stop_clock()
+        fen_result = {"value": None}
+        try:
+            dialog = tk.Toplevel(self.root)
+            dialog.title("Load FEN Position")
+            dialog.resizable(False, False)
+            dialog.configure(bg=THEME["sidebar"])
+            dialog.transient(self.root)
+            dialog.grab_set()
+
+            tk.Label(
+                dialog,
+                text="Paste FEN Position",
+                font=("Segoe UI", 13, "bold"),
+                fg=THEME["text"],
+                bg=THEME["sidebar"],
+                padx=20
+            ).pack(pady=(14, 6))
+
+            entry = tk.Entry(
+                dialog,
+                width=62,
+                font=("Consolas", 10),
+                bg=THEME["list_bg"],
+                fg=THEME["text"],
+                insertbackground=THEME["text"],
+                relief="flat",
+                bd=6
+            )
+            entry.pack(padx=20, pady=(0, 10))
+            entry.insert(0, self.initial_fen)
+            entry.selection_range(0, tk.END)
+            entry.focus_set()
+
+            btn_row = tk.Frame(dialog, bg=THEME["sidebar"], padx=20)
+            btn_row.pack(fill="x", pady=(0, 14))
+
+            def on_ok():
+                fen_result["value"] = entry.get().strip()
+                dialog.destroy()
+
+            tk.Button(
+                btn_row,
+                text="Load FEN",
+                font=("Segoe UI", 10, "bold"),
+                bg=THEME["accent_blue"],
+                fg="#FFFFFF",
+                relief="flat",
+                bd=0,
+                pady=6,
+                padx=14,
+                cursor="hand2",
+                command=on_ok
+            ).pack(side="left", expand=True, fill="x", padx=(0, 4))
+
+            tk.Button(
+                btn_row,
+                text="Cancel",
+                font=("Segoe UI", 10),
+                bg=THEME["btn_bg"],
+                fg=THEME["text"],
+                relief="flat",
+                bd=0,
+                pady=6,
+                padx=14,
+                cursor="hand2",
+                command=dialog.destroy
+            ).pack(side="left", expand=True, fill="x", padx=(4, 0))
+
+            dialog.bind("<Return>", lambda _e: on_ok())
+            dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
+            dialog.update_idletasks()
+            x = self.root.winfo_rootx() + (self.root.winfo_width() - dialog.winfo_width()) // 2
+            y = self.root.winfo_rooty() + (self.root.winfo_height() - dialog.winfo_height()) // 2
+            dialog.geometry(f"+{max(0, x)}+{max(0, y)}")
+            dialog.lift()
+            self.root.wait_window(dialog)
+        finally:
+            self._in_modal = False
+
+        if fen_result["value"]:
+            self.load_fen(fen_result["value"])
+        else:
+            self._start_clock()
+
+    def load_fen(self, fen_str):
+        if self.engine_busy:
+            return
+        self._stop_clock()
+        self.engine_busy = True
+        self._update_controls()
+        threading.Thread(
+            target=self._process_load_fen,
+            args=(fen_str,),
+            daemon=True
+        ).start()
+
+    def _process_load_fen(self, fen_str):
+        try:
+            with self.engine_lock:
+                ok = set_fen(self.engine, fen_str)
+                if not ok:
+                    raise ValueError(f"Invalid FEN string:\n{fen_str}")
+                board, moves, status, turn = get_position(self.engine)
+                engine_eval = get_engine_evaluation(self.engine)
+                loaded_fen = get_fen(self.engine)
+
+            if not self.closing:
+                self.root.after(
+                    0,
+                    lambda: self._apply_loaded_fen(
+                        board, moves, status, turn, engine_eval, loaded_fen
+                    )
+                )
+        except Exception as e:
+            if not self.closing:
+                self.root.after(
+                    0,
+                    lambda err=str(e): self._handle_move_error("FEN Error", err)
+                )
+
+    def _apply_loaded_fen(self, board, moves, status, turn, engine_eval, loaded_fen):
+        if self.closing:
+            return
+        self._cancel_animation()
+        self.initial_fen = loaded_fen
+        self.selected_square = None
+        self.selected_moves = []
+        self.last_move = None
+        self.hint_move = None
+        self.move_history = []
+        self.san_history = []
+        self.captured_by_white = []
+        self.captured_by_black = []
+        self.position_history = []
+        self.view_index = -1
+        self._reset_clocks(self.time_control_name)
+        self.update_move_history()
+        self.update_position(board, moves, status, turn, engine_eval=engine_eval)
+        self._start_clock()
+        if should_ai_move_for_turn(self.game_mode, status, turn, self.human_color):
+            self.engine_busy = True
+            self._update_controls()
+            self.draw_board()
+            threading.Thread(
+                target=self.process_ai_turn,
+                args=([r[:] for r in board], list(moves), status, turn),
+                daemon=True
+            ).start()
+
+    def flip_board(self):
+        if self.closing:
+            return
+        if self.animating:
+            self._cancel_animation()
         self.board_flipped = not self.board_flipped
         self._refresh_clocks()
         self.draw_board()
@@ -1278,10 +1632,10 @@ class GambitUI:
         return chosen["result"]
 
     def get_ai_depth(self):
-        return AI_DIFFICULTY_DEPTHS.get(self.difficulty_var.get(), 3)
+        return AI_DIFFICULTY_DEPTHS.get(self.difficulty_var.get(), 4)
 
     def get_ai_time_limit(self):
-        return AI_DIFFICULTY_TIME_LIMITS.get(self.difficulty_var.get(), 2.0)
+        return AI_DIFFICULTY_TIME_LIMITS.get(self.difficulty_var.get(), 1.5)
 
     def is_viewing_live(self):
         return (
@@ -1297,6 +1651,7 @@ class GambitUI:
         self.pvai_mode_btn.config(state=state)
         self.pvp_mode_btn.config(state=state)
         self.time_menu.config(state=state)
+        self.fen_button.config(state=state)
         ai_state = (
             "normal"
             if (not self.engine_busy and self.game_mode == MODE_PVAI)
@@ -1314,6 +1669,20 @@ class GambitUI:
         )
         self.resign_button.config(
             state="normal" if can_resign else "disabled"
+        )
+        can_draw = can_resign and (self.game_mode == MODE_PVP)
+        self.draw_button.config(
+            state="normal" if can_draw else "disabled"
+        )
+        can_hint = (
+            not self.engine_busy
+            and not self.animating
+            and bool(self.board)
+            and self.is_viewing_live()
+            and self.game_status not in GAME_OVER_STATUSES
+        )
+        self.hint_button.config(
+            state="normal" if can_hint else "disabled"
         )
 
         can_back = (
@@ -1429,13 +1798,17 @@ class GambitUI:
         turn,
         last_move=None,
         appended_move=None,
+        appended_san=None,
+        captured_piece=None,
         keep_busy=False,
-        engine_eval=None
+        engine_eval=None,
+        animate_from=None
     ):
         if self.closing:
             return
 
         self._cancel_animation()
+        self.hint_move = None
         self.board = [row[:] for row in board]
         self.legal_moves = moves
         self.game_status = status
@@ -1444,6 +1817,12 @@ class GambitUI:
             self.last_move = last_move
         if appended_move is not None:
             self.move_history.append(appended_move)
+            self.san_history.append(appended_san or appended_move)
+            if captured_piece is not None:
+                if captured_piece.islower():
+                    self.captured_by_white.append(captured_piece)
+                else:
+                    self.captured_by_black.append(captured_piece)
 
         snapshot = {
             "board": [row[:] for row in board],
@@ -1451,6 +1830,8 @@ class GambitUI:
             "white_turn": (turn == "WHITE"),
             "last_move": self.last_move,
             "engine_eval": self.engine_eval if engine_eval is None else engine_eval,
+            "captured_by_white": list(self.captured_by_white),
+            "captured_by_black": list(self.captured_by_black),
         }
         if appended_move is not None or not self.position_history:
             self.position_history.append(snapshot)
@@ -1465,6 +1846,17 @@ class GambitUI:
             if self._clock_last_tick is not None:
                 self._clock_last_tick = time.monotonic()
 
+            if status in GAME_OVER_STATUSES:
+                play_sound("gameover", self.sound_enabled)
+            elif status == "CHECK":
+                play_sound("check", self.sound_enabled)
+            elif (appended_san or "").startswith("O-O"):
+                play_sound("castle", self.sound_enabled)
+            elif captured_piece is not None:
+                play_sound("capture", self.sound_enabled)
+            else:
+                play_sound("move", self.sound_enabled)
+
         self.engine_busy = keep_busy
 
         if self.game_status in GAME_OVER_STATUSES:
@@ -1473,46 +1865,62 @@ class GambitUI:
         self.update_evaluation_panel(board, engine_eval=engine_eval)
         self._refresh_clocks()
         self._update_controls()
+
+        if (
+            animate_from is not None
+            and len(animate_from) == 2
+            and self.canvas.winfo_width() > 20
+        ):
+            from_sq, to_sq = animate_from
+            to_r, to_c = notation_to_coords(to_sq)
+            moving_piece = self.board[to_r][to_c]
+            if moving_piece not in (".", " "):
+                self._animate_move_step(
+                    self.view_index,
+                    self.board,
+                    moving_piece,
+                    from_sq,
+                    to_sq,
+                    total_steps=6,
+                    frame_ms=12,
+                )
+                return
+
         self.draw_board()
 
-    # ---------------- MOVE SELECTION ----------------
+    # ---------------- MOVE SELECTION & DRAG-DROP ----------------
 
-    def on_click(self, event):
-
-        if self.engine_busy or self.animating:
-            return
-
-        if not self.is_viewing_live():
-            return
-
-        if self.game_status in GAME_OVER_STATUSES:
-            return
-
-        if not can_human_interact(self.game_mode, self.white_turn, self.human_color):
-            return
-
-        if not self.board:
-            return
-
+    def _event_to_board_square(self, event):
         width = self.canvas.winfo_width()
         height = self.canvas.winfo_height()
-
         _, square_size, offset_x, offset_y = get_board_geometry(width, height)
+        if square_size <= 0:
+            return None
 
         disp_col = int((event.x - offset_x) / square_size)
         disp_row = int((event.y - offset_y) / square_size)
 
         if disp_row < 0 or disp_row >= 8 or disp_col < 0 or disp_col >= 8:
-            return
+            return None
 
         row, col = display_to_board_coords(disp_row, disp_col, self.board_flipped)
+        return row, col, self.square_to_notation(row, col)
 
-        clicked_square = self.square_to_notation(row, col)
+    def _can_interact_now(self):
+        if self.engine_busy:
+            return False
+        if self.animating:
+            self._cancel_animation()
+        return (
+            self.is_viewing_live()
+            and self.game_status not in GAME_OVER_STATUSES
+            and can_human_interact(self.game_mode, self.white_turn, self.human_color)
+            and bool(self.board)
+        )
 
+    def _handle_square_click(self, clicked_square, row, col):
         if self.selected_square is None:
-
             piece = self.board[row][col]
-
             if not is_own_piece(piece, self.white_turn):
                 return
 
@@ -1520,67 +1928,141 @@ class GambitUI:
                 move for move in self.legal_moves
                 if move[:2] == clicked_square
             ]
-
             if not moves:
                 return
 
             self.selected_square = clicked_square
             self.selected_moves = moves
             self.draw_board()
+            return
 
-        else:
+        same_destination = [
+            move for move in self.selected_moves
+            if move[2:4] == clicked_square
+        ]
 
-            move_found = None
+        if same_destination:
+            move_found = same_destination[0]
+            if any(len(move) >= 5 for move in same_destination):
+                move_found = self.choose_promotion(same_destination)
+                if move_found is None:
+                    return
 
-            for move in self.selected_moves:
-                if move[2:4] == clicked_square:
-                    move_found = move
-                    break
+            self.selected_square = None
+            self.selected_moves = []
+            self.make_move(move_found, animate=True)
+            return
 
-            if move_found is not None:
-
-                same_destination = [
-                    move for move in self.selected_moves
-                    if move[2:4] == clicked_square
-                ]
-
-                if any(len(move) >= 5 for move in same_destination):
-
-                    move_found = self.choose_promotion(
-                        same_destination
-                    )
-
-                    if move_found is None:
-                        return
-
+        piece = self.board[row][col]
+        if is_own_piece(piece, self.white_turn):
+            moves = [
+                move for move in self.legal_moves
+                if move[:2] == clicked_square
+            ]
+            if moves:
+                self.selected_square = clicked_square
+                self.selected_moves = moves
+            else:
                 self.selected_square = None
                 self.selected_moves = []
+        else:
+            self.selected_square = None
+            self.selected_moves = []
 
-                self.make_move(move_found)
+        self.draw_board()
 
+    def on_click(self, event):
+        if not self._can_interact_now():
+            return
+        coords = self._event_to_board_square(event)
+        if coords is None:
+            return
+        row, col, clicked_square = coords
+        self._handle_square_click(clicked_square, row, col)
+
+    def on_mouse_down(self, event):
+        self._drag_state = None
+        if not self._can_interact_now():
+            return
+        coords = self._event_to_board_square(event)
+        if coords is None:
+            return
+        row, col, clicked_square = coords
+        piece = self.board[row][col]
+
+        if is_own_piece(piece, self.white_turn):
+            moves = [
+                move for move in self.legal_moves
+                if move[:2] == clicked_square
+            ]
+            self._drag_state = {
+                "from_sq": clicked_square,
+                "piece": piece,
+                "moves": moves,
+                "start_x": event.x,
+                "start_y": event.y,
+                "dragging": False,
+            }
+            if moves:
+                self.selected_square = clicked_square
+                self.selected_moves = moves
             else:
+                self.selected_square = None
+                self.selected_moves = []
+            self.draw_board()
+            return
 
-                piece = self.board[row][col]
+        self._handle_square_click(clicked_square, row, col)
 
-                if is_own_piece(piece, self.white_turn):
+    def on_mouse_drag(self, event):
+        state = self._drag_state
+        if not state or not state["moves"] or self.engine_busy or self.animating:
+            return
 
-                    moves = [
-                        move for move in self.legal_moves
-                        if move[:2] == clicked_square
-                    ]
+        if not state["dragging"]:
+            if abs(event.x - state["start_x"]) + abs(event.y - state["start_y"]) < 6:
+                return
+            state["dragging"] = True
 
-                    if moves:
-                        self.selected_square = clicked_square
-                        self.selected_moves = moves
-                    else:
-                        self.selected_square = None
-                        self.selected_moves = []
+        width = self.canvas.winfo_width()
+        height = self.canvas.winfo_height()
+        _, square_size, _, _ = get_board_geometry(width, height)
+        self.draw_board(hidden_square=state["from_sq"])
+        self.draw_piece(state["piece"], event.x, event.y, square_size)
 
-                else:
-                    self.selected_square = None
-                    self.selected_moves = []
+    def on_mouse_up(self, event):
+        state = self._drag_state
+        self._drag_state = None
+        if not state or not state["dragging"]:
+            return
 
-                self.draw_board()
+        coords = self._event_to_board_square(event)
+        if coords is None:
+            self.draw_board()
+            return
+
+        _, _, target_square = coords
+        same_destination = [
+            move for move in state["moves"]
+            if move[2:4] == target_square
+        ]
+        if not same_destination:
+            if target_square != state["from_sq"]:
+                self.selected_square = None
+                self.selected_moves = []
+            self.draw_board()
+            return
+
+        move_found = same_destination[0]
+        if any(len(move) >= 5 for move in same_destination):
+            self.draw_board()
+            move_found = self.choose_promotion(same_destination)
+            if move_found is None:
+                return
+
+        self.selected_square = None
+        self.selected_moves = []
+        self.make_move(move_found, animate=False)
 
     # ---------------- PROMOTION ----------------
 
@@ -1661,29 +2143,42 @@ class GambitUI:
 
     # ---------------- HUMAN MOVE ----------------
 
-    def make_move(self, move):
+    def make_move(self, move, animate=True):
+
+        if self.engine_busy:
+            return
+        if self.animating:
+            self._cancel_animation()
 
         if (
-            self.engine_busy
-            or self.animating
-            or not self.is_viewing_live()
+            not self.is_viewing_live()
             or self.game_status in GAME_OVER_STATUSES
         ):
             return
 
+        board_before = [row[:] for row in self.board]
+        moves_before = list(self.legal_moves)
         self.engine_busy = True
+        self.hint_move = None
         self._update_controls()
         self.draw_board()
 
         threading.Thread(
             target=self.process_human_move,
-            args=(move,),
+            args=(move, board_before, moves_before, animate),
             daemon=True
         ).start()
 
-    def process_human_move(self, move):
+    def process_human_move(self, move, board_before=None, moves_before=None, animate=True):
 
         try:
+            if board_before is None:
+                board_before = [row[:] for row in self.board]
+            if moves_before is None:
+                moves_before = list(self.legal_moves)
+
+            captured_piece = get_captured_piece(board_before, move)
+
             with self.engine_lock:
                 response = send_move_to_engine(
                     self.engine, move
@@ -1699,9 +2194,17 @@ class GambitUI:
                 )
                 engine_eval = get_engine_evaluation(self.engine)
 
+            san_text = format_san_move(
+                board_before,
+                moves_before,
+                move,
+                next_status=status
+            )
+
             should_ai_move = should_ai_move_for_turn(
                 self.game_mode, status, turn, self.human_color
             )
+            anim_pair = (move[:2], move[2:4]) if (animate and len(move) >= 4) else None
 
             if not self.closing:
                 self.root.after(
@@ -1713,8 +2216,11 @@ class GambitUI:
                         turn,
                         last_move=move,
                         appended_move=move,
+                        appended_san=san_text,
+                        captured_piece=captured_piece,
                         keep_busy=should_ai_move,
-                        engine_eval=engine_eval
+                        engine_eval=engine_eval,
+                        animate_from=anim_pair
                     )
                 )
 
@@ -1750,17 +2256,27 @@ class GambitUI:
                     )
                 return
 
+            board_before = [row[:] for row in board]
+            moves_before = list(moves)
             depth = self.get_ai_depth()
             time_limit = self.get_ai_time_limit()
+            time_limit_ms = max(100, int(time_limit * 1000))
 
             with self.engine_lock:
-                ai_move = self.ai.find_best_move(
-                    board,
-                    moves,
-                    turn,
+                ai_move, _, _ = get_cpp_best_move(
+                    self.engine,
                     depth=depth,
-                    time_limit=time_limit
+                    time_limit_ms=time_limit_ms
                 )
+
+                if ai_move is None and moves_before:
+                    ai_move = self.ai.find_best_move(
+                        board_before,
+                        moves_before,
+                        turn,
+                        depth=depth,
+                        time_limit=time_limit
+                    )
 
                 if ai_move is None:
                     if not self.closing:
@@ -1770,6 +2286,7 @@ class GambitUI:
                         )
                     return
 
+                captured_piece = get_captured_piece(board_before, ai_move)
                 response = send_move_to_engine(
                     self.engine, ai_move
                 )
@@ -1784,6 +2301,14 @@ class GambitUI:
                 )
                 engine_eval = get_engine_evaluation(self.engine)
 
+            san_text = format_san_move(
+                board_before,
+                moves_before,
+                ai_move,
+                next_status=status
+            )
+            anim_pair = (ai_move[:2], ai_move[2:4]) if len(ai_move) >= 4 else None
+
             if not self.closing:
                 self.root.after(
                     0,
@@ -1794,8 +2319,11 @@ class GambitUI:
                         turn,
                         last_move=ai_move,
                         appended_move=ai_move,
+                        appended_san=san_text,
+                        captured_piece=captured_piece,
                         keep_busy=False,
-                        engine_eval=engine_eval
+                        engine_eval=engine_eval,
+                        animate_from=anim_pair
                     )
                 )
 
@@ -1830,12 +2358,92 @@ class GambitUI:
         self._stop_clock()
         self.selected_square = None
         self.selected_moves = []
+        self.hint_move = None
         self.game_status = (
             "RESIGNED_WHITE" if self.white_turn else "RESIGNED_BLACK"
         )
         if self.position_history:
             self.position_history[-1]["status"] = self.game_status
+        play_sound("gameover", self.sound_enabled)
         self._refresh_clocks()
+        self._update_controls()
+        self.draw_board()
+
+    def offer_draw(self, confirm=True):
+        if (
+            self.engine_busy
+            or self.animating
+            or not self.board
+            or not self.is_viewing_live()
+            or self.game_status in GAME_OVER_STATUSES
+            or self.game_mode != MODE_PVP
+        ):
+            return
+
+        if confirm:
+            side = "White" if self.white_turn else "Black"
+            opponent = "Black" if self.white_turn else "White"
+            ok = messagebox.askyesno(
+                "Offer Draw",
+                f"{side} offers a draw.\nDoes {opponent} accept the draw?"
+            )
+            if not ok:
+                return
+
+        self._stop_clock()
+        self.selected_square = None
+        self.selected_moves = []
+        self.hint_move = None
+        self.game_status = "DRAW_AGREED"
+        if self.position_history:
+            self.position_history[-1]["status"] = self.game_status
+        play_sound("gameover", self.sound_enabled)
+        self._refresh_clocks()
+        self._update_controls()
+        self.draw_board()
+
+    def request_hint(self):
+        if (
+            self.engine_busy
+            or self.animating
+            or not self.board
+            or not self.is_viewing_live()
+            or self.game_status in GAME_OVER_STATUSES
+        ):
+            return
+
+        self.engine_busy = True
+        self._update_controls()
+        threading.Thread(
+            target=self._process_hint,
+            daemon=True
+        ).start()
+
+    def _process_hint(self):
+        try:
+            with self.engine_lock:
+                hint_move, _, _ = get_cpp_best_move(
+                    self.engine,
+                    depth=4,
+                    time_limit_ms=900
+                )
+            if not self.closing:
+                self.root.after(
+                    0,
+                    lambda m=hint_move: self._apply_hint(m)
+                )
+        except Exception:
+            if not self.closing:
+                self.root.after(
+                    0,
+                    lambda: self._apply_hint(None)
+                )
+
+    def _apply_hint(self, hint_move):
+        if self.closing:
+            return
+        self.engine_busy = False
+        self.hint_move = hint_move
         self._update_controls()
         self.draw_board()
 
@@ -1863,6 +2471,9 @@ class GambitUI:
         self.game_status = snapshot["status"]
         self.white_turn = snapshot["white_turn"]
         self.last_move = snapshot["last_move"]
+        self.captured_by_white = list(snapshot.get("captured_by_white", []))
+        self.captured_by_black = list(snapshot.get("captured_by_black", []))
+        self.hint_move = None
         self.selected_square = None
         self.selected_moves = []
 
@@ -1870,6 +2481,7 @@ class GambitUI:
             self.board,
             engine_eval=snapshot["engine_eval"]
         )
+        self._refresh_clocks()
         self._highlight_history_for_view(idx)
         self._update_controls()
         self.draw_board()
@@ -1890,7 +2502,8 @@ class GambitUI:
         from_sq,
         to_sq,
         step=0,
-        total_steps=8
+        total_steps=8,
+        frame_ms=15
     ):
         if self.closing:
             return
@@ -1937,7 +2550,7 @@ class GambitUI:
             self.draw_piece(moving_piece, cur_x, cur_y, square_size)
 
         self._anim_after_id = self.root.after(
-            15,
+            frame_ms,
             lambda: self._animate_move_step(
                 target_index,
                 target_board,
@@ -1945,7 +2558,8 @@ class GambitUI:
                 from_sq,
                 to_sq,
                 step=step + 1,
-                total_steps=total_steps
+                total_steps=total_steps,
+                frame_ms=frame_ms
             )
         )
 
@@ -2125,7 +2739,12 @@ class GambitUI:
         self.selected_square = None
         self.selected_moves = []
         self.last_move = None
+        self.hint_move = None
         self.move_history = []
+        self.san_history = []
+        self.captured_by_white = []
+        self.captured_by_black = []
+        self.initial_fen = STANDARD_START_FEN
         self.position_history = []
         self.view_index = -1
         self.update_move_history()
@@ -2141,14 +2760,20 @@ class GambitUI:
             0, tk.END
         )
 
-        for i in range(0, len(self.move_history), 2):
+        display_moves = (
+            self.san_history
+            if len(self.san_history) == len(self.move_history)
+            else self.move_history
+        )
+
+        for i in range(0, len(display_moves), 2):
 
             move_number = (i // 2) + 1
-            white_move = self.move_history[i]
+            white_move = display_moves[i]
 
-            if i + 1 < len(self.move_history):
+            if i + 1 < len(display_moves):
 
-                black_move = self.move_history[i + 1]
+                black_move = display_moves[i + 1]
 
                 text = (
                     f"{move_number}. "
@@ -2343,6 +2968,40 @@ class GambitUI:
                         font=("Segoe UI", 10, "bold"),
                         fill=dark if is_light else light
                     )
+
+        if (
+            self.hint_move
+            and len(self.hint_move) >= 4
+            and viewing_live
+        ):
+            from_r, from_c = notation_to_coords(self.hint_move[:2])
+            to_r, to_c = notation_to_coords(self.hint_move[2:4])
+            disp_from_r, disp_from_c = board_to_display_coords(
+                from_r, from_c, self.board_flipped
+            )
+            disp_to_r, disp_to_c = board_to_display_coords(
+                to_r, to_c, self.board_flipped
+            )
+            hx1 = offset_x + (disp_from_c + 0.5) * square_size
+            hy1 = offset_y + (disp_from_r + 0.5) * square_size
+            hx2 = offset_x + (disp_to_c + 0.5) * square_size
+            hy2 = offset_y + (disp_to_r + 0.5) * square_size
+            arrow_w = max(4, int(square_size * 0.12))
+            self.canvas.create_line(
+                hx1,
+                hy1,
+                hx2,
+                hy2,
+                fill="#F59E0B",
+                width=arrow_w,
+                arrow=tk.LAST,
+                arrowshape=(
+                    max(12, int(square_size * 0.24)),
+                    max(15, int(square_size * 0.28)),
+                    max(5, int(square_size * 0.10)),
+                ),
+                capstyle=tk.ROUND,
+            )
 
     def draw_piece(self, piece, x, y, square_size):
 

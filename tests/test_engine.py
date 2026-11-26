@@ -7,7 +7,14 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from ai import get_engine_evaluation, get_position, send_move_to_engine
+from ai import (
+    get_cpp_best_move,
+    get_engine_evaluation,
+    get_fen,
+    get_position,
+    send_move_to_engine,
+    set_fen,
+)
 from evaluation import analyze_material
 
 
@@ -147,6 +154,62 @@ class GambitEngineTests(unittest.TestCase):
         expected_score = analyze_material(board)["score"]
         self.assertGreater(expected_score, 0)
         self.assertEqual(get_engine_evaluation(self.engine), expected_score)
+
+    def test_fen_roundtrip_and_invalid_fen(self):
+        start_fen = get_fen(self.engine)
+        self.assertEqual(
+            start_fen,
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        )
+
+        custom_fen = "4k3/8/8/8/8/8/4P3/4K2R w K - 4 20"
+        self.assertTrue(set_fen(self.engine, custom_fen))
+        self.assertEqual(get_fen(self.engine), custom_fen)
+
+        board, moves, status, turn = get_position(self.engine)
+        self.assertEqual(status, "NORMAL")
+        self.assertEqual(turn, "WHITE")
+        self.assertEqual(board[7][4], "K")
+        self.assertEqual(board[7][7], "R")
+        self.assertIn("e1g1", moves)
+
+        self.assertFalse(set_fen(self.engine, "invalid fen string"))
+        self.assertEqual(get_fen(self.engine), custom_fen)
+
+    def test_fifty_move_and_threefold_repetition_draws(self):
+        # 50-move rule: halfmove clock at 99 -> quiet rook move triggers 100
+        self.assertTrue(
+            set_fen(self.engine, "4k3/8/8/8/8/8/8/4K2R w - - 99 50")
+        )
+        board, moves, status, turn = self.play_moves(["h1g1"])
+        self.assertEqual(status, "DRAW_FIFTY_MOVE")
+        self.assertEqual(turn, "BLACK")
+        self.assertEqual(moves, [])
+        self.assertEqual(board[7][6], "R")
+        self.assertEqual(send_move_to_engine(self.engine, "e8d8"), "GAME_OVER")
+
+        # Threefold repetition from initial position (3rd occurrence triggers draw)
+        self.assertEqual(self.send_raw("NEW_GAME"), "NEW_GAME_OK")
+        _, moves, status, _ = self.play_moves([
+            "g1f3", "g8f6",
+            "f3g1", "f6g8",
+            "g1f3", "g8f6",
+            "f3g1", "f6g8",
+        ])
+        self.assertEqual(status, "DRAW_THREEFOLD_REPETITION")
+        self.assertEqual(moves, [])
+        self.assertEqual(send_move_to_engine(self.engine, "e2e4"), "GAME_OVER")
+
+    def test_cpp_best_move_tactics_and_state_integrity(self):
+        # Scholar's mate in 1: Qxf7#
+        mate_fen = "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4"
+        self.assertTrue(set_fen(self.engine, mate_fen))
+        best_move, score, nodes = get_cpp_best_move(self.engine, depth=4, time_limit_ms=1000)
+        self.assertEqual(best_move, "h5f7")
+        self.assertGreater(score, 50000)
+        self.assertGreater(nodes, 0)
+        # Engine board must stay intact after search
+        self.assertEqual(get_fen(self.engine), mate_fen)
 
 
 if __name__ == "__main__":

@@ -21,27 +21,25 @@ Gambit is a chess engine built from the ground up — combining a C++17 rules, m
 
 - [x] 8×8 board representation & full piece movement validation
 - [x] Legal move generation & king safety / check detection
-- [x] Checkmate, stalemate, and insufficient material draw detection
+- [x] Checkmate, stalemate, insufficient material, 50-move rule, and threefold repetition draw detection
 - [x] Castling (kingside & queenside), en passant, and pawn promotion (`q`/`r`/`b`/`n`)
-- [x] Board-state save & restore stack (`UNDO_MOVE`, `NEW_GAME`)
-- [x] Line-based stdin/stdout protocol (`GET_MOVES`, `MAKE_MOVE`, `UNDO_MOVE`, `NEW_GAME`)
+- [x] FEN import/export (`GET_FEN`, `SET_FEN`) and Board-state stack (`UNDO_MOVE`, `NEW_GAME`)
+- [x] High-speed C++17 search (`BEST_MOVE` with Iterative Deepening Alpha-Beta, Quiescence, 64-bit Zobrist Transposition Table, MVV-LVA, Killer Moves, PST)
+- [x] Line-based stdin/stdout protocol (`GET_MOVES`, `MAKE_MOVE`, `UNDO_MOVE`, `NEW_GAME`, `EVALUATE`, `GET_FEN`, `SET_FEN`, `BEST_MOVE`)
 
 ### Chess AI & Evaluation
 
-- [x] Material evaluation + Knight and Pawn piece-square tables (`evaluation.py`)
-- [x] Minimax search with Alpha-Beta pruning
-- [x] Capture/promotion move ordering (including root move ordering)
-- [x] Quiescence search with check evasion handling
-- [x] Mate-distance scoring (prefers faster forced mates)
-- [x] Configurable search depth (`Easy` / `Medium` / `Hard`)
+- [x] Material evaluation + positional piece-square tables (`Evaluation.cpp` / `evaluation.py`)
+- [x] Live Position Evaluation Panel (advantage bar, material breakdown, C++ eval vs positional eval)
+- [x] Configurable search difficulty (`Easy (Depth 2)` / `Medium (Depth 4)` / `Hard (Depth 6)`)
 
 ### Python Tkinter Interface
 
-- [x] Interactive graphical chess board with algebraic coordinates
-- [x] Legal move, selected square, last move, and king-in-check highlighting
-- [x] Clickable modal pawn promotion dialog (`♕`, `♖`, `♗`, `♘`)
-- [x] Turn, AI thinking, check, checkmate, stalemate, and draw status banner
-- [x] Move history panel, `Undo Move`, `New Game`, and `AI Level` selector
+- [x] Interactive graphical chess board with algebraic coordinates, drag-and-drop & click-to-move, and smooth move animations
+- [x] Legal move, selected square, last move, king-in-check highlighting, and `💡 Hint` best-move arrow
+- [x] Standard Algebraic Notation (`SAN`) move history, captured pieces tray, and `🔊` sound toggle
+- [x] Player vs AI (`White`/`Black`/`Random`) & Player vs Player modes with live chess clocks (`Bullet`/`Blitz`/`Rapid`), `⇅ Flip`, `Resign`, `½ Draw` offer, FEN import, and PGN export
+- [x] Animated `Back` / `Next` / `Live` move review without unfair undo
 - [x] Thread-safe background engine communication & clean shutdown
 
 ---
@@ -49,16 +47,16 @@ Gambit is a chess engine built from the ground up — combining a C++17 rules, m
 ## 🧠 Architecture
 
 ```text
-   Python Tkinter GUI (ui.py)
+   Python Tkinter GUI (ui.py + chess_utils.py)
                │
                ▼
-      Python AI (ai.py) ──► Evaluation (evaluation.py)
+      Engine Bridge (ai.py) ──► Evaluation Breakdown (evaluation.py)
                │
                ▼ (stdin / stdout)
    C++ Chess Engine (gambit.exe)
-      ├── Move Generation & Legality
-      ├── Special Moves (Castling, En Passant, Promotion)
-      └── Game State Stack & Termination Detection
+      ├── Move Generation, Legality & Special Moves
+      ├── Alpha-Beta + Quiescence + Zobrist TT Search (Search.cpp)
+      └── FEN, Position History, Draw Rules & Evaluation (Board.cpp / Evaluation.cpp)
 ```
 
 ---
@@ -76,13 +74,17 @@ Chess/
 ├── Queen.h / Queen.cpp
 ├── King.h / King.cpp
 ├── Evaluation.h / Evaluation.cpp
+├── Search.h / Search.cpp
 ├── main.cpp
 ├── ai.py
+├── chess_utils.py
 ├── evaluation.py
 ├── ui.py
 ├── tests/
+│   ├── test_chess_utils.py
 │   ├── test_engine.py
 │   ├── test_ai.py
+│   ├── test_evaluation.py
 │   └── test_ui_logic.py
 ├── DEVELOPMENT_LOG.md
 └── README.md
@@ -95,7 +97,7 @@ Chess/
 ### 1. Build the C++ Engine
 
 ```bash
-g++ -std=c++17 -O2 main.cpp Board.cpp Move.cpp Pawn.cpp Knight.cpp Bishop.cpp Rook.cpp Queen.cpp King.cpp Evaluation.cpp -o gambit.exe
+g++ -std=c++17 -O2 main.cpp Board.cpp Move.cpp Pawn.cpp Knight.cpp Bishop.cpp Rook.cpp Queen.cpp King.cpp Evaluation.cpp Search.cpp -o gambit.exe
 ```
 
 ### 2. Launch the Desktop GUI
@@ -114,6 +116,6 @@ python -m unittest discover -s tests -v
 
 ## 📌 Current Status
 
-Gambit is playable end-to-end as a Human (White) vs AI (Black) desktop chess application, backed by an automated `unittest` suite covering the C++ protocol/rules engine, AI search, and Tkinter UI logic. See [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) for the milestone history.
+Gambit is playable end-to-end as both Player vs AI (`White`/`Black`/`Random`) and Player vs Player desktop chess application powered by a compiled C++17 search and rules engine, backed by a 37-test `unittest` suite covering C++ rules/search/FEN/draws, SAN/PGN utilities, evaluation, AI, and Tkinter GUI workflows. See [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) for the milestone history.
 
 ♟️ One move at a time.

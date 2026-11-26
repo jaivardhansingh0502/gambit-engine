@@ -3,6 +3,8 @@
 #include <iostream>
 #include <cstdlib>
 #include <string>
+#include <sstream>
+#include <cctype>
 
 
 
@@ -73,6 +75,8 @@ void Board :: initializeBoard()
     lastPawnRow = -1;
     lastPawnCol = -1;
     lastMoveWasDoublePawn = false;
+    halfmoveClock = 0;
+    fullmoveNumber = 1;
 }
 
 
@@ -313,6 +317,8 @@ void Board::displayBoard()
 
             whiteKingMoved = true;
             whiteKingsideRookMoved = true;
+            lastMoveWasDoublePawn = false;
+            halfmoveClock++;
 
             whiteTurn = !whiteTurn;
             return;
@@ -335,6 +341,8 @@ void Board::displayBoard()
 
             whiteKingMoved = true;
             whiteQueensideRookMoved = true;
+            lastMoveWasDoublePawn = false;
+            halfmoveClock++;
 
             whiteTurn = !whiteTurn;
             return;
@@ -357,6 +365,9 @@ void Board::displayBoard()
 
             blackKingMoved = true;
             blackKingsideRookMoved = true;
+            lastMoveWasDoublePawn = false;
+            halfmoveClock++;
+            fullmoveNumber++;
 
             whiteTurn = !whiteTurn;
             return;
@@ -379,6 +390,9 @@ void Board::displayBoard()
 
             blackKingMoved = true;
             blackQueensideRookMoved = true;
+            lastMoveWasDoublePawn = false;
+            halfmoveClock++;
+            fullmoveNumber++;
 
             whiteTurn = !whiteTurn;
             return;
@@ -399,6 +413,8 @@ void Board::displayBoard()
 
             // En passant is only available for one move
             lastMoveWasDoublePawn = false;
+            halfmoveClock = 0;
+            if(!whiteTurn) fullmoveNumber++;
 
             whiteTurn = !whiteTurn;
             return;
@@ -409,8 +425,18 @@ void Board::displayBoard()
         // NORMAL MOVE
         // =========================
 
+        char capturedPiece = board[endRow][endCol];
         board[endRow][endCol] = piece;
         board[startRow][startCol] = ' ';
+
+        if(piece == 'P' || piece == 'p' || capturedPiece != ' ')
+        {
+            halfmoveClock = 0;
+        }
+        else
+        {
+            halfmoveClock++;
+        }
 
 
         // =========================
@@ -546,10 +572,21 @@ void Board::displayBoard()
             }
         }
 
+        // Mark castling rook lost if captured on starting corner
+        if(endRow == 7 && endCol == 7) whiteKingsideRookMoved = true;
+        if(endRow == 7 && endCol == 0) whiteQueensideRookMoved = true;
+        if(endRow == 0 && endCol == 7) blackKingsideRookMoved = true;
+        if(endRow == 0 && endCol == 0) blackQueensideRookMoved = true;
+
 
         // =========================
         // CHANGE TURN
         // =========================
+
+        if(!whiteTurn)
+        {
+            fullmoveNumber++;
+        }
 
         whiteTurn = !whiteTurn;
     }
@@ -3657,6 +3694,8 @@ BoardState Board :: saveState()
     state.lastPawnRow = lastPawnRow ;
     state.lastPawnCol = lastPawnCol ;
     state.lastMoveWasDoublePawn = lastMoveWasDoublePawn ;
+    state.halfmoveClock = halfmoveClock;
+    state.fullmoveNumber = fullmoveNumber;
 
     return state ;
 
@@ -3687,6 +3726,8 @@ void Board :: restoreState(BoardState state)
     lastPawnRow = state.lastPawnRow;
     lastPawnCol = state.lastPawnCol;
     lastMoveWasDoublePawn = state.lastMoveWasDoublePawn;
+    halfmoveClock = state.halfmoveClock;
+    fullmoveNumber = state.fullmoveNumber;
 }
 
 
@@ -4086,4 +4127,225 @@ bool Board :: isInsufficientMaterial()
 
 
     return false;
+}
+
+bool Board::isFiftyMoveDraw()
+{
+    return halfmoveClock >= 100;
+}
+
+int Board::getHalfmoveClock()
+{
+    return halfmoveClock;
+}
+
+string Board::getPositionKey()
+{
+    string key;
+    key.reserve(80);
+
+    for(int i = 0; i < 8; i++)
+    {
+        for(int j = 0; j < 8; j++)
+        {
+            key += (board[i][j] == ' ' ? '.' : board[i][j]);
+        }
+    }
+
+    key += (whiteTurn ? 'w' : 'b');
+
+    if(!whiteKingMoved && !whiteKingsideRookMoved && board[7][4] == 'K' && board[7][7] == 'R') key += 'K';
+    if(!whiteKingMoved && !whiteQueensideRookMoved && board[7][4] == 'K' && board[7][0] == 'R') key += 'Q';
+    if(!blackKingMoved && !blackKingsideRookMoved && board[0][4] == 'k' && board[0][7] == 'r') key += 'k';
+    if(!blackKingMoved && !blackQueensideRookMoved && board[0][4] == 'k' && board[0][0] == 'r') key += 'q';
+
+    key += '|';
+    if(lastMoveWasDoublePawn && lastPawnCol >= 0 && lastPawnCol < 8)
+    {
+        key += char('a' + lastPawnCol);
+    }
+    else
+    {
+        key += '-';
+    }
+
+    return key;
+}
+
+string Board::getFEN()
+{
+    string fen;
+    for(int i = 0; i < 8; i++)
+    {
+        int empty = 0;
+        for(int j = 0; j < 8; j++)
+        {
+            if(board[i][j] == ' ')
+            {
+                empty++;
+            }
+            else
+            {
+                if(empty > 0)
+                {
+                    fen += char('0' + empty);
+                    empty = 0;
+                }
+                fen += board[i][j];
+            }
+        }
+        if(empty > 0) fen += char('0' + empty);
+        if(i < 7) fen += '/';
+    }
+
+    fen += (whiteTurn ? " w " : " b ");
+
+    string castling;
+    if(!whiteKingMoved && !whiteKingsideRookMoved && board[7][4] == 'K' && board[7][7] == 'R') castling += 'K';
+    if(!whiteKingMoved && !whiteQueensideRookMoved && board[7][4] == 'K' && board[7][0] == 'R') castling += 'Q';
+    if(!blackKingMoved && !blackKingsideRookMoved && board[0][4] == 'k' && board[0][7] == 'r') castling += 'k';
+    if(!blackKingMoved && !blackQueensideRookMoved && board[0][4] == 'k' && board[0][0] == 'r') castling += 'q';
+    fen += (castling.empty() ? "-" : castling);
+
+    fen += ' ';
+    if(lastMoveWasDoublePawn && lastPawnCol >= 0 && lastPawnCol < 8)
+    {
+        int epRow = whiteTurn ? 2 : 5;
+        fen += char('a' + lastPawnCol);
+        fen += char('8' - epRow);
+    }
+    else
+    {
+        fen += '-';
+    }
+
+    fen += ' ';
+    fen += to_string(halfmoveClock);
+    fen += ' ';
+    fen += to_string(fullmoveNumber);
+    return fen;
+}
+
+bool Board::loadFEN(const string& fen)
+{
+    istringstream iss(fen);
+    string placement, active, castling, ep;
+    int halfmove = 0;
+    int fullmove = 1;
+
+    if(!(iss >> placement >> active >> castling >> ep))
+    {
+        return false;
+    }
+    if(!(iss >> halfmove))
+    {
+        halfmove = 0;
+    }
+    if(halfmove < 0)
+    {
+        return false;
+    }
+    if(!(iss >> fullmove))
+    {
+        fullmove = 1;
+    }
+    if(fullmove < 1)
+    {
+        return false;
+    }
+
+    char newBoard[8][8];
+    for(int i = 0; i < 8; i++)
+    {
+        for(int j = 0; j < 8; j++)
+        {
+            newBoard[i][j] = ' ';
+        }
+    }
+
+    int row = 0, col = 0;
+    int whiteKings = 0, blackKings = 0;
+    for(char ch : placement)
+    {
+        if(ch == '/')
+        {
+            if(col != 8 || row >= 7) return false;
+            row++;
+            col = 0;
+        }
+        else if(ch >= '1' && ch <= '8')
+        {
+            col += (ch - '0');
+            if(col > 8) return false;
+        }
+        else
+        {
+            string valid = "PNBRQKpnbrqk";
+            if(valid.find(ch) == string::npos || col >= 8) return false;
+            if(ch == 'K') whiteKings++;
+            if(ch == 'k') blackKings++;
+            newBoard[row][col] = ch;
+            col++;
+        }
+    }
+    if(row != 7 || col != 8 || whiteKings != 1 || blackKings != 1)
+    {
+        return false;
+    }
+
+    if(active != "w" && active != "b")
+    {
+        return false;
+    }
+    bool newWhiteTurn = (active == "w");
+
+    bool wK = false, wQ = false, bK = false, bQ = false;
+    if(castling != "-")
+    {
+        for(char ch : castling)
+        {
+            if(ch == 'K') wK = true;
+            else if(ch == 'Q') wQ = true;
+            else if(ch == 'k') bK = true;
+            else if(ch == 'q') bQ = true;
+            else return false;
+        }
+    }
+
+    int epRow = -1, epCol = -1;
+    bool epActive = false;
+    if(ep != "-")
+    {
+        if(ep.length() != 2 || ep[0] < 'a' || ep[0] > 'h' || (ep[1] != '3' && ep[1] != '6'))
+        {
+            return false;
+        }
+        epCol = ep[0] - 'a';
+        epRow = (ep[1] == '3') ? 4 : 3;
+        epActive = true;
+    }
+
+    for(int i = 0; i < 8; i++)
+    {
+        for(int j = 0; j < 8; j++)
+        {
+            board[i][j] = newBoard[i][j];
+        }
+    }
+
+    whiteTurn = newWhiteTurn;
+    whiteKingMoved = !(wK || wQ) || board[7][4] != 'K';
+    blackKingMoved = !(bK || bQ) || board[0][4] != 'k';
+    whiteKingsideRookMoved = !wK || board[7][7] != 'R';
+    whiteQueensideRookMoved = !wQ || board[7][0] != 'R';
+    blackKingsideRookMoved = !bK || board[0][7] != 'r';
+    blackQueensideRookMoved = !bQ || board[0][0] != 'r';
+
+    lastPawnRow = epRow;
+    lastPawnCol = epCol;
+    lastMoveWasDoublePawn = epActive;
+    halfmoveClock = halfmove;
+    fullmoveNumber = fullmove;
+
+    return true;
 }
