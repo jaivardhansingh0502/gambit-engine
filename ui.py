@@ -1096,185 +1096,185 @@ class GambitUI:
     def choose_game_mode(self, allow_cancel=True):
         self._in_modal = True
         self._stop_clock()
-
-        dialog = tk.Toplevel(self.root)
-        dialog.title("New Game Setup")
-        dialog.resizable(False, False)
-        dialog.configure(bg=THEME["sidebar"])
-        dialog.transient(self.root)
-        dialog.grab_set()
-
         chosen = {"result": None}
 
-        tk.Label(
-            dialog,
-            text="♟ Game Setup",
-            font=("Segoe UI", 15, "bold"),
-            fg=THEME["text"],
-            bg=THEME["sidebar"],
-            padx=24,
-            pady=(16, 4)
-        ).pack()
+        try:
+            dialog = tk.Toplevel(self.root)
+            dialog.title("New Game Setup")
+            dialog.resizable(False, False)
+            dialog.configure(bg=THEME["sidebar"])
+            dialog.transient(self.root)
+            dialog.grab_set()
 
-        tk.Label(
-            dialog,
-            text=(
-                "Choose mode, your side (for PvAI), and time control."
-            ),
-            font=("Segoe UI", 10),
-            fg=THEME["muted"],
-            bg=THEME["sidebar"],
-            justify="center",
-            padx=24,
-            pady=(0, 10)
-        ).pack()
+            tk.Label(
+                dialog,
+                text="♟ Game Setup",
+                font=("Segoe UI", 15, "bold"),
+                fg=THEME["text"],
+                bg=THEME["sidebar"],
+                padx=24
+            ).pack(pady=(16, 4))
 
-        options_frame = tk.Frame(dialog, bg=THEME["card"], padx=14, pady=10)
-        options_frame.pack(fill="x", padx=24, pady=(0, 10))
+            tk.Label(
+                dialog,
+                text=(
+                    "Choose mode, your side (for PvAI), and time control."
+                ),
+                font=("Segoe UI", 10),
+                fg=THEME["muted"],
+                bg=THEME["sidebar"],
+                justify="center",
+                padx=24
+            ).pack(pady=(0, 10))
 
-        # Side selection for PvAI
-        side_row = tk.Frame(options_frame, bg=THEME["card"])
-        side_row.pack(fill="x", pady=(0, 8))
-        tk.Label(
-            side_row,
-            text="Play As (PvAI):",
-            font=("Segoe UI", 10, "bold"),
-            fg=THEME["text"],
-            bg=THEME["card"]
-        ).pack(side="left")
+            options_frame = tk.Frame(dialog, bg=THEME["card"], padx=14, pady=10)
+            options_frame.pack(fill="x", padx=24, pady=(0, 10))
 
-        side_var = tk.StringVar(
-            value="White" if self.human_color == HUMAN_COLOR_WHITE else "Black"
-        )
-        side_menu = tk.OptionMenu(side_row, side_var, "White", "Black", "Random")
-        side_menu.config(
-            font=("Segoe UI", 10),
-            bg=THEME["btn_bg"],
-            fg=THEME["text"],
-            activebackground=THEME["btn_active"],
-            activeforeground="#FFFFFF",
-            highlightthickness=0,
-            bd=0
-        )
-        side_menu["menu"].config(
-            bg=THEME["card"],
-            fg=THEME["text"],
-            activebackground=THEME["accent_blue"],
-            activeforeground="#FFFFFF"
-        )
-        side_menu.pack(side="right")
+            # Side selection for PvAI
+            side_row = tk.Frame(options_frame, bg=THEME["card"])
+            side_row.pack(fill="x", pady=(0, 8))
+            tk.Label(
+                side_row,
+                text="Play As (PvAI):",
+                font=("Segoe UI", 10, "bold"),
+                fg=THEME["text"],
+                bg=THEME["card"]
+            ).pack(side="left")
 
-        # Time control selection
-        clock_row = tk.Frame(options_frame, bg=THEME["card"])
-        clock_row.pack(fill="x")
-        tk.Label(
-            clock_row,
-            text="Time Control:",
-            font=("Segoe UI", 10, "bold"),
-            fg=THEME["text"],
-            bg=THEME["card"]
-        ).pack(side="left")
-
-        clock_var = tk.StringVar(value=self.time_control_name)
-        clock_menu = tk.OptionMenu(clock_row, clock_var, *TIME_CONTROLS.keys())
-        clock_menu.config(
-            font=("Segoe UI", 10),
-            bg=THEME["btn_bg"],
-            fg=THEME["text"],
-            activebackground=THEME["btn_active"],
-            activeforeground="#FFFFFF",
-            highlightthickness=0,
-            bd=0
-        )
-        clock_menu["menu"].config(
-            bg=THEME["card"],
-            fg=THEME["text"],
-            activebackground=THEME["accent_blue"],
-            activeforeground="#FFFFFF"
-        )
-        clock_menu.pack(side="right")
-
-        btn_frame = tk.Frame(dialog, bg=THEME["sidebar"], padx=24, pady=8)
-        btn_frame.pack(fill="x")
-
-        def select(mode):
-            side_choice = side_var.get()
-            if side_choice == "Random":
-                resolved_color = random.choice(
-                    (HUMAN_COLOR_WHITE, HUMAN_COLOR_BLACK)
-                )
-            elif side_choice == "Black":
-                resolved_color = HUMAN_COLOR_BLACK
-            else:
-                resolved_color = HUMAN_COLOR_WHITE
-            chosen["result"] = (mode, resolved_color, clock_var.get())
-            dialog.destroy()
-
-        tk.Button(
-            btn_frame,
-            text="Player vs AI (PvAI)",
-            font=("Segoe UI", 11, "bold"),
-            bg=THEME["accent_blue"],
-            fg="#FFFFFF",
-            activebackground="#1D4ED8",
-            activeforeground="#FFFFFF",
-            relief="flat",
-            bd=0,
-            pady=8,
-            cursor="hand2",
-            command=lambda: select(MODE_PVAI)
-        ).pack(fill="x", pady=4)
-
-        tk.Button(
-            btn_frame,
-            text="Player vs Player (PvP)",
-            font=("Segoe UI", 11, "bold"),
-            bg=THEME["accent_green"],
-            fg="#FFFFFF",
-            activebackground="#047857",
-            activeforeground="#FFFFFF",
-            relief="flat",
-            bd=0,
-            pady=8,
-            cursor="hand2",
-            command=lambda: select(MODE_PVP)
-        ).pack(fill="x", pady=4)
-
-        if allow_cancel:
-            tk.Button(
-                btn_frame,
-                text="Cancel",
+            side_var = tk.StringVar(
+                value="White" if self.human_color == HUMAN_COLOR_WHITE else "Black"
+            )
+            side_menu = tk.OptionMenu(side_row, side_var, "White", "Black", "Random")
+            side_menu.config(
                 font=("Segoe UI", 10),
                 bg=THEME["btn_bg"],
                 fg=THEME["text"],
                 activebackground=THEME["btn_active"],
                 activeforeground="#FFFFFF",
+                highlightthickness=0,
+                bd=0
+            )
+            side_menu["menu"].config(
+                bg=THEME["card"],
+                fg=THEME["text"],
+                activebackground=THEME["accent_blue"],
+                activeforeground="#FFFFFF"
+            )
+            side_menu.pack(side="right")
+
+            # Time control selection
+            clock_row = tk.Frame(options_frame, bg=THEME["card"])
+            clock_row.pack(fill="x")
+            tk.Label(
+                clock_row,
+                text="Time Control:",
+                font=("Segoe UI", 10, "bold"),
+                fg=THEME["text"],
+                bg=THEME["card"]
+            ).pack(side="left")
+
+            clock_var = tk.StringVar(value=self.time_control_name)
+            clock_menu = tk.OptionMenu(clock_row, clock_var, *TIME_CONTROLS.keys())
+            clock_menu.config(
+                font=("Segoe UI", 10),
+                bg=THEME["btn_bg"],
+                fg=THEME["text"],
+                activebackground=THEME["btn_active"],
+                activeforeground="#FFFFFF",
+                highlightthickness=0,
+                bd=0
+            )
+            clock_menu["menu"].config(
+                bg=THEME["card"],
+                fg=THEME["text"],
+                activebackground=THEME["accent_blue"],
+                activeforeground="#FFFFFF"
+            )
+            clock_menu.pack(side="right")
+
+            btn_frame = tk.Frame(dialog, bg=THEME["sidebar"], padx=24, pady=8)
+            btn_frame.pack(fill="x")
+
+            def select(mode):
+                side_choice = side_var.get()
+                if side_choice == "Random":
+                    resolved_color = random.choice(
+                        (HUMAN_COLOR_WHITE, HUMAN_COLOR_BLACK)
+                    )
+                elif side_choice == "Black":
+                    resolved_color = HUMAN_COLOR_BLACK
+                else:
+                    resolved_color = HUMAN_COLOR_WHITE
+                chosen["result"] = (mode, resolved_color, clock_var.get())
+                dialog.destroy()
+
+            tk.Button(
+                btn_frame,
+                text="Player vs AI (PvAI)",
+                font=("Segoe UI", 11, "bold"),
+                bg=THEME["accent_blue"],
+                fg="#FFFFFF",
+                activebackground="#1D4ED8",
+                activeforeground="#FFFFFF",
                 relief="flat",
                 bd=0,
-                pady=6,
+                pady=8,
                 cursor="hand2",
-                command=dialog.destroy
-            ).pack(fill="x", pady=(8, 8))
+                command=lambda: select(MODE_PVAI)
+            ).pack(fill="x", pady=4)
 
-        def on_close():
-            if not allow_cancel and chosen["result"] is None:
-                chosen["result"] = (
-                    self.game_mode,
-                    self.human_color,
-                    self.time_control_name,
-                )
-            dialog.destroy()
+            tk.Button(
+                btn_frame,
+                text="Player vs Player (PvP)",
+                font=("Segoe UI", 11, "bold"),
+                bg=THEME["accent_green"],
+                fg="#FFFFFF",
+                activebackground="#047857",
+                activeforeground="#FFFFFF",
+                relief="flat",
+                bd=0,
+                pady=8,
+                cursor="hand2",
+                command=lambda: select(MODE_PVP)
+            ).pack(fill="x", pady=4)
 
-        dialog.protocol("WM_DELETE_WINDOW", on_close)
-        dialog.update_idletasks()
-        x = self.root.winfo_rootx() + (self.root.winfo_width() - dialog.winfo_width()) // 2
-        y = self.root.winfo_rooty() + (self.root.winfo_height() - dialog.winfo_height()) // 2
-        dialog.geometry(f"+{max(0, x)}+{max(0, y)}")
-        dialog.lift()
-        dialog.focus_force()
+            if allow_cancel:
+                tk.Button(
+                    btn_frame,
+                    text="Cancel",
+                    font=("Segoe UI", 10),
+                    bg=THEME["btn_bg"],
+                    fg=THEME["text"],
+                    activebackground=THEME["btn_active"],
+                    activeforeground="#FFFFFF",
+                    relief="flat",
+                    bd=0,
+                    pady=6,
+                    cursor="hand2",
+                    command=dialog.destroy
+                ).pack(fill="x", pady=(8, 8))
 
-        self.root.wait_window(dialog)
-        self._in_modal = False
+            def on_close():
+                if not allow_cancel and chosen["result"] is None:
+                    chosen["result"] = (
+                        self.game_mode,
+                        self.human_color,
+                        self.time_control_name,
+                    )
+                dialog.destroy()
+
+            dialog.protocol("WM_DELETE_WINDOW", on_close)
+            dialog.update_idletasks()
+            x = self.root.winfo_rootx() + (self.root.winfo_width() - dialog.winfo_width()) // 2
+            y = self.root.winfo_rooty() + (self.root.winfo_height() - dialog.winfo_height()) // 2
+            dialog.geometry(f"+{max(0, x)}+{max(0, y)}")
+            dialog.lift()
+            dialog.focus_force()
+
+            self.root.wait_window(dialog)
+        finally:
+            self._in_modal = False
+
         return chosen["result"]
 
     def get_ai_depth(self):
@@ -1605,9 +1605,8 @@ class GambitUI:
             font=("Segoe UI", 12, "bold"),
             fg=THEME["text"],
             bg=THEME["sidebar"],
-            padx=18,
-            pady=(14, 6)
-        ).pack()
+            padx=18
+        ).pack(pady=(14, 6))
 
         button_frame = tk.Frame(dialog, bg=THEME["sidebar"], padx=14, pady=12)
         button_frame.pack()
@@ -2033,8 +2032,13 @@ class GambitUI:
         selected_color = self.human_color
         selected_clock = self.time_control_name
 
-        if mode in GAME_MODE_LABELS:
-            selected_mode = mode
+        if (
+            mode in GAME_MODE_LABELS
+            or human_color in (HUMAN_COLOR_WHITE, HUMAN_COLOR_BLACK)
+            or time_control in TIME_CONTROLS
+        ):
+            if mode in GAME_MODE_LABELS:
+                selected_mode = mode
             if human_color in (HUMAN_COLOR_WHITE, HUMAN_COLOR_BLACK):
                 selected_color = human_color
             if time_control in TIME_CONTROLS:
@@ -2045,11 +2049,6 @@ class GambitUI:
                 self._start_clock()
                 return
             selected_mode, selected_color, selected_clock = config
-        else:
-            if human_color in (HUMAN_COLOR_WHITE, HUMAN_COLOR_BLACK):
-                selected_color = human_color
-            if time_control in TIME_CONTROLS:
-                selected_clock = time_control
 
         self._stop_clock()
         self.engine_busy = True

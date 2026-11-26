@@ -474,6 +474,58 @@ class GambitUIFlowTests(unittest.TestCase):
         self.assertTrue(results["side_black_flipped"])
         self.assertEqual(results["side_black_ai_opened"], 1)
 
+    def test_startup_modal_and_live_clock_ticking(self):
+        prev_cwd = os.getcwd()
+        os.chdir(ROOT_DIR)
+        root = tk.Tk()
+        root.withdraw()
+        app = ui.GambitUI(root, prompt_mode_on_start=True)
+        results = {}
+
+        def step_interact_modal():
+            for w in root.winfo_children():
+                if isinstance(w, tk.Toplevel):
+                    for child in w.winfo_children():
+                        if isinstance(child, tk.Frame):
+                            for sub in child.winfo_children():
+                                if isinstance(sub, tk.Frame):
+                                    for om in sub.winfo_children():
+                                        if isinstance(om, tk.OptionMenu):
+                                            var_name = om.cget("textvariable")
+                                            if root.getvar(var_name) == "Untimed":
+                                                root.setvar(var_name, "Blitz (3+2)")
+                            for btn in child.winfo_children():
+                                if isinstance(btn, tk.Button) and "Player vs AI" in btn.cget("text"):
+                                    btn.invoke()
+                                    root.after(700, step_check_clock)
+                                    return
+            root.after(40, step_interact_modal)
+
+        def step_check_clock():
+            results["in_modal"] = app._in_modal
+            results["time_control"] = app.time_control_name
+            results["white_time_after"] = app.white_time
+            results["done"] = True
+            app.close()
+
+        try:
+            root.after(120, step_interact_modal)
+            root.mainloop()
+        finally:
+            os.chdir(prev_cwd)
+            if app.engine.poll() is None:
+                app.engine.terminate()
+                app.engine.wait(timeout=2)
+            if app.engine.stdin:
+                app.engine.stdin.close()
+            if app.engine.stdout:
+                app.engine.stdout.close()
+
+        self.assertTrue(results.get("done"))
+        self.assertFalse(results["in_modal"])
+        self.assertEqual(results["time_control"], "Blitz (3+2)")
+        self.assertLess(results["white_time_after"], 179.6)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -221,6 +221,7 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 10 — Inline Sidebar Time & Side Selectors and Laptop Screen Layout Fix
 
 - **Status:** Completed
+- **Commit:** `69e1bd6`
 - **Changes Implemented:**
   - `ui.py`:
     - Added inline **Time** (`Untimed`, `Bullet (1+0)`, `Blitz (3+2)`, `Rapid (10+0)`) and **Side** (`White`, `Black`, `Random`) dropdown selectors directly in the sidebar (`on_sidebar_time_change()`, `on_sidebar_side_change()`) synchronized with `_apply_game_config()` and `_update_controls()`.
@@ -234,3 +235,22 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
   - `1280x680` sidebar geometry check (`time_menu`, `side_menu`, `difficulty_menu`, `back_button`, `flip_button`, `resign_button`, `new_game_button` all within `sidebar h=713`) — Passed.
   - `python -m py_compile ai.py evaluation.py ui.py tests/test_engine.py tests/test_ai.py tests/test_evaluation.py tests/test_ui_logic.py` — Passed.
   - `python -m unittest discover -s tests -v` — 27 tests passed in 3.258s.
+
+---
+
+## Milestone 11 — Fix Modal `pady` Crash Blocking Startup Setup and Clock Ticking
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - `ui.py`:
+    - Moved tuple `pady=(16, 4)`, `pady=(0, 10)`, and `pady=(14, 6)` from `tk.Label(...)` constructors into `.pack(...)` in `choose_game_mode()` and `choose_promotion()` (fixing the `TclError` that prevented the Game Setup modal from opening and left `_in_modal = True`, which blocked `_start_clock()`).
+    - Wrapped `choose_game_mode()` in `try ... finally: self._in_modal = False` so `_in_modal` is always cleared on exit.
+    - Updated `new_game()` so direct sidebar time/side resets apply immediately without re-opening the setup modal.
+  - `tests/test_ui_logic.py`: Added `test_startup_modal_and_live_clock_ticking` verifying the startup modal opens cleanly, selects `Blitz (3+2)`, clears `_in_modal`, and counts down the active player's clock in real time.
+- **Files Modified:**
+  - `ui.py`
+  - `tests/test_ui_logic.py`
+  - `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `python -m py_compile ai.py evaluation.py ui.py tests/test_engine.py tests/test_ai.py tests/test_evaluation.py tests/test_ui_logic.py` — Passed.
+  - `python -m unittest discover -s tests -v` — 28 tests passed in 4.777s.
