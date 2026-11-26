@@ -429,6 +429,51 @@ class GambitUIFlowTests(unittest.TestCase):
         self.assertEqual(results["reset_clock_text"], "∞")
         self.assertEqual(results["reset_status"], "NORMAL")
 
+    def test_sidebar_time_and_side_selectors(self):
+        prev_cwd = os.getcwd()
+        os.chdir(ROOT_DIR)
+        root = tk.Tk()
+        root.withdraw()
+        app = ui.GambitUI(root, game_mode=ui.MODE_PVAI, prompt_mode_on_start=False)
+        app.difficulty_var.set("Easy (Depth 1)")
+        results = {}
+
+        def step_init():
+            if app.engine_busy:
+                root.after(40, step_init)
+                return
+            app.on_sidebar_time_change("Blitz (3+2)")
+            results["blitz_white_time"] = app.white_time
+            results["blitz_clock_text"] = app.bottom_clock_time.cget("text")
+            app.on_sidebar_side_change("Black")
+            root.after(40, step_wait_ai_open)
+
+        def step_wait_ai_open():
+            if app.engine_busy or len(app.move_history) < 1:
+                root.after(40, step_wait_ai_open)
+                return
+            results["side_black_flipped"] = app.board_flipped
+            results["side_black_ai_opened"] = len(app.move_history)
+            app.close()
+
+        try:
+            root.after(100, step_init)
+            root.mainloop()
+        finally:
+            os.chdir(prev_cwd)
+            if app.engine.poll() is None:
+                app.engine.terminate()
+                app.engine.wait(timeout=2)
+            if app.engine.stdin:
+                app.engine.stdin.close()
+            if app.engine.stdout:
+                app.engine.stdout.close()
+
+        self.assertEqual(results["blitz_white_time"], 180.0)
+        self.assertEqual(results["blitz_clock_text"], "03:00")
+        self.assertTrue(results["side_black_flipped"])
+        self.assertEqual(results["side_black_ai_opened"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

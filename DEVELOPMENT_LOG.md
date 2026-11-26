@@ -201,6 +201,7 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 9 — Chess Clock, Play as Black vs AI & Flip Board
 
 - **Status:** Completed
+- **Commit:** `87ba995`
 - **Changes Implemented:**
   - `ui.py`:
     - Added selectable Chess Clocks (`TIME_CONTROLS`: `Untimed`, `Bullet (1+0)`, `Blitz (3+2)`, `Rapid (10+0)`) with Top/Bottom clock displays, active turn highlighting, low-time `<15s` warning, move increment (`_apply_increment`), live 100ms countdown (`_tick_clock`), and timeout termination (`TIMEOUT_WHITE`, `TIMEOUT_BLACK`).
@@ -214,3 +215,22 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 - **Tests Performed:**
   - `python -m py_compile ai.py evaluation.py ui.py tests/test_engine.py tests/test_ai.py tests/test_evaluation.py tests/test_ui_logic.py` — Passed.
   - `python -m unittest discover -s tests -v` — 26 tests passed in 3.171s.
+
+---
+
+## Milestone 10 — Inline Sidebar Time & Side Selectors and Laptop Screen Layout Fix
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - `ui.py`:
+    - Added inline **Time** (`Untimed`, `Bullet (1+0)`, `Blitz (3+2)`, `Rapid (10+0)`) and **Side** (`White`, `Black`, `Random`) dropdown selectors directly in the sidebar (`on_sidebar_time_change()`, `on_sidebar_side_change()`) synchronized with `_apply_game_config()` and `_update_controls()`.
+    - Fixed sidebar packing order by packing bottom controls (`action_frame`, `review_frame`, `settings_frame`) with `side="bottom"` before the `height=4` expandable `history_list`, preventing `Resign` and `New Game` buttons from clipping off 720p/768p laptop screens.
+  - `tests/test_ui_logic.py`: Added `test_sidebar_time_and_side_selectors` and verified all sidebar controls fit cleanly inside `1280x680`.
+- **Files Modified:**
+  - `ui.py`
+  - `tests/test_ui_logic.py`
+  - `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `1280x680` sidebar geometry check (`time_menu`, `side_menu`, `difficulty_menu`, `back_button`, `flip_button`, `resign_button`, `new_game_button` all within `sidebar h=713`) — Passed.
+  - `python -m py_compile ai.py evaluation.py ui.py tests/test_engine.py tests/test_ai.py tests/test_evaluation.py tests/test_ui_logic.py` — Passed.
+  - `python -m unittest discover -s tests -v` — 27 tests passed in 3.258s.

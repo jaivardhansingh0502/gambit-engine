@@ -216,7 +216,7 @@ class GambitUI:
     ):
         self.root = root
         self.root.title("Gambit Chess")
-        self.root.minsize(920, 720)
+        self.root.minsize(880, 620)
         self.root.configure(bg=THEME["bg"])
 
         self.engine = subprocess.Popen(
@@ -292,12 +292,12 @@ class GambitUI:
 
         # ---- Header & Mode Selector ----
         self.header_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
-        self.header_frame.pack(fill="x", padx=12, pady=(12, 8))
+        self.header_frame.pack(fill="x", padx=12, pady=(8, 6))
 
         tk.Label(
             self.header_frame,
             text="♟ GAMBIT CHESS",
-            font=("Segoe UI", 15, "bold"),
+            font=("Segoe UI", 14, "bold"),
             fg=THEME["text"],
             bg=THEME["sidebar"],
             anchor="w"
@@ -306,12 +306,12 @@ class GambitUI:
         self.mode_label = tk.Label(
             self.header_frame,
             text=f"Mode: {GAME_MODE_LABELS[self.game_mode]}",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 9, "bold"),
             fg="#93C5FD",
             bg=THEME["sidebar"],
             anchor="w"
         )
-        self.mode_label.pack(fill="x", pady=(2, 6))
+        self.mode_label.pack(fill="x", pady=(1, 4))
 
         self.mode_switch_frame = tk.Frame(self.header_frame, bg=THEME["sidebar"])
         self.mode_switch_frame.pack(fill="x")
@@ -322,7 +322,7 @@ class GambitUI:
             font=("Segoe UI", 10, "bold"),
             relief="flat",
             bd=0,
-            pady=6,
+            pady=5,
             cursor="hand2",
             command=lambda: self.select_mode_from_sidebar(MODE_PVAI)
         )
@@ -334,7 +334,7 @@ class GambitUI:
             font=("Segoe UI", 10, "bold"),
             relief="flat",
             bd=0,
-            pady=6,
+            pady=5,
             cursor="hand2",
             command=lambda: self.select_mode_from_sidebar(MODE_PVP)
         )
@@ -346,13 +346,13 @@ class GambitUI:
             bg=THEME["card"],
             highlightthickness=1,
             highlightbackground=THEME["border"],
-            padx=8,
-            pady=6
+            padx=6,
+            pady=4
         )
-        self.clock_frame.pack(fill="x", padx=12, pady=(0, 8))
+        self.clock_frame.pack(fill="x", padx=12, pady=(0, 6))
 
-        self.top_clock_box = tk.Frame(self.clock_frame, bg=THEME["list_bg"], padx=8, pady=4)
-        self.top_clock_box.pack(side="left", fill="x", expand=True, padx=(0, 4))
+        self.top_clock_box = tk.Frame(self.clock_frame, bg=THEME["list_bg"], padx=8, pady=3)
+        self.top_clock_box.pack(side="left", fill="x", expand=True, padx=(0, 3))
 
         self.top_clock_name = tk.Label(
             self.top_clock_box,
@@ -367,15 +367,15 @@ class GambitUI:
         self.top_clock_time = tk.Label(
             self.top_clock_box,
             text="∞",
-            font=("Consolas", 13, "bold"),
+            font=("Consolas", 12, "bold"),
             fg=THEME["text"],
             bg=THEME["list_bg"],
             anchor="w"
         )
         self.top_clock_time.pack(fill="x")
 
-        self.bottom_clock_box = tk.Frame(self.clock_frame, bg=THEME["list_bg"], padx=8, pady=4)
-        self.bottom_clock_box.pack(side="left", fill="x", expand=True, padx=(4, 0))
+        self.bottom_clock_box = tk.Frame(self.clock_frame, bg=THEME["list_bg"], padx=8, pady=3)
+        self.bottom_clock_box.pack(side="left", fill="x", expand=True, padx=(3, 0))
 
         self.bottom_clock_name = tk.Label(
             self.bottom_clock_box,
@@ -390,7 +390,7 @@ class GambitUI:
         self.bottom_clock_time = tk.Label(
             self.bottom_clock_box,
             text="∞",
-            font=("Consolas", 13, "bold"),
+            font=("Consolas", 12, "bold"),
             fg=THEME["text"],
             bg=THEME["list_bg"],
             anchor="w"
@@ -401,21 +401,21 @@ class GambitUI:
         self.eval_frame = tk.LabelFrame(
             self.history_frame,
             text=" Position Evaluation ",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 9, "bold"),
             fg=THEME["muted"],
             bg=THEME["card"],
             bd=1,
             relief="solid",
             highlightbackground=THEME["border"],
-            padx=10,
-            pady=8
+            padx=8,
+            pady=5
         )
-        self.eval_frame.pack(fill="x", padx=12, pady=(0, 8))
+        self.eval_frame.pack(fill="x", padx=12, pady=(0, 6))
 
         self.eval_headline_label = tk.Label(
             self.eval_frame,
             text="Position is equal: 0.0",
-            font=("Segoe UI", 12, "bold"),
+            font=("Segoe UI", 11, "bold"),
             fg=THEME["text"],
             bg=THEME["card"],
             anchor="w"
@@ -424,12 +424,12 @@ class GambitUI:
 
         self.eval_bar = tk.Canvas(
             self.eval_frame,
-            height=16,
+            height=13,
             bg="#111827",
             highlightthickness=1,
             highlightbackground=THEME["border"]
         )
-        self.eval_bar.pack(fill="x", pady=(6, 6))
+        self.eval_bar.pack(fill="x", pady=(4, 4))
         self.eval_bar.bind("<Configure>", lambda _e: self._draw_eval_bar(self.current_material_score))
         self.current_material_score = 0
 
@@ -451,7 +451,7 @@ class GambitUI:
             bg=THEME["card"],
             anchor="w"
         )
-        self.ai_eval_label.pack(fill="x", pady=(0, 6))
+        self.ai_eval_label.pack(fill="x", pady=(0, 4))
 
         self.white_material_label = tk.Label(
             self.eval_frame,
@@ -483,52 +483,203 @@ class GambitUI:
             justify="left",
             wraplength=300
         )
-        self.material_diff_label.pack(fill="x", pady=(5, 0))
+        self.material_diff_label.pack(fill="x", pady=(3, 0))
 
-        # ---- Move History ----
-        self.history_title = tk.Label(
-            self.history_frame,
-            text="Move History",
-            font=("Segoe UI", 11, "bold"),
-            fg=THEME["muted"],
-            bg=THEME["sidebar"],
-            anchor="w"
+        # ---- Bottom Controls (packed bottom-first so always visible!) ----
+        self.action_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
+        self.action_frame.pack(side="bottom", fill="x", padx=12, pady=(0, 10))
+
+        self.resign_button = tk.Button(
+            self.action_frame,
+            text="🏳 Resign",
+            font=("Segoe UI", 10, "bold"),
+            bg=THEME["accent_red"],
+            fg="#FFFFFF",
+            activebackground="#B91C1C",
+            activeforeground="#FFFFFF",
+            disabledforeground="#FCA5A5",
+            relief="flat",
+            bd=0,
+            pady=7,
+            cursor="hand2",
+            command=self.resign_game,
+            state="disabled"
         )
-        self.history_title.pack(fill="x", padx=12, pady=(2, 4))
+        self.resign_button.pack(side="left", fill="x", expand=True, padx=(0, 4))
 
-        self.history_list_frame = tk.Frame(
-            self.history_frame,
-            bg=THEME["list_bg"],
-            highlightthickness=1,
-            highlightbackground=THEME["border"]
+        self.new_game_button = tk.Button(
+            self.action_frame,
+            text="⟳ New Game",
+            font=("Segoe UI", 10, "bold"),
+            bg=THEME["accent_blue"],
+            fg="#FFFFFF",
+            activebackground="#1D4ED8",
+            activeforeground="#FFFFFF",
+            disabledforeground="#93C5FD",
+            relief="flat",
+            bd=0,
+            pady=7,
+            cursor="hand2",
+            command=self.new_game
         )
-        self.history_list_frame.pack(fill="both", expand=True, padx=12, pady=(0, 8))
+        self.new_game_button.pack(side="left", fill="x", expand=True, padx=(4, 0))
 
-        self.history_scroll = tk.Scrollbar(self.history_list_frame)
-        self.history_scroll.pack(side="right", fill="y")
+        self.review_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
+        self.review_frame.pack(side="bottom", fill="x", padx=12, pady=(0, 6))
 
-        self.history_list = tk.Listbox(
-            self.history_list_frame,
-            font=("Consolas", 11),
-            bg=THEME["list_bg"],
+        self.back_button = tk.Button(
+            self.review_frame,
+            text="◀ Back",
+            font=("Segoe UI", 9, "bold"),
+            bg=THEME["btn_bg"],
             fg=THEME["text"],
-            selectbackground=THEME["accent_blue"],
-            selectforeground="#FFFFFF",
-            borderwidth=0,
-            highlightthickness=0,
-            yscrollcommand=self.history_scroll.set
+            activebackground=THEME["btn_active"],
+            activeforeground="#FFFFFF",
+            disabledforeground="#6B7280",
+            relief="flat",
+            bd=0,
+            pady=5,
+            cursor="hand2",
+            command=self.step_back,
+            state="disabled"
         )
-        self.history_list.pack(side="left", fill="both", expand=True, padx=6, pady=4)
-        self.history_scroll.config(command=self.history_list.yview)
+        self.back_button.pack(side="left", fill="x", expand=True, padx=(0, 3))
 
-        # ---- Controls ----
-        self.difficulty_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
-        self.difficulty_frame.pack(fill="x", padx=12, pady=(0, 8))
+        self.forward_button = tk.Button(
+            self.review_frame,
+            text="Next ▶",
+            font=("Segoe UI", 9, "bold"),
+            bg=THEME["btn_bg"],
+            fg=THEME["text"],
+            activebackground=THEME["btn_active"],
+            activeforeground="#FFFFFF",
+            disabledforeground="#6B7280",
+            relief="flat",
+            bd=0,
+            pady=5,
+            cursor="hand2",
+            command=self.step_forward,
+            state="disabled"
+        )
+        self.forward_button.pack(side="left", fill="x", expand=True, padx=3)
+
+        self.live_button = tk.Button(
+            self.review_frame,
+            text="⏭ Live",
+            font=("Segoe UI", 9, "bold"),
+            bg=THEME["btn_bg"],
+            fg=THEME["text"],
+            activebackground=THEME["btn_active"],
+            activeforeground="#FFFFFF",
+            disabledforeground="#6B7280",
+            relief="flat",
+            bd=0,
+            pady=5,
+            cursor="hand2",
+            command=self.jump_to_live,
+            state="disabled"
+        )
+        self.live_button.pack(side="left", fill="x", expand=True, padx=3)
+
+        self.flip_button = tk.Button(
+            self.review_frame,
+            text="⇅ Flip",
+            font=("Segoe UI", 9, "bold"),
+            bg=THEME["btn_bg"],
+            fg=THEME["text"],
+            activebackground=THEME["btn_active"],
+            activeforeground="#FFFFFF",
+            relief="flat",
+            bd=0,
+            pady=5,
+            cursor="hand2",
+            command=self.flip_board
+        )
+        self.flip_button.pack(side="left", fill="x", expand=True, padx=(3, 0))
+
+        self.settings_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
+        self.settings_frame.pack(side="bottom", fill="x", padx=12, pady=(0, 6))
+
+        self.options_row = tk.Frame(self.settings_frame, bg=THEME["sidebar"])
+        self.options_row.pack(fill="x", pady=(0, 5))
+
+        tk.Label(
+            self.options_row,
+            text="Time:",
+            font=("Segoe UI", 9, "bold"),
+            fg=THEME["text"],
+            bg=THEME["sidebar"]
+        ).pack(side="left")
+
+        self.time_var = tk.StringVar(value=self.time_control_name)
+        self.time_menu = tk.OptionMenu(
+            self.options_row,
+            self.time_var,
+            *TIME_CONTROLS.keys(),
+            command=self.on_sidebar_time_change
+        )
+        self.time_menu.config(
+            font=("Segoe UI", 9),
+            bg=THEME["btn_bg"],
+            fg=THEME["text"],
+            activebackground=THEME["btn_active"],
+            activeforeground="#FFFFFF",
+            highlightthickness=0,
+            bd=0,
+            cursor="hand2"
+        )
+        self.time_menu["menu"].config(
+            bg=THEME["card"],
+            fg=THEME["text"],
+            activebackground=THEME["accent_blue"],
+            activeforeground="#FFFFFF"
+        )
+        self.time_menu.pack(side="left", fill="x", expand=True, padx=(4, 8))
+
+        tk.Label(
+            self.options_row,
+            text="Side:",
+            font=("Segoe UI", 9, "bold"),
+            fg=THEME["text"],
+            bg=THEME["sidebar"]
+        ).pack(side="left")
+
+        self.side_var = tk.StringVar(
+            value="White" if self.human_color == HUMAN_COLOR_WHITE else "Black"
+        )
+        self.side_menu = tk.OptionMenu(
+            self.options_row,
+            self.side_var,
+            "White",
+            "Black",
+            "Random",
+            command=self.on_sidebar_side_change
+        )
+        self.side_menu.config(
+            font=("Segoe UI", 9),
+            bg=THEME["btn_bg"],
+            fg=THEME["text"],
+            activebackground=THEME["btn_active"],
+            activeforeground="#FFFFFF",
+            highlightthickness=0,
+            bd=0,
+            cursor="hand2"
+        )
+        self.side_menu["menu"].config(
+            bg=THEME["card"],
+            fg=THEME["text"],
+            activebackground=THEME["accent_blue"],
+            activeforeground="#FFFFFF"
+        )
+        self.side_menu.pack(side="left", padx=(4, 0))
+
+        self.difficulty_frame = tk.Frame(self.settings_frame, bg=THEME["sidebar"])
+        self.difficulty_frame.pack(fill="x")
 
         tk.Label(
             self.difficulty_frame,
             text="AI Level:",
-            font=("Segoe UI", 10, "bold"),
+            font=("Segoe UI", 9, "bold"),
             fg=THEME["text"],
             bg=THEME["sidebar"]
         ).pack(side="left")
@@ -540,7 +691,7 @@ class GambitUI:
             *AI_DIFFICULTY_DEPTHS.keys()
         )
         self.difficulty_menu.config(
-            font=("Segoe UI", 10),
+            font=("Segoe UI", 9),
             bg=THEME["btn_bg"],
             fg=THEME["text"],
             activebackground=THEME["btn_active"],
@@ -557,116 +708,42 @@ class GambitUI:
         )
         self.difficulty_menu.pack(side="right", fill="x", expand=True, padx=(8, 0))
 
-        self.review_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
-        self.review_frame.pack(fill="x", padx=12, pady=(0, 8))
-
-        self.back_button = tk.Button(
-            self.review_frame,
-            text="◀ Back",
+        # ---- Move History (fills remaining space cleanly) ----
+        self.history_title = tk.Label(
+            self.history_frame,
+            text="Move History",
             font=("Segoe UI", 10, "bold"),
-            bg=THEME["btn_bg"],
+            fg=THEME["muted"],
+            bg=THEME["sidebar"],
+            anchor="w"
+        )
+        self.history_title.pack(fill="x", padx=12, pady=(0, 2))
+
+        self.history_list_frame = tk.Frame(
+            self.history_frame,
+            bg=THEME["list_bg"],
+            highlightthickness=1,
+            highlightbackground=THEME["border"]
+        )
+        self.history_list_frame.pack(fill="both", expand=True, padx=12, pady=(0, 6))
+
+        self.history_scroll = tk.Scrollbar(self.history_list_frame)
+        self.history_scroll.pack(side="right", fill="y")
+
+        self.history_list = tk.Listbox(
+            self.history_list_frame,
+            height=4,
+            font=("Consolas", 11),
+            bg=THEME["list_bg"],
             fg=THEME["text"],
-            activebackground=THEME["btn_active"],
-            activeforeground="#FFFFFF",
-            disabledforeground="#6B7280",
-            relief="flat",
-            bd=0,
-            pady=6,
-            cursor="hand2",
-            command=self.step_back,
-            state="disabled"
+            selectbackground=THEME["accent_blue"],
+            selectforeground="#FFFFFF",
+            borderwidth=0,
+            highlightthickness=0,
+            yscrollcommand=self.history_scroll.set
         )
-        self.back_button.pack(side="left", fill="x", expand=True, padx=(0, 3))
-
-        self.forward_button = tk.Button(
-            self.review_frame,
-            text="Next ▶",
-            font=("Segoe UI", 10, "bold"),
-            bg=THEME["btn_bg"],
-            fg=THEME["text"],
-            activebackground=THEME["btn_active"],
-            activeforeground="#FFFFFF",
-            disabledforeground="#6B7280",
-            relief="flat",
-            bd=0,
-            pady=6,
-            cursor="hand2",
-            command=self.step_forward,
-            state="disabled"
-        )
-        self.forward_button.pack(side="left", fill="x", expand=True, padx=3)
-
-        self.live_button = tk.Button(
-            self.review_frame,
-            text="⏭ Live",
-            font=("Segoe UI", 10, "bold"),
-            bg=THEME["btn_bg"],
-            fg=THEME["text"],
-            activebackground=THEME["btn_active"],
-            activeforeground="#FFFFFF",
-            disabledforeground="#6B7280",
-            relief="flat",
-            bd=0,
-            pady=6,
-            cursor="hand2",
-            command=self.jump_to_live,
-            state="disabled"
-        )
-        self.live_button.pack(side="left", fill="x", expand=True, padx=3)
-
-        self.flip_button = tk.Button(
-            self.review_frame,
-            text="⇅ Flip",
-            font=("Segoe UI", 10, "bold"),
-            bg=THEME["btn_bg"],
-            fg=THEME["text"],
-            activebackground=THEME["btn_active"],
-            activeforeground="#FFFFFF",
-            relief="flat",
-            bd=0,
-            pady=6,
-            cursor="hand2",
-            command=self.flip_board
-        )
-        self.flip_button.pack(side="left", fill="x", expand=True, padx=(3, 0))
-
-        self.action_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
-        self.action_frame.pack(fill="x", padx=12, pady=(0, 12))
-
-        self.resign_button = tk.Button(
-            self.action_frame,
-            text="🏳 Resign",
-            font=("Segoe UI", 11, "bold"),
-            bg=THEME["accent_red"],
-            fg="#FFFFFF",
-            activebackground="#B91C1C",
-            activeforeground="#FFFFFF",
-            disabledforeground="#FCA5A5",
-            relief="flat",
-            bd=0,
-            pady=8,
-            cursor="hand2",
-            command=self.resign_game,
-            state="disabled"
-        )
-        self.resign_button.pack(side="left", fill="x", expand=True, padx=(0, 4))
-
-        self.new_game_button = tk.Button(
-            self.action_frame,
-            text="⟳ New Game",
-            font=("Segoe UI", 11, "bold"),
-            bg=THEME["accent_blue"],
-            fg="#FFFFFF",
-            activebackground="#1D4ED8",
-            activeforeground="#FFFFFF",
-            disabledforeground="#93C5FD",
-            relief="flat",
-            bd=0,
-            pady=8,
-            cursor="hand2",
-            command=self.new_game
-        )
-        self.new_game_button.pack(side="left", fill="x", expand=True, padx=(4, 0))
+        self.history_list.pack(side="left", fill="both", expand=True, padx=6, pady=3)
+        self.history_scroll.config(command=self.history_list.yview)
 
         self.canvas.bind("<Configure>", self.on_resize)
         self.canvas.bind("<Button-1>", self.on_click)
@@ -742,10 +819,68 @@ class GambitUI:
         self.mode_label.config(
             text=f"Mode: {GAME_MODE_LABELS[self.game_mode]}{side_suffix}"
         )
+        self.time_var.set(self.time_control_name)
+        if hasattr(self, "side_var") and self.side_var.get() != "Random":
+            self.side_var.set(
+                "White" if self.human_color == HUMAN_COLOR_WHITE else "Black"
+            )
         self._refresh_mode_buttons()
         self._refresh_clocks()
         self._update_controls()
         self.draw_board()
+
+    def on_sidebar_time_change(self, choice):
+        if self.engine_busy or choice not in TIME_CONTROLS:
+            self.time_var.set(self.time_control_name)
+            return
+        if choice == self.time_control_name:
+            return
+        if not self.move_history and self.game_status not in GAME_OVER_STATUSES:
+            self._reset_clocks(choice)
+            self._start_clock()
+            return
+        if messagebox.askyesno(
+            "Change Time Control",
+            f"Start a new game with {choice}?"
+        ):
+            self.new_game(time_control=choice)
+        else:
+            self.time_var.set(self.time_control_name)
+
+    def on_sidebar_side_change(self, choice):
+        if self.engine_busy or self.game_mode != MODE_PVAI:
+            self.side_var.set(
+                "White" if self.human_color == HUMAN_COLOR_WHITE else "Black"
+            )
+            return
+        if choice == "Random":
+            resolved = random.choice((HUMAN_COLOR_WHITE, HUMAN_COLOR_BLACK))
+        elif choice == "Black":
+            resolved = HUMAN_COLOR_BLACK
+        else:
+            resolved = HUMAN_COLOR_WHITE
+
+        if not self.move_history and self.game_status not in GAME_OVER_STATUSES:
+            self._apply_game_config(
+                self.game_mode,
+                resolved,
+                self.time_control_name
+            )
+            self.side_var.set(
+                "White" if resolved == HUMAN_COLOR_WHITE else "Black"
+            )
+            self._maybe_start_ai_opening()
+            return
+
+        if messagebox.askyesno(
+            "Change Side",
+            f"Start a new game playing as {choice}?"
+        ):
+            self.new_game(mode=MODE_PVAI, human_color=resolved)
+        else:
+            self.side_var.set(
+                "White" if self.human_color == HUMAN_COLOR_WHITE else "Black"
+            )
 
     def _maybe_start_ai_opening(self):
         if (
@@ -1161,12 +1296,14 @@ class GambitUI:
         self.new_game_button.config(state=state)
         self.pvai_mode_btn.config(state=state)
         self.pvp_mode_btn.config(state=state)
+        self.time_menu.config(state=state)
         ai_state = (
             "normal"
             if (not self.engine_busy and self.game_mode == MODE_PVAI)
             else "disabled"
         )
         self.difficulty_menu.config(state=ai_state)
+        self.side_menu.config(state=ai_state)
 
         can_resign = (
             not self.engine_busy
@@ -2078,7 +2215,7 @@ class GambitUI:
             width / 2,
             22,
             text=turn_text,
-            font=("Arial", 16, "bold"),
+            font=("Segoe UI", 14, "bold"),
             fill=status_color
         )
 
