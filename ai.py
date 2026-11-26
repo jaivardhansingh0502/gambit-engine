@@ -216,6 +216,21 @@ def get_position(engine):
     return board, legal_moves, status, turn
 
 
+def get_engine_evaluation(engine):
+    engine.stdin.write("EVALUATE\n")
+    engine.stdin.flush()
+
+    line = engine.stdout.readline()
+    if line == "":
+        raise RuntimeError("C++ engine closed its output during EVALUATE.")
+
+    parts = line.strip().split()
+    if len(parts) != 2 or parts[0] != "EVAL":
+        raise RuntimeError(f"Unexpected EVALUATE response: {line.strip()}")
+
+    return int(parts[1])
+
+
 
 
 class AI:

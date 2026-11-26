@@ -4,7 +4,12 @@ import subprocess
 import threading
 from tkinter import messagebox
 
-from ai import AI, get_position, send_move_to_engine
+from ai import AI, get_engine_evaluation, get_position, send_move_to_engine
+from evaluation import (
+    analyze_material,
+    evaluate_board,
+    format_evaluation_summary,
+)
 
 
 GAME_OVER_STATUSES = (
@@ -13,11 +18,42 @@ GAME_OVER_STATUSES = (
     "DRAW_INSUFFICIENT_MATERIAL",
 )
 
+MODE_PVP = "PvP"
+MODE_PVAI = "PvAI"
+
+GAME_MODE_LABELS = {
+    MODE_PVP: "Player vs Player (PvP)",
+    MODE_PVAI: "Player vs AI (PvAI)",
+}
+
 AI_DIFFICULTY_DEPTHS = {
     "Easy (Depth 1)": 1,
     "Medium (Depth 2)": 2,
     "Hard (Depth 3)": 3,
 }
+
+
+def can_human_interact(game_mode, white_turn):
+    return True if game_mode == MODE_PVP else white_turn
+
+
+def is_own_piece(piece, white_turn):
+    if piece in (".", " "):
+        return False
+    return piece.isupper() if white_turn else piece.islower()
+
+
+def get_undo_count(game_mode, history_len):
+    if history_len <= 0:
+        return 0
+    if game_mode == MODE_PVP:
+        return 1
+    return 1 if history_len % 2 == 1 else 2
+
+
+def compute_advantage_ratio(score, max_pawns=10.0):
+    clamped = max(-max_pawns, min(max_pawns, float(score)))
+    return 0.5 + (clamped / max_pawns) * 0.45
 
 
 def square_to_notation(row, col):
@@ -43,8 +79,8 @@ def get_promotion_map(moves):
     }
 
 
-def format_status_text(game_status, white_turn, engine_busy):
-    if not white_turn and engine_busy:
+def format_status_text(game_status, white_turn, engine_busy, game_mode=MODE_PVAI):
+    if game_mode == MODE_PVAI and not white_turn and engine_busy:
         return "Black — AI thinking...", "#1D4ED8"
 
     if game_status == "CHECK":
@@ -84,10 +120,10 @@ def get_board_geometry(width, height, top_margin=44):
 
 class GambitUI:
 
-    def __init__(self, root):
+    def __init__(self, root, game_mode=None, prompt_mode_on_start=True):
         self.root = root
         self.root.title("Gambit Chess")
-        self.root.minsize(700, 600)
+        self.root.minsize(820, 640)
 
         self.engine = subprocess.Popen(
             ["gambit.exe"],
@@ -99,6 +135,12 @@ class GambitUI:
         )
 
         self.ai = AI(self.engine)
+
+        self.prompt_mode_on_start = prompt_mode_on_start
+        self.game_mode = (
+            game_mode if game_mode in GAME_MODE_LABELS else MODE_PVAI
+        )
+        self.engine_eval = 0
 
         self.board = []
         self.legal_moves = []
@@ -123,21 +165,104 @@ class GambitUI:
 
         self.history_frame = tk.Frame(
             self.main_frame,
-            width=260
+            width=320
         )
         self.history_frame.pack(side="right", fill="y")
         self.history_frame.pack_propagate(False)
 
+        self.mode_label = tk.Label(
+            self.history_frame,
+            text=f"Mode: {GAME_MODE_LABELS[self.game_mode]}",
+            font=("Arial", 11, "bold"),
+            fg="#1E3A8A",
+            bg="#EFF6FF",
+            pady=6
+        )
+        self.mode_label.pack(fill="x", padx=10, pady=(10, 6))
+
+        self.eval_frame = tk.LabelFrame(
+            self.history_frame,
+            text="Position Evaluation",
+            font=("Arial", 11, "bold"),
+            padx=8,
+            pady=6
+        )
+        self.eval_frame.pack(fill="x", padx=10, pady=(0, 8))
+
+        self.eval_headline_label = tk.Label(
+            self.eval_frame,
+            text="Position is equal: 0.0",
+            font=("Arial", 12, "bold"),
+            fg="#374151",
+            anchor="w"
+        )
+        self.eval_headline_label.pack(fill="x")
+
+        self.eval_bar = tk.Canvas(
+            self.eval_frame,
+            height=16,
+            highlightthickness=1,
+            highlightbackground="#9CA3AF"
+        )
+        self.eval_bar.pack(fill="x", pady=(4, 6))
+        self.eval_bar.bind("<Configure>", lambda _e: self._draw_eval_bar(self.current_material_score))
+        self.current_material_score = 0
+
+        self.engine_eval_label = tk.Label(
+            self.eval_frame,
+            text="C++ Engine Eval (material-only): 0.0",
+            font=("Arial", 9),
+            fg="#374151",
+            anchor="w"
+        )
+        self.engine_eval_label.pack(fill="x")
+
+        self.ai_eval_label = tk.Label(
+            self.eval_frame,
+            text="AI Search Eval (Material + N/P PST): 0",
+            font=("Arial", 9),
+            fg="#374151",
+            anchor="w"
+        )
+        self.ai_eval_label.pack(fill="x", pady=(0, 4))
+
+        self.white_material_label = tk.Label(
+            self.eval_frame,
+            text="White: Q:1  R:2  B:2  N:2  P:8",
+            font=("Consolas", 9),
+            anchor="w"
+        )
+        self.white_material_label.pack(fill="x")
+
+        self.black_material_label = tk.Label(
+            self.eval_frame,
+            text="Black: q:1  r:2  b:2  n:2  p:8",
+            font=("Consolas", 9),
+            anchor="w"
+        )
+        self.black_material_label.pack(fill="x")
+
+        self.material_diff_label = tk.Label(
+            self.eval_frame,
+            text="Material is equal. (0.0 pts)",
+            font=("Arial", 9),
+            fg="#1F2937",
+            anchor="w",
+            justify="left",
+            wraplength=280
+        )
+        self.material_diff_label.pack(fill="x", pady=(4, 0))
+
         self.history_title = tk.Label(
             self.history_frame,
             text="Move History",
-            font=("Arial", 18, "bold")
+            font=("Arial", 14, "bold")
         )
-        self.history_title.pack(pady=15)
+        self.history_title.pack(pady=(4, 2))
 
         self.history_list = tk.Listbox(
             self.history_frame,
-            font=("Consolas", 13),
+            font=("Consolas", 12),
             borderwidth=0,
             highlightthickness=0
         )
@@ -145,7 +270,7 @@ class GambitUI:
             fill="both",
             expand=True,
             padx=10,
-            pady=10
+            pady=(2, 8)
         )
 
         self.difficulty_frame = tk.Frame(self.history_frame)
@@ -210,12 +335,13 @@ class GambitUI:
         try:
             with self.engine_lock:
                 board, moves, status, turn = get_position(self.engine)
+                engine_eval = get_engine_evaluation(self.engine)
 
             if not self.closing:
                 self.root.after(
                     0,
-                    lambda: self.update_position(
-                        board, moves, status, turn
+                    lambda: self._finish_initial_load(
+                        board, moves, status, turn, engine_eval
                     )
                 )
 
@@ -228,6 +354,96 @@ class GambitUI:
                     )
                 )
 
+    def _finish_initial_load(self, board, moves, status, turn, engine_eval):
+        self.update_position(
+            board, moves, status, turn, engine_eval=engine_eval
+        )
+        if self.prompt_mode_on_start and not self.closing:
+            selected = self.choose_game_mode(allow_cancel=False)
+            if selected in GAME_MODE_LABELS:
+                self.set_game_mode(selected)
+
+    def set_game_mode(self, mode):
+        if mode not in GAME_MODE_LABELS:
+            return
+        self.game_mode = mode
+        self.mode_label.config(text=f"Mode: {GAME_MODE_LABELS[mode]}")
+        self._update_controls()
+        self.draw_board()
+
+    def choose_game_mode(self, allow_cancel=True):
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Select Game Mode")
+        dialog.resizable(False, False)
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        chosen = {"mode": None if allow_cancel else self.game_mode}
+
+        tk.Label(
+            dialog,
+            text="Choose Game Mode",
+            font=("Arial", 14, "bold"),
+            padx=20,
+            pady=(14, 4)
+        ).pack()
+
+        tk.Label(
+            dialog,
+            text=(
+                "Player vs AI (PvAI): You play White against Gambit AI.\n"
+                "Player vs Player (PvP): Humans control both White and Black."
+            ),
+            font=("Arial", 10),
+            fg="#374151",
+            justify="center",
+            padx=20,
+            pady=(0, 12)
+        ).pack()
+
+        btn_frame = tk.Frame(dialog, padx=20, pady=6)
+        btn_frame.pack(fill="x")
+
+        def select(mode):
+            chosen["mode"] = mode
+            dialog.destroy()
+
+        tk.Button(
+            btn_frame,
+            text="Player vs AI (PvAI)",
+            font=("Arial", 11, "bold"),
+            bg="#DBEAFE",
+            pady=6,
+            command=lambda: select(MODE_PVAI)
+        ).pack(fill="x", pady=4)
+
+        tk.Button(
+            btn_frame,
+            text="Player vs Player (PvP)",
+            font=("Arial", 11, "bold"),
+            bg="#DCFCE7",
+            pady=6,
+            command=lambda: select(MODE_PVP)
+        ).pack(fill="x", pady=4)
+
+        if allow_cancel:
+            tk.Button(
+                btn_frame,
+                text="Cancel",
+                font=("Arial", 10),
+                pady=4,
+                command=dialog.destroy
+            ).pack(fill="x", pady=(6, 6))
+
+        dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
+        dialog.update_idletasks()
+        x = self.root.winfo_rootx() + (self.root.winfo_width() - dialog.winfo_width()) // 2
+        y = self.root.winfo_rooty() + (self.root.winfo_height() - dialog.winfo_height()) // 2
+        dialog.geometry(f"+{max(0, x)}+{max(0, y)}")
+
+        self.root.wait_window(dialog)
+        return chosen["mode"]
+
     def get_ai_depth(self):
         return AI_DIFFICULTY_DEPTHS.get(self.difficulty_var.get(), 2)
 
@@ -236,10 +452,92 @@ class GambitUI:
             return
         state = "disabled" if self.engine_busy else "normal"
         self.new_game_button.config(state=state)
-        self.difficulty_menu.config(state=state)
+        ai_state = (
+            "normal"
+            if (not self.engine_busy and self.game_mode == MODE_PVAI)
+            else "disabled"
+        )
+        self.difficulty_menu.config(state=ai_state)
         can_undo = (not self.engine_busy) and len(self.move_history) > 0
         self.undo_button.config(
             state="normal" if can_undo else "disabled"
+        )
+
+    def _draw_eval_bar(self, score):
+        bar_width = self.eval_bar.winfo_width()
+        bar_height = self.eval_bar.winfo_height()
+        if bar_width <= 1 or bar_height <= 1:
+            return
+
+        self.eval_bar.delete("all")
+        ratio = compute_advantage_ratio(score)
+        split_x = int(bar_width * ratio)
+
+        self.eval_bar.create_rectangle(
+            0, 0, split_x, bar_height,
+            fill="#F9FAFB",
+            outline=""
+        )
+        self.eval_bar.create_rectangle(
+            split_x, 0, bar_width, bar_height,
+            fill="#1F2937",
+            outline=""
+        )
+        mid_x = bar_width // 2
+        self.eval_bar.create_line(
+            mid_x, 0, mid_x, bar_height,
+            fill="#DC2626",
+            width=1
+        )
+
+    def update_evaluation_panel(self, board, engine_eval=None):
+        if self.closing or not board:
+            return
+
+        if engine_eval is not None:
+            self.engine_eval = engine_eval
+
+        material = analyze_material(board)
+        material_score = material["score"]
+        self.current_material_score = material_score
+
+        headline, _, color = format_evaluation_summary(material_score)
+        self.eval_headline_label.config(text=headline, fg=color)
+        self._draw_eval_bar(material_score)
+
+        cpp_score = self.engine_eval if engine_eval is None else engine_eval
+        cpp_sign = "+" if cpp_score > 0 else ""
+        self.engine_eval_label.config(
+            text=f"C++ Engine Eval (material-only): {cpp_sign}{cpp_score:.1f}"
+        )
+
+        ai_score = evaluate_board(board)
+        ai_sign = "+" if ai_score > 0 else ""
+        self.ai_eval_label.config(
+            text=f"AI Search Eval (Material + N/P PST): {ai_sign}{ai_score}"
+        )
+
+        wc = material["white_counts"]
+        bc = material["black_counts"]
+        self.white_material_label.config(
+            text=(
+                f"White: Q:{wc['Q']}  R:{wc['R']}  "
+                f"B:{wc['B']}  N:{wc['N']}  P:{wc['P']}"
+            )
+        )
+        self.black_material_label.config(
+            text=(
+                f"Black: q:{bc['Q']}  r:{bc['R']}  "
+                f"b:{bc['B']}  n:{bc['N']}  p:{bc['P']}"
+            )
+        )
+
+        mat_sign = "+" if material_score > 0 else ""
+        self.material_diff_label.config(
+            text=(
+                f"{material['explanation']} "
+                f"({mat_sign}{material_score:.1f} pts)"
+            )
         )
 
     def update_position(
@@ -250,7 +548,8 @@ class GambitUI:
         turn,
         last_move=None,
         appended_move=None,
-        keep_busy=False
+        keep_busy=False,
+        engine_eval=None
     ):
         if self.closing:
             return
@@ -266,6 +565,7 @@ class GambitUI:
             self.update_move_history()
         self.engine_busy = keep_busy
 
+        self.update_evaluation_panel(board, engine_eval=engine_eval)
         self._update_controls()
         self.draw_board()
 
@@ -279,7 +579,7 @@ class GambitUI:
         if self.game_status in GAME_OVER_STATUSES:
             return
 
-        if not self.white_turn:
+        if not can_human_interact(self.game_mode, self.white_turn):
             return
 
         if not self.board:
@@ -302,7 +602,7 @@ class GambitUI:
 
             piece = self.board[row][col]
 
-            if piece == "." or piece.islower():
+            if not is_own_piece(piece, self.white_turn):
                 return
 
             moves = [
@@ -351,7 +651,7 @@ class GambitUI:
 
                 piece = self.board[row][col]
 
-                if piece != "." and piece.isupper():
+                if is_own_piece(piece, self.white_turn):
 
                     moves = [
                         move for move in self.legal_moves
@@ -398,12 +698,20 @@ class GambitUI:
         button_frame = tk.Frame(dialog, padx=12, pady=10)
         button_frame.pack()
 
-        labels = [
-            ("q", "♕ Queen"),
-            ("r", "♖ Rook"),
-            ("b", "♗ Bishop"),
-            ("n", "♘ Knight"),
-        ]
+        if self.white_turn:
+            labels = [
+                ("q", "♕ Queen"),
+                ("r", "♖ Rook"),
+                ("b", "♗ Bishop"),
+                ("n", "♘ Knight"),
+            ]
+        else:
+            labels = [
+                ("q", "♛ Queen"),
+                ("r", "♜ Rook"),
+                ("b", "♝ Bishop"),
+                ("n", "♞ Knight"),
+            ]
 
         def select_piece(key):
             selected_move["value"] = promotion_moves.get(key)
@@ -461,13 +769,14 @@ class GambitUI:
                 board, moves, status, turn = get_position(
                     self.engine
                 )
+                engine_eval = get_engine_evaluation(self.engine)
 
-            game_over = status in (
-                "CHECKMATE",
-                "STALEMATE",
-                "DRAW_INSUFFICIENT_MATERIAL"
+            game_over = status in GAME_OVER_STATUSES
+            should_ai_move = (
+                (self.game_mode == MODE_PVAI)
+                and (not game_over)
+                and (turn == "BLACK")
             )
-            should_ai_move = (not game_over) and (turn == "BLACK")
 
             if not self.closing:
                 self.root.after(
@@ -479,7 +788,8 @@ class GambitUI:
                         turn,
                         last_move=move,
                         appended_move=move,
-                        keep_busy=should_ai_move
+                        keep_busy=should_ai_move,
+                        engine_eval=engine_eval
                     )
                 )
 
@@ -505,7 +815,7 @@ class GambitUI:
     def process_ai_turn(self, board, moves, status, turn):
 
         try:
-            if status in GAME_OVER_STATUSES:
+            if self.game_mode != MODE_PVAI or status in GAME_OVER_STATUSES:
                 if not self.closing:
                     self.root.after(
                         0,
@@ -545,6 +855,7 @@ class GambitUI:
                 board, moves, status, turn = get_position(
                     self.engine
                 )
+                engine_eval = get_engine_evaluation(self.engine)
 
             if not self.closing:
                 self.root.after(
@@ -556,7 +867,8 @@ class GambitUI:
                         turn,
                         last_move=ai_move,
                         appended_move=ai_move,
-                        keep_busy=False
+                        keep_busy=False,
+                        engine_eval=engine_eval
                     )
                 )
 
@@ -573,7 +885,9 @@ class GambitUI:
         if self.engine_busy or not self.move_history:
             return
 
-        undo_count = 1 if len(self.move_history) % 2 == 1 else 2
+        undo_count = get_undo_count(self.game_mode, len(self.move_history))
+        if undo_count <= 0:
+            return
         self.engine_busy = True
         self._update_controls()
 
@@ -594,12 +908,13 @@ class GambitUI:
                         raise RuntimeError(f"Undo failed: {response}")
 
                 board, moves, status, turn = get_position(self.engine)
+                engine_eval = get_engine_evaluation(self.engine)
 
             if not self.closing:
                 self.root.after(
                     0,
                     lambda: self._apply_undo_state(
-                        undo_count, board, moves, status, turn
+                        undo_count, board, moves, status, turn, engine_eval
                     )
                 )
 
@@ -610,7 +925,7 @@ class GambitUI:
                     lambda err=str(e): self._handle_move_error("Undo Error", err)
                 )
 
-    def _apply_undo_state(self, undo_count, board, moves, status, turn):
+    def _apply_undo_state(self, undo_count, board, moves, status, turn, engine_eval):
         if self.closing:
             return
 
@@ -622,22 +937,32 @@ class GambitUI:
         self.selected_moves = []
         self.last_move = self.move_history[-1] if self.move_history else None
         self.update_move_history()
-        self.update_position(board, moves, status, turn)
+        self.update_position(board, moves, status, turn, engine_eval=engine_eval)
 
-    def new_game(self):
+    def new_game(self, mode=None, prompt_mode=None):
 
         if self.engine_busy:
             return
+
+        if mode in GAME_MODE_LABELS:
+            selected_mode = mode
+        elif prompt_mode is True or (prompt_mode is None and self.prompt_mode_on_start):
+            selected_mode = self.choose_game_mode(allow_cancel=True)
+            if selected_mode not in GAME_MODE_LABELS:
+                return
+        else:
+            selected_mode = self.game_mode
 
         self.engine_busy = True
         self._update_controls()
 
         threading.Thread(
             target=self.send_new_game,
+            args=(selected_mode,),
             daemon=True
         ).start()
 
-    def send_new_game(self):
+    def send_new_game(self, selected_mode=None):
 
         try:
             with self.engine_lock:
@@ -656,12 +981,13 @@ class GambitUI:
                 board, moves, status, turn = get_position(
                     self.engine
                 )
+                engine_eval = get_engine_evaluation(self.engine)
 
             if not self.closing:
                 self.root.after(
                     0,
                     lambda: self._apply_new_game_state(
-                        board, moves, status, turn
+                        board, moves, status, turn, engine_eval, selected_mode
                     )
                 )
 
@@ -672,16 +998,28 @@ class GambitUI:
                     lambda err=str(e): self._handle_move_error("New Game Error", err)
                 )
 
-    def _apply_new_game_state(self, board, moves, status, turn):
+    def _apply_new_game_state(
+        self,
+        board,
+        moves,
+        status,
+        turn,
+        engine_eval=None,
+        selected_mode=None
+    ):
         if self.closing:
             return
+
+        if selected_mode in GAME_MODE_LABELS:
+            self.game_mode = selected_mode
+            self.mode_label.config(text=f"Mode: {GAME_MODE_LABELS[selected_mode]}")
 
         self.selected_square = None
         self.selected_moves = []
         self.last_move = None
         self.move_history = []
         self.update_move_history()
-        self.update_position(board, moves, status, turn)
+        self.update_position(board, moves, status, turn, engine_eval=engine_eval)
 
     # ---------------- MOVE HISTORY ----------------
 
@@ -740,7 +1078,8 @@ class GambitUI:
         turn_text, status_color = format_status_text(
             self.game_status,
             self.white_turn,
-            self.engine_busy
+            self.engine_busy,
+            game_mode=self.game_mode
         )
 
         self.canvas.create_text(

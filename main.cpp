@@ -248,6 +248,12 @@ int main()
 
         }
 
+        else if(command == "EVALUATE")
+        {
+            int score = evaluation.evaluateBoard(chessboard.getBoard());
+            cout << "EVAL " << score << endl;
+        }
+
     }
 
 

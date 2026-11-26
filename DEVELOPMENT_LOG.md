@@ -110,6 +110,7 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 5 — Final Stability Testing, Documentation & Project Cleanup
 
 - **Status:** Completed
+- **Commit:** `ab6076c`
 - **Changes Implemented:**
   - `README.md`: Updated project documentation with current features, architecture diagram, project structure (including `tests/` and `DEVELOPMENT_LOG.md`), C++17 build instructions, desktop GUI launch command, and `unittest` suite instructions; fixed an unclosed code block in the Markdown.
   - Verified clean tracked repository file list via `git ls-files` (no untracked temporary files or binaries committed).
@@ -121,3 +122,30 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
   - `g++ -std=c++17 -O2 main.cpp Board.cpp Move.cpp Pawn.cpp Knight.cpp Bishop.cpp Rook.cpp Queen.cpp King.cpp Evaluation.cpp -o gambit.exe` — Passed.
   - `python -m py_compile ai.py evaluation.py ui.py tests/test_engine.py tests/test_ai.py tests/test_ui_logic.py` — Passed.
   - `python -m unittest discover -s tests -v` — 17 tests passed in 1.321s.
+
+---
+
+## Milestone 6 — Game Mode Selection (PvP / PvAI) & Position Evaluation Panel
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - `main.cpp`: Added `EVALUATE` command calling `evaluation.evaluateBoard(chessboard.getBoard())` (`Evaluation.cpp` material-only score) and recompiled `gambit.exe`.
+  - `ai.py`: Added `get_engine_evaluation(engine)` to read `EVAL <score>` cleanly over the engine pipe.
+  - `evaluation.py`: Added `analyze_material(board)` and `format_evaluation_summary(score, threshold=0.25)` for White/Black piece counts (Q/R/B/N/P, excluding kings), White-perspective material score, thresholded headline formatting, and natural-language material difference explanations.
+  - `ui.py`:
+    - Added Game Mode selection (`MODE_PVP`, `MODE_PVAI`) via `choose_game_mode()`, startup mode prompt, `New Game` mode switching, prominent mode banner (`mode_label`), mode-aware piece selection (`can_human_interact`, `is_own_piece`), PvP-safe AI gating, and mode-aware `Undo Move` (`get_undo_count`).
+    - Added Position Evaluation Panel showing White-perspective headline (`White is better` / `Black is better` / `Position is equal`), visual advantage bar (`_draw_eval_bar`, `compute_advantage_ratio`), separate C++ Engine Eval (material-only `Evaluation.cpp`) and AI Search Eval (`evaluation.py` Material + Knight/Pawn PST), plus White/Black material counts and difference explanation updated after every move, undo, and reset under `self.engine_lock`.
+  - `tests/test_engine.py`, `tests/test_evaluation.py`, `tests/test_ui_logic.py`: Added tests for `EVALUATE` command, material breakdown/captures/promotions/orientation, PvP manual play without AI, PvAI Black-only AI response, mode switching via `new_game`, and evaluation updates.
+- **Files Modified:**
+  - `main.cpp`
+  - `ai.py`
+  - `evaluation.py`
+  - `ui.py`
+  - `tests/test_engine.py`
+  - `tests/test_evaluation.py`
+  - `tests/test_ui_logic.py`
+  - `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `g++ -std=c++17 -O2 main.cpp Board.cpp Move.cpp Pawn.cpp Knight.cpp Bishop.cpp Rook.cpp Queen.cpp King.cpp Evaluation.cpp -o gambit.exe` — Passed.
+  - `python -m py_compile ai.py evaluation.py ui.py tests/test_engine.py tests/test_ai.py tests/test_evaluation.py tests/test_ui_logic.py` — Passed.
+  - `python -m unittest discover -s tests -v` — 24 tests passed in 2.017s.

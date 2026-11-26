@@ -7,7 +7,8 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from ai import get_position, send_move_to_engine
+from ai import get_engine_evaluation, get_position, send_move_to_engine
+from evaluation import analyze_material
 
 
 class GambitEngineTests(unittest.TestCase):
@@ -124,6 +125,28 @@ class GambitEngineTests(unittest.TestCase):
         self.assertEqual(turn, "WHITE")
         self.assertEqual(moves, [])
         self.assertEqual(send_move_to_engine(self.engine, "e2e4"), "GAME_OVER")
+
+    def test_evaluate_command_tracks_captures_and_promotions(self):
+        self.assertEqual(get_engine_evaluation(self.engine), 0)
+
+        board, _, _, _ = self.play_moves(["e2e4", "d7d5", "e4d5"])
+        self.assertEqual(get_engine_evaluation(self.engine), 1)
+        self.assertEqual(get_engine_evaluation(self.engine), analyze_material(board)["score"])
+
+        board, _, _, _ = self.play_moves(["d8d5"])
+        self.assertEqual(get_engine_evaluation(self.engine), 0)
+
+        self.send_raw("NEW_GAME")
+        board, _, _, _ = self.play_moves([
+            "a2a4", "b7b5",
+            "a4b5", "a7a6",
+            "b5a6", "c7c6",
+            "a6a7", "d7d6",
+            "a7b8q",
+        ])
+        expected_score = analyze_material(board)["score"]
+        self.assertGreater(expected_score, 0)
+        self.assertEqual(get_engine_evaluation(self.engine), expected_score)
 
 
 if __name__ == "__main__":
