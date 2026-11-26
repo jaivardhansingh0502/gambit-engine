@@ -1,6 +1,7 @@
-from evaluation import evaluate_board
-
 import subprocess
+import time
+
+from evaluation import WHITE_PST, evaluate_board
 
 
 
@@ -245,6 +246,20 @@ class AI:
         self.verbose = verbose
 
         self.nodes_searched = 0
+        self.best_move_table = {}
+        self.killer_moves = {}
+        self._search_deadline = None
+
+    @staticmethod
+    def _board_key(board, maximizing_player):
+        return (tuple("".join(row) for row in board), maximizing_player)
+
+    def _record_killer(self, depth, move):
+        killers = self.killer_moves.setdefault(depth, [])
+        if move not in killers:
+            killers.insert(0, move)
+            if len(killers) > 2:
+                killers.pop()
 
 
 
@@ -270,110 +285,121 @@ class AI:
 
 
 
-    def find_best_move(self, board, legal_moves, turn, depth=2):
+    def find_best_move(self, board, legal_moves, turn, depth=2, time_limit=None):
 
         self.nodes_searched = 0
 
-
         if not legal_moves:
-
             return None
 
+        self.best_move_table.clear()
+        self.killer_moves.clear()
+        start_time = time.perf_counter()
+        self._search_deadline = (
+            (start_time + time_limit) if time_limit is not None else None
+        )
 
         white_turn = (turn == "WHITE")
+        target_depth = max(1, depth)
+        best_move = legal_moves[0]
+        root_key = self._board_key(board, white_turn)
 
+        for current_depth in range(1, target_depth + 1):
+            iter_best_move = None
+            iter_best_score = float('-inf') if white_turn else float('inf')
+            alpha = float('-inf')
+            beta = float('inf')
+            timed_out = False
 
-        best_move = None
+            ordered_moves = self.order_moves(
+                board,
+                legal_moves,
+                depth=current_depth,
+                maximizing_player=white_turn
+            )
 
-        best_score = float('-inf') if white_turn else float('inf')
+            for move in ordered_moves:
+                if (
+                    current_depth > 1
+                    and self._search_deadline is not None
+                    and time.perf_counter() >= self._search_deadline
+                ):
+                    timed_out = True
+                    break
 
+                response = send_move_to_engine(self.engine, move, verbose=self.verbose)
 
-        alpha = float('-inf')
-        beta = float('inf')
+                if response != "MOVE_OK":
+                    raise RuntimeError(
+                        f"Engine rejected legal move {move}: {response}"
+                    )
 
+                try:
+                    new_board, next_moves, status, next_turn = get_position(
+                        self.engine
+                    )
 
-        for move in self.order_moves(board, legal_moves):
+                    score = self.minimax(
+                        new_board,
+                        next_moves,
+                        depth=current_depth,
+                        maximizing_player=(next_turn == "WHITE"),
+                        alpha=alpha,
+                        beta=beta,
+                        status=status
+                    )
 
+                finally:
+                    self.undo_move()
 
-            response = send_move_to_engine(self.engine, move, verbose=self.verbose)
+                if (
+                    current_depth > 1
+                    and self._search_deadline is not None
+                    and time.perf_counter() >= self._search_deadline
+                    and iter_best_move is not None
+                ):
+                    # Keep current result if it improved, then stop if out of time
+                    if (white_turn and score > iter_best_score) or (
+                        not white_turn and score < iter_best_score
+                    ):
+                        iter_best_score = score
+                        iter_best_move = move
+                    timed_out = True
+                    break
 
+                if self.verbose and current_depth == target_depth:
+                    print(move, "->", score)
 
-            if response != "MOVE_OK":
+                if white_turn and score > iter_best_score:
+                    iter_best_score = score
+                    iter_best_move = move
 
-                raise RuntimeError(
-                    f"Engine rejected legal move {move}: {response}"
-                )
+                elif not white_turn and score < iter_best_score:
+                    iter_best_score = score
+                    iter_best_move = move
 
+                if white_turn:
+                    alpha = max(alpha, iter_best_score)
+                else:
+                    beta = min(beta, iter_best_score)
 
-            try:
+            if iter_best_move is not None and not timed_out:
+                best_move = iter_best_move
+                self.best_move_table[root_key] = best_move
+                if abs(iter_best_score) >= 90000:
+                    break
 
-                new_board, next_moves, status, next_turn = get_position(
-                    self.engine
-                )
+            if timed_out:
+                break
 
-
-                score = self.minimax(
-                    new_board,
-                    next_moves,
-                    depth=max(0, depth),
-                    maximizing_player=(next_turn == "WHITE"),
-                    alpha=alpha,
-                    beta=beta,
-                    status=status
-                )
-
-
-            finally:
-
-                self.undo_move()
-
-
-            if self.verbose:
-                print(move, "->", score)
-
-
-            if white_turn and score > best_score:
-
-                best_score = score
-                best_move = move
-
-
-            elif not white_turn and score < best_score:
-
-                best_score = score
-                best_move = move
-
-
-
-
-
-            # Update alpha-beta bounds across root moves
-            if white_turn:
-
-                alpha = max(alpha, best_score)
-
-
-
-
-            else:
-
-                beta = min(beta, best_score)
-
+        self._search_deadline = None
 
         if self.verbose:
             print("Nodes searched:", self.nodes_searched)
 
-
         return best_move
 
-
-
-    
-    
-    
-    def order_moves(self, board, legal_moves):
-
-
+    def order_moves(self, board, legal_moves, depth=None, maximizing_player=None):
 
         piece_values = {
             'p': 1,
@@ -384,61 +410,62 @@ class AI:
             'k': 100
         }
 
-
+        hash_move = None
+        if maximizing_player is not None:
+            hash_move = self.best_move_table.get(
+                self._board_key(board, maximizing_player)
+            )
+        killers = self.killer_moves.get(depth, ()) if depth is not None else ()
 
         def move_score(move):
-
-
+            if move == hash_move:
+                return 1000000
 
             start_row = 8 - int(move[1])
             start_col = ord(move[0]) - ord('a')
-
-
-
             end_row = 8 - int(move[3])
             end_col = ord(move[2]) - ord('a')
 
-
-
-            attacker = board[start_row][start_col].lower()
+            piece_char = board[start_row][start_col]
+            attacker = piece_char.lower()
             victim = board[end_row][end_col].lower()
-
-           
 
             score = 0
 
-
-
-            # Captures: valuable victim, cheaper attacker
+            # Captures (including en passant): valuable victim, cheaper attacker
+            is_ep = (
+                attacker == 'p'
+                and start_col != end_col
+                and victim not in piece_values
+            )
             if victim in piece_values:
-
-
-
-
-                score += 10 * piece_values[victim]
-                score -= piece_values[attacker]
-
-
-
-
+                score += 10000 + 100 * piece_values[victim] - piece_values[attacker]
+            elif is_ep:
+                score += 10000 + 100 - 1
 
             # Promotions
             if len(move) == 5:
-
-
-
                 promoted_piece = move[4].lower()
+                score += 9000 + piece_values.get(promoted_piece, 0) * 100
 
-                score += piece_values.get(promoted_piece, 0) * 10
+            # Killer moves
+            if score == 0 and move in killers:
+                score += 5000
 
+            # Castling bonus
+            if attacker == 'k' and abs(end_col - start_col) == 2:
+                score += 60
 
-
+            # Positional PST delta for move ordering
+            upper = piece_char.upper()
+            if upper in WHITE_PST:
+                table = WHITE_PST[upper]
+                if piece_char.isupper():
+                    score += table[end_row][end_col] - table[start_row][start_col]
+                else:
+                    score += table[7 - end_row][end_col] - table[7 - start_row][start_col]
 
             return score
-
-
-        
-
 
         return sorted(
             legal_moves,
@@ -495,17 +522,22 @@ class AI:
 
 
 
+        node_key = self._board_key(board, maximizing_player)
+
         # Maximizing player: White
         if maximizing_player:
 
             best_score = float('-inf')
+            best_local_move = None
 
+            for move in self.order_moves(
+                board,
+                legal_moves,
+                depth=depth,
+                maximizing_player=maximizing_player
+            ):
 
-            for move in self.order_moves(board, legal_moves):
-
-
-                response = send_move_to_engine(self.engine, move)
-
+                response = send_move_to_engine(self.engine, move, verbose=self.verbose)
 
                 if response != "MOVE_OK":
 
@@ -513,13 +545,11 @@ class AI:
                         f"Engine rejected legal move {move}: {response}"
                     )
 
-
                 try:
 
                     new_board, next_moves, next_status, next_turn = (
                         get_position(self.engine)
                     )
-
 
                     score = self.minimax(
                         new_board,
@@ -531,40 +561,39 @@ class AI:
                         status=next_status
                     )
 
-
-
-
                 finally:
 
                     self.undo_move()
 
-
-                best_score = max(best_score, score)
+                if score > best_score:
+                    best_score = score
+                    best_local_move = move
 
                 alpha = max(alpha, best_score)
 
-
                 if alpha >= beta:
-
+                    self._record_killer(depth, move)
                     break
 
+            if best_local_move is not None:
+                self.best_move_table[node_key] = best_local_move
 
             return best_score
-
-
-
 
         # Minimizing player: Black
         else:
 
             best_score = float('inf')
+            best_local_move = None
 
+            for move in self.order_moves(
+                board,
+                legal_moves,
+                depth=depth,
+                maximizing_player=maximizing_player
+            ):
 
-            for move in self.order_moves(board, legal_moves):
-
-
-                response = send_move_to_engine(self.engine, move)
-
+                response = send_move_to_engine(self.engine, move, verbose=self.verbose)
 
                 if response != "MOVE_OK":
 
@@ -572,13 +601,11 @@ class AI:
                         f"Engine rejected legal move {move}: {response}"
                     )
 
-
                 try:
 
                     new_board, next_moves, next_status, next_turn = (
                         get_position(self.engine)
                     )
-
 
                     score = self.minimax(
                         new_board,
@@ -590,21 +617,22 @@ class AI:
                         status=next_status
                     )
 
-
                 finally:
 
                     self.undo_move()
 
-
-                best_score = min(best_score, score)
+                if score < best_score:
+                    best_score = score
+                    best_local_move = move
 
                 beta = min(beta, best_score)
 
-
                 if beta <= alpha:
-
+                    self._record_killer(depth, move)
                     break
 
+            if best_local_move is not None:
+                self.best_move_table[node_key] = best_local_move
 
             return best_score
 

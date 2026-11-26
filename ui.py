@@ -28,8 +28,28 @@ GAME_MODE_LABELS = {
 
 AI_DIFFICULTY_DEPTHS = {
     "Easy (Depth 1)": 1,
-    "Medium (Depth 2)": 2,
-    "Hard (Depth 3)": 3,
+    "Medium (Depth 3)": 3,
+    "Hard (Depth 4)": 4,
+}
+
+AI_DIFFICULTY_TIME_LIMITS = {
+    "Easy (Depth 1)": 0.5,
+    "Medium (Depth 3)": 2.0,
+    "Hard (Depth 4)": 4.5,
+}
+
+THEME = {
+    "bg": "#181A20",
+    "sidebar": "#20232C",
+    "card": "#282C37",
+    "border": "#363B4A",
+    "text": "#F3F4F6",
+    "muted": "#9CA3AF",
+    "accent_blue": "#2563EB",
+    "accent_green": "#059669",
+    "btn_bg": "#313644",
+    "btn_active": "#3E4556",
+    "list_bg": "#1B1E26",
 }
 
 
@@ -81,7 +101,7 @@ def get_promotion_map(moves):
 
 def format_status_text(game_status, white_turn, engine_busy, game_mode=MODE_PVAI):
     if game_mode == MODE_PVAI and not white_turn and engine_busy:
-        return "Black — AI thinking...", "#1D4ED8"
+        return "Black — AI thinking...", "#60A5FA"
 
     if game_status == "CHECK":
         text = (
@@ -89,7 +109,7 @@ def format_status_text(game_status, white_turn, engine_busy, game_mode=MODE_PVAI
             if white_turn
             else "Black to move — CHECK"
         )
-        return text, "#B91C1C"
+        return text, "#F87171"
 
     if game_status == "CHECKMATE":
         text = (
@@ -97,16 +117,16 @@ def format_status_text(game_status, white_turn, engine_busy, game_mode=MODE_PVAI
             if white_turn
             else "CHECKMATE — White wins"
         )
-        return text, "#B91C1C"
+        return text, "#F87171"
 
     if game_status == "STALEMATE":
-        return "STALEMATE — Draw", "#B45309"
+        return "STALEMATE — Draw", "#FBBF24"
 
     if game_status == "DRAW_INSUFFICIENT_MATERIAL":
-        return "DRAW — Insufficient Material", "#B45309"
+        return "DRAW — Insufficient Material", "#FBBF24"
 
     text = "White to move" if white_turn else "Black to move"
-    return text, "#111827"
+    return text, "#F3F4F6"
 
 
 def get_board_geometry(width, height, top_margin=44):
@@ -123,7 +143,8 @@ class GambitUI:
     def __init__(self, root, game_mode=None, prompt_mode_on_start=True):
         self.root = root
         self.root.title("Gambit Chess")
-        self.root.minsize(820, 640)
+        self.root.minsize(900, 680)
+        self.root.configure(bg=THEME["bg"])
 
         self.engine = subprocess.Popen(
             ["gambit.exe"],
@@ -154,46 +175,97 @@ class GambitUI:
         self.closing = False
         self.engine_lock = threading.Lock()
 
-        self.main_frame = tk.Frame(root)
+        self.main_frame = tk.Frame(root, bg=THEME["bg"])
         self.main_frame.pack(fill="both", expand=True)
 
         self.canvas = tk.Canvas(
             self.main_frame,
+            bg=THEME["bg"],
             highlightthickness=0
         )
-        self.canvas.pack(side="left", fill="both", expand=True)
+        self.canvas.pack(side="left", fill="both", expand=True, padx=(10, 6), pady=8)
 
         self.history_frame = tk.Frame(
             self.main_frame,
-            width=320
+            width=350,
+            bg=THEME["sidebar"],
+            highlightthickness=1,
+            highlightbackground=THEME["border"]
         )
-        self.history_frame.pack(side="right", fill="y")
+        self.history_frame.pack(side="right", fill="y", padx=(0, 10), pady=8)
         self.history_frame.pack_propagate(False)
 
-        self.mode_label = tk.Label(
-            self.history_frame,
-            text=f"Mode: {GAME_MODE_LABELS[self.game_mode]}",
-            font=("Arial", 11, "bold"),
-            fg="#1E3A8A",
-            bg="#EFF6FF",
-            pady=6
-        )
-        self.mode_label.pack(fill="x", padx=10, pady=(10, 6))
+        # ---- Header & Mode Selector ----
+        self.header_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
+        self.header_frame.pack(fill="x", padx=12, pady=(12, 8))
 
+        tk.Label(
+            self.header_frame,
+            text="♟ GAMBIT CHESS",
+            font=("Segoe UI", 15, "bold"),
+            fg=THEME["text"],
+            bg=THEME["sidebar"],
+            anchor="w"
+        ).pack(fill="x")
+
+        self.mode_label = tk.Label(
+            self.header_frame,
+            text=f"Mode: {GAME_MODE_LABELS[self.game_mode]}",
+            font=("Segoe UI", 10, "bold"),
+            fg="#93C5FD",
+            bg=THEME["sidebar"],
+            anchor="w"
+        )
+        self.mode_label.pack(fill="x", pady=(2, 6))
+
+        self.mode_switch_frame = tk.Frame(self.header_frame, bg=THEME["sidebar"])
+        self.mode_switch_frame.pack(fill="x")
+
+        self.pvai_mode_btn = tk.Button(
+            self.mode_switch_frame,
+            text="Player vs AI",
+            font=("Segoe UI", 10, "bold"),
+            relief="flat",
+            bd=0,
+            pady=6,
+            cursor="hand2",
+            command=lambda: self.select_mode_from_sidebar(MODE_PVAI)
+        )
+        self.pvai_mode_btn.pack(side="left", fill="x", expand=True, padx=(0, 4))
+
+        self.pvp_mode_btn = tk.Button(
+            self.mode_switch_frame,
+            text="Player vs Player",
+            font=("Segoe UI", 10, "bold"),
+            relief="flat",
+            bd=0,
+            pady=6,
+            cursor="hand2",
+            command=lambda: self.select_mode_from_sidebar(MODE_PVP)
+        )
+        self.pvp_mode_btn.pack(side="left", fill="x", expand=True, padx=(4, 0))
+
+        # ---- Evaluation Card ----
         self.eval_frame = tk.LabelFrame(
             self.history_frame,
-            text="Position Evaluation",
-            font=("Arial", 11, "bold"),
-            padx=8,
-            pady=6
+            text=" Position Evaluation ",
+            font=("Segoe UI", 10, "bold"),
+            fg=THEME["muted"],
+            bg=THEME["card"],
+            bd=1,
+            relief="solid",
+            highlightbackground=THEME["border"],
+            padx=10,
+            pady=8
         )
-        self.eval_frame.pack(fill="x", padx=10, pady=(0, 8))
+        self.eval_frame.pack(fill="x", padx=12, pady=(0, 8))
 
         self.eval_headline_label = tk.Label(
             self.eval_frame,
             text="Position is equal: 0.0",
-            font=("Arial", 12, "bold"),
-            fg="#374151",
+            font=("Segoe UI", 12, "bold"),
+            fg=THEME["text"],
+            bg=THEME["card"],
             anchor="w"
         )
         self.eval_headline_label.pack(fill="x")
@@ -201,35 +273,40 @@ class GambitUI:
         self.eval_bar = tk.Canvas(
             self.eval_frame,
             height=16,
+            bg="#111827",
             highlightthickness=1,
-            highlightbackground="#9CA3AF"
+            highlightbackground=THEME["border"]
         )
-        self.eval_bar.pack(fill="x", pady=(4, 6))
+        self.eval_bar.pack(fill="x", pady=(6, 6))
         self.eval_bar.bind("<Configure>", lambda _e: self._draw_eval_bar(self.current_material_score))
         self.current_material_score = 0
 
         self.engine_eval_label = tk.Label(
             self.eval_frame,
             text="C++ Engine Eval (material-only): 0.0",
-            font=("Arial", 9),
-            fg="#374151",
+            font=("Segoe UI", 9),
+            fg="#D1D5DB",
+            bg=THEME["card"],
             anchor="w"
         )
         self.engine_eval_label.pack(fill="x")
 
         self.ai_eval_label = tk.Label(
             self.eval_frame,
-            text="AI Search Eval (Material + N/P PST): 0",
-            font=("Arial", 9),
-            fg="#374151",
+            text="AI Positional Eval (Material + PST): 0.00",
+            font=("Segoe UI", 9),
+            fg="#D1D5DB",
+            bg=THEME["card"],
             anchor="w"
         )
-        self.ai_eval_label.pack(fill="x", pady=(0, 4))
+        self.ai_eval_label.pack(fill="x", pady=(0, 6))
 
         self.white_material_label = tk.Label(
             self.eval_frame,
             text="White: Q:1  R:2  B:2  N:2  P:8",
             font=("Consolas", 9),
+            fg="#F9FAFB",
+            bg=THEME["card"],
             anchor="w"
         )
         self.white_material_label.pack(fill="x")
@@ -238,6 +315,8 @@ class GambitUI:
             self.eval_frame,
             text="Black: q:1  r:2  b:2  n:2  p:8",
             font=("Consolas", 9),
+            fg="#CBD5E1",
+            bg=THEME["card"],
             anchor="w"
         )
         self.black_material_label.pack(fill="x")
@@ -245,80 +324,129 @@ class GambitUI:
         self.material_diff_label = tk.Label(
             self.eval_frame,
             text="Material is equal. (0.0 pts)",
-            font=("Arial", 9),
-            fg="#1F2937",
+            font=("Segoe UI", 9),
+            fg="#93C5FD",
+            bg=THEME["card"],
             anchor="w",
             justify="left",
-            wraplength=280
+            wraplength=300
         )
-        self.material_diff_label.pack(fill="x", pady=(4, 0))
+        self.material_diff_label.pack(fill="x", pady=(5, 0))
 
+        # ---- Move History ----
         self.history_title = tk.Label(
             self.history_frame,
             text="Move History",
-            font=("Arial", 14, "bold")
+            font=("Segoe UI", 11, "bold"),
+            fg=THEME["muted"],
+            bg=THEME["sidebar"],
+            anchor="w"
         )
-        self.history_title.pack(pady=(4, 2))
+        self.history_title.pack(fill="x", padx=12, pady=(2, 4))
+
+        self.history_list_frame = tk.Frame(
+            self.history_frame,
+            bg=THEME["list_bg"],
+            highlightthickness=1,
+            highlightbackground=THEME["border"]
+        )
+        self.history_list_frame.pack(fill="both", expand=True, padx=12, pady=(0, 8))
+
+        self.history_scroll = tk.Scrollbar(self.history_list_frame)
+        self.history_scroll.pack(side="right", fill="y")
 
         self.history_list = tk.Listbox(
-            self.history_frame,
-            font=("Consolas", 12),
+            self.history_list_frame,
+            font=("Consolas", 11),
+            bg=THEME["list_bg"],
+            fg=THEME["text"],
+            selectbackground=THEME["accent_blue"],
+            selectforeground="#FFFFFF",
             borderwidth=0,
-            highlightthickness=0
+            highlightthickness=0,
+            yscrollcommand=self.history_scroll.set
         )
-        self.history_list.pack(
-            fill="both",
-            expand=True,
-            padx=10,
-            pady=(2, 8)
-        )
+        self.history_list.pack(side="left", fill="both", expand=True, padx=6, pady=4)
+        self.history_scroll.config(command=self.history_list.yview)
 
-        self.difficulty_frame = tk.Frame(self.history_frame)
-        self.difficulty_frame.pack(fill="x", padx=10, pady=(0, 8))
+        # ---- Controls ----
+        self.difficulty_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
+        self.difficulty_frame.pack(fill="x", padx=12, pady=(0, 8))
 
         tk.Label(
             self.difficulty_frame,
             text="AI Level:",
-            font=("Arial", 11, "bold")
+            font=("Segoe UI", 10, "bold"),
+            fg=THEME["text"],
+            bg=THEME["sidebar"]
         ).pack(side="left")
 
-        self.difficulty_var = tk.StringVar(value="Medium (Depth 2)")
+        self.difficulty_var = tk.StringVar(value="Medium (Depth 3)")
         self.difficulty_menu = tk.OptionMenu(
             self.difficulty_frame,
             self.difficulty_var,
             *AI_DIFFICULTY_DEPTHS.keys()
         )
-        self.difficulty_menu.config(font=("Arial", 11))
+        self.difficulty_menu.config(
+            font=("Segoe UI", 10),
+            bg=THEME["btn_bg"],
+            fg=THEME["text"],
+            activebackground=THEME["btn_active"],
+            activeforeground="#FFFFFF",
+            highlightthickness=0,
+            bd=0,
+            cursor="hand2"
+        )
+        self.difficulty_menu["menu"].config(
+            bg=THEME["card"],
+            fg=THEME["text"],
+            activebackground=THEME["accent_blue"],
+            activeforeground="#FFFFFF"
+        )
         self.difficulty_menu.pack(side="right", fill="x", expand=True, padx=(8, 0))
 
+        self.action_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
+        self.action_frame.pack(fill="x", padx=12, pady=(0, 12))
+
         self.undo_button = tk.Button(
-            self.history_frame,
-            text="Undo Move",
-            font=("Arial", 13, "bold"),
+            self.action_frame,
+            text="↩ Undo Move",
+            font=("Segoe UI", 11, "bold"),
+            bg=THEME["btn_bg"],
+            fg=THEME["text"],
+            activebackground=THEME["btn_active"],
+            activeforeground="#FFFFFF",
+            disabledforeground="#6B7280",
+            relief="flat",
+            bd=0,
+            pady=8,
+            cursor="hand2",
             command=self.undo_last_turn,
             state="disabled"
         )
-        self.undo_button.pack(
-            fill="x",
-            padx=10,
-            pady=(0, 6)
-        )
+        self.undo_button.pack(side="left", fill="x", expand=True, padx=(0, 4))
 
         self.new_game_button = tk.Button(
-            self.history_frame,
-            text="New Game",
-            font=("Arial", 13, "bold"),
+            self.action_frame,
+            text="⟳ New Game",
+            font=("Segoe UI", 11, "bold"),
+            bg=THEME["accent_blue"],
+            fg="#FFFFFF",
+            activebackground="#1D4ED8",
+            activeforeground="#FFFFFF",
+            disabledforeground="#93C5FD",
+            relief="flat",
+            bd=0,
+            pady=8,
+            cursor="hand2",
             command=self.new_game
         )
-        self.new_game_button.pack(
-            fill="x",
-            padx=10,
-            pady=(0, 10)
-        )
+        self.new_game_button.pack(side="left", fill="x", expand=True, padx=(4, 0))
 
         self.canvas.bind("<Configure>", self.on_resize)
         self.canvas.bind("<Button-1>", self.on_click)
 
+        self._refresh_mode_buttons()
         self.root.state("zoomed")
 
         self.root.after(100, self.initial_position)
@@ -363,11 +491,44 @@ class GambitUI:
             if selected in GAME_MODE_LABELS:
                 self.set_game_mode(selected)
 
+    def _refresh_mode_buttons(self):
+        if self.closing:
+            return
+        if self.game_mode == MODE_PVAI:
+            self.pvai_mode_btn.config(
+                bg=THEME["accent_blue"], fg="#FFFFFF"
+            )
+            self.pvp_mode_btn.config(
+                bg=THEME["btn_bg"], fg=THEME["muted"]
+            )
+        else:
+            self.pvai_mode_btn.config(
+                bg=THEME["btn_bg"], fg=THEME["muted"]
+            )
+            self.pvp_mode_btn.config(
+                bg=THEME["accent_green"], fg="#FFFFFF"
+            )
+
+    def select_mode_from_sidebar(self, mode):
+        if self.engine_busy or mode not in GAME_MODE_LABELS:
+            return
+        if mode == self.game_mode:
+            return
+        if not self.move_history:
+            self.set_game_mode(mode)
+            return
+        if messagebox.askyesno(
+            "Switch Game Mode",
+            f"Start a new game in {GAME_MODE_LABELS[mode]}?"
+        ):
+            self.new_game(mode=mode)
+
     def set_game_mode(self, mode):
         if mode not in GAME_MODE_LABELS:
             return
         self.game_mode = mode
         self.mode_label.config(text=f"Mode: {GAME_MODE_LABELS[mode]}")
+        self._refresh_mode_buttons()
         self._update_controls()
         self.draw_board()
 
@@ -375,6 +536,7 @@ class GambitUI:
         dialog = tk.Toplevel(self.root)
         dialog.title("Select Game Mode")
         dialog.resizable(False, False)
+        dialog.configure(bg=THEME["sidebar"])
         dialog.transient(self.root)
         dialog.grab_set()
 
@@ -382,10 +544,12 @@ class GambitUI:
 
         tk.Label(
             dialog,
-            text="Choose Game Mode",
-            font=("Arial", 14, "bold"),
-            padx=20,
-            pady=(14, 4)
+            text="♟ Choose Game Mode",
+            font=("Segoe UI", 15, "bold"),
+            fg=THEME["text"],
+            bg=THEME["sidebar"],
+            padx=24,
+            pady=(16, 4)
         ).pack()
 
         tk.Label(
@@ -394,14 +558,15 @@ class GambitUI:
                 "Player vs AI (PvAI): You play White against Gambit AI.\n"
                 "Player vs Player (PvP): Humans control both White and Black."
             ),
-            font=("Arial", 10),
-            fg="#374151",
+            font=("Segoe UI", 10),
+            fg=THEME["muted"],
+            bg=THEME["sidebar"],
             justify="center",
-            padx=20,
-            pady=(0, 12)
+            padx=24,
+            pady=(0, 14)
         ).pack()
 
-        btn_frame = tk.Frame(dialog, padx=20, pady=6)
+        btn_frame = tk.Frame(dialog, bg=THEME["sidebar"], padx=24, pady=8)
         btn_frame.pack(fill="x")
 
         def select(mode):
@@ -411,18 +576,30 @@ class GambitUI:
         tk.Button(
             btn_frame,
             text="Player vs AI (PvAI)",
-            font=("Arial", 11, "bold"),
-            bg="#DBEAFE",
-            pady=6,
+            font=("Segoe UI", 11, "bold"),
+            bg=THEME["accent_blue"],
+            fg="#FFFFFF",
+            activebackground="#1D4ED8",
+            activeforeground="#FFFFFF",
+            relief="flat",
+            bd=0,
+            pady=8,
+            cursor="hand2",
             command=lambda: select(MODE_PVAI)
         ).pack(fill="x", pady=4)
 
         tk.Button(
             btn_frame,
             text="Player vs Player (PvP)",
-            font=("Arial", 11, "bold"),
-            bg="#DCFCE7",
-            pady=6,
+            font=("Segoe UI", 11, "bold"),
+            bg=THEME["accent_green"],
+            fg="#FFFFFF",
+            activebackground="#047857",
+            activeforeground="#FFFFFF",
+            relief="flat",
+            bd=0,
+            pady=8,
+            cursor="hand2",
             command=lambda: select(MODE_PVP)
         ).pack(fill="x", pady=4)
 
@@ -430,28 +607,42 @@ class GambitUI:
             tk.Button(
                 btn_frame,
                 text="Cancel",
-                font=("Arial", 10),
-                pady=4,
+                font=("Segoe UI", 10),
+                bg=THEME["btn_bg"],
+                fg=THEME["text"],
+                activebackground=THEME["btn_active"],
+                activeforeground="#FFFFFF",
+                relief="flat",
+                bd=0,
+                pady=6,
+                cursor="hand2",
                 command=dialog.destroy
-            ).pack(fill="x", pady=(6, 6))
+            ).pack(fill="x", pady=(8, 8))
 
         dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
         dialog.update_idletasks()
         x = self.root.winfo_rootx() + (self.root.winfo_width() - dialog.winfo_width()) // 2
         y = self.root.winfo_rooty() + (self.root.winfo_height() - dialog.winfo_height()) // 2
         dialog.geometry(f"+{max(0, x)}+{max(0, y)}")
+        dialog.lift()
+        dialog.focus_force()
 
         self.root.wait_window(dialog)
         return chosen["mode"]
 
     def get_ai_depth(self):
-        return AI_DIFFICULTY_DEPTHS.get(self.difficulty_var.get(), 2)
+        return AI_DIFFICULTY_DEPTHS.get(self.difficulty_var.get(), 3)
+
+    def get_ai_time_limit(self):
+        return AI_DIFFICULTY_TIME_LIMITS.get(self.difficulty_var.get(), 2.0)
 
     def _update_controls(self):
         if self.closing:
             return
         state = "disabled" if self.engine_busy else "normal"
         self.new_game_button.config(state=state)
+        self.pvai_mode_btn.config(state=state)
+        self.pvp_mode_btn.config(state=state)
         ai_state = (
             "normal"
             if (not self.engine_busy and self.game_mode == MODE_PVAI)
@@ -501,8 +692,16 @@ class GambitUI:
         material_score = material["score"]
         self.current_material_score = material_score
 
-        headline, _, color = format_evaluation_summary(material_score)
-        self.eval_headline_label.config(text=headline, fg=color)
+        headline, side, _ = format_evaluation_summary(material_score)
+        dark_colors = {
+            "WHITE": "#4ADE80",
+            "BLACK": "#F87171",
+            "EQUAL": "#E5E7EB",
+        }
+        self.eval_headline_label.config(
+            text=headline,
+            fg=dark_colors.get(side, "#E5E7EB")
+        )
         self._draw_eval_bar(material_score)
 
         cpp_score = self.engine_eval if engine_eval is None else engine_eval
@@ -511,10 +710,10 @@ class GambitUI:
             text=f"C++ Engine Eval (material-only): {cpp_sign}{cpp_score:.1f}"
         )
 
-        ai_score = evaluate_board(board)
-        ai_sign = "+" if ai_score > 0 else ""
+        ai_pawns = evaluate_board(board) / 100.0
+        ai_sign = "+" if ai_pawns > 0 else ""
         self.ai_eval_label.config(
-            text=f"AI Search Eval (Material + N/P PST): {ai_sign}{ai_score}"
+            text=f"AI Positional Eval (Material + PST): {ai_sign}{ai_pawns:.2f}"
         )
 
         wc = material["white_counts"]
@@ -682,6 +881,7 @@ class GambitUI:
         dialog = tk.Toplevel(self.root)
         dialog.title("Pawn Promotion")
         dialog.resizable(False, False)
+        dialog.configure(bg=THEME["sidebar"])
         dialog.transient(self.root)
         dialog.grab_set()
 
@@ -690,12 +890,14 @@ class GambitUI:
         tk.Label(
             dialog,
             text="Choose promotion piece:",
-            font=("Arial", 12, "bold"),
-            padx=16,
-            pady=10
+            font=("Segoe UI", 12, "bold"),
+            fg=THEME["text"],
+            bg=THEME["sidebar"],
+            padx=18,
+            pady=(14, 6)
         ).pack()
 
-        button_frame = tk.Frame(dialog, padx=12, pady=10)
+        button_frame = tk.Frame(dialog, bg=THEME["sidebar"], padx=14, pady=12)
         button_frame.pack()
 
         if self.white_turn:
@@ -723,7 +925,15 @@ class GambitUI:
                     button_frame,
                     text=label,
                     font=("Segoe UI Symbol", 12),
+                    bg=THEME["btn_bg"],
+                    fg=THEME["text"],
+                    activebackground=THEME["accent_blue"],
+                    activeforeground="#FFFFFF",
+                    relief="flat",
+                    bd=0,
                     width=10,
+                    pady=6,
+                    cursor="hand2",
                     command=lambda k=key: select_piece(k)
                 ).pack(side="left", padx=4)
 
@@ -732,6 +942,8 @@ class GambitUI:
         x = self.root.winfo_rootx() + (self.root.winfo_width() - dialog.winfo_width()) // 2
         y = self.root.winfo_rooty() + (self.root.winfo_height() - dialog.winfo_height()) // 2
         dialog.geometry(f"+{max(0, x)}+{max(0, y)}")
+        dialog.lift()
+        dialog.focus_force()
 
         self.root.wait_window(dialog)
         return selected_move["value"]
@@ -826,13 +1038,15 @@ class GambitUI:
                 return
 
             depth = self.get_ai_depth()
+            time_limit = self.get_ai_time_limit()
 
             with self.engine_lock:
                 ai_move = self.ai.find_best_move(
                     board,
                     moves,
                     turn,
-                    depth=depth
+                    depth=depth,
+                    time_limit=time_limit
                 )
 
                 if ai_move is None:
@@ -1013,6 +1227,7 @@ class GambitUI:
         if selected_mode in GAME_MODE_LABELS:
             self.game_mode = selected_mode
             self.mode_label.config(text=f"Mode: {GAME_MODE_LABELS[selected_mode]}")
+            self._refresh_mode_buttons()
 
         self.selected_square = None
         self.selected_moves = []
@@ -1090,14 +1305,29 @@ class GambitUI:
             fill=status_color
         )
 
-        _, square_size, offset_x, offset_y = get_board_geometry(width, height)
+        board_size, square_size, offset_x, offset_y = get_board_geometry(width, height)
 
-        light = "#F0D9B5"
-        dark = "#B58863"
+        self.canvas.create_rectangle(
+            offset_x - 6,
+            offset_y - 6,
+            offset_x + board_size + 6,
+            offset_y + board_size + 6,
+            fill="#2B303B",
+            outline="#3F4656",
+            width=2
+        )
+
+        light = "#EEEED2"
+        dark = "#769656"
         selected_color = "#F6F669"
-        move_color = "#8FBC8F"
-        last_move_color = "#D9A441"
-        check_color = "#E06C75"
+        last_move_light = "#F5F682"
+        last_move_dark = "#BACA44"
+        check_color = "#E05252"
+
+        legal_targets = {
+            move[2:4]
+            for move in self.selected_moves
+        }
 
         king_in_check_square = (
             find_king_square(self.board, self.white_turn)
@@ -1114,35 +1344,25 @@ class GambitUI:
                 x2 = x1 + square_size
                 y2 = y1 + square_size
 
-                color = (
-                    light
-                    if (row + col) % 2 == 0
-                    else dark
-                )
+                is_light = (row + col) % 2 == 0
+                color = light if is_light else dark
 
                 square = self.square_to_notation(
                     row, col
                 )
 
                 if self.last_move is not None:
-
                     if (
                         square == self.last_move[:2]
                         or square == self.last_move[2:4]
                     ):
-                        color = last_move_color
+                        color = last_move_light if is_light else last_move_dark
 
                 if square == king_in_check_square:
                     color = check_color
 
                 if square == self.selected_square:
                     color = selected_color
-
-                elif square in [
-                    move[2:4]
-                    for move in self.selected_moves
-                ]:
-                    color = move_color
 
                 self.canvas.create_rectangle(
                     x1, y1, x2, y2,
@@ -1151,8 +1371,33 @@ class GambitUI:
                 )
 
                 piece = self.board[row][col]
+                has_piece = piece != "." and piece != " "
 
-                if piece != "." and piece != " ":
+                if square in legal_targets:
+                    cx = x1 + square_size / 2
+                    cy = y1 + square_size / 2
+                    if has_piece:
+                        ring_pad = square_size * 0.08
+                        self.canvas.create_oval(
+                            x1 + ring_pad,
+                            y1 + ring_pad,
+                            x2 - ring_pad,
+                            y2 - ring_pad,
+                            outline="#3D5A2A",
+                            width=max(3, int(square_size * 0.08))
+                        )
+                    else:
+                        dot_r = square_size * 0.16
+                        self.canvas.create_oval(
+                            cx - dot_r,
+                            cy - dot_r,
+                            cx + dot_r,
+                            cy + dot_r,
+                            fill="#4A6B35" if not is_light else "#7B9361",
+                            outline=""
+                        )
+
+                if has_piece:
 
                     self.draw_piece(
                         piece,
@@ -1164,54 +1409,80 @@ class GambitUI:
                 if col == 0:
 
                     self.canvas.create_text(
-                        x1 + 8,
-                        y1 + 8,
+                        x1 + 6,
+                        y1 + 5,
                         text=str(8 - row),
                         anchor="nw",
-                        font=("Arial", 11, "bold"),
-                        fill=dark if (row + col) % 2 == 0 else light
+                        font=("Segoe UI", 10, "bold"),
+                        fill=dark if is_light else light
                     )
 
                 if row == 7:
 
                     self.canvas.create_text(
-                        x2 - 8,
-                        y2 - 8,
+                        x2 - 6,
+                        y2 - 4,
                         text=chr(ord("a") + col),
                         anchor="se",
-                        font=("Arial", 11, "bold"),
-                        fill=dark if (row + col) % 2 == 0 else light
+                        font=("Segoe UI", 10, "bold"),
+                        fill=dark if is_light else light
                     )
 
     def draw_piece(self, piece, x, y, square_size):
 
-        pieces = {
-            "K": "♔",
-            "Q": "♕",
-            "R": "♖",
-            "B": "♗",
-            "N": "♘",
-            "P": "♙",
+        solid_pieces = {
+            "K": "♚",
+            "Q": "♛",
+            "R": "♜",
+            "B": "♝",
+            "N": "♞",
+            "P": "♟",
             "k": "♚",
             "q": "♛",
             "r": "♜",
             "b": "♝",
             "n": "♞",
-            "p": "♟"
+            "p": "♟",
         }
 
-        symbol = pieces.get(piece, "")
+        symbol = solid_pieces.get(piece, "")
+        if not symbol:
+            return
 
         font_size = max(
             20,
-            int(square_size * 0.68)
+            int(square_size * 0.70)
         )
+
+        is_white = piece.isupper()
+        fill_color = "#FFFFFF" if is_white else "#18181B"
+        outline_color = "#1E293B" if is_white else "#D1D5DB"
+        offset = max(1, int(square_size * 0.02))
+
+        if is_white:
+            for dx, dy in ((-offset, 0), (offset, 0), (0, -offset), (0, offset)):
+                self.canvas.create_text(
+                    x + dx,
+                    y + dy,
+                    text=symbol,
+                    font=("Segoe UI Symbol", font_size),
+                    fill=outline_color
+                )
+        else:
+            self.canvas.create_text(
+                x + 1,
+                y + 1,
+                text=symbol,
+                font=("Segoe UI Symbol", font_size),
+                fill=outline_color
+            )
 
         self.canvas.create_text(
             x,
             y,
             text=symbol,
-            font=("Segoe UI Symbol", font_size)
+            font=("Segoe UI Symbol", font_size),
+            fill=fill_color
         )
 
     # ---------------- SHUTDOWN ----------------

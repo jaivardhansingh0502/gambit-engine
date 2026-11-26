@@ -88,6 +88,7 @@ class GambitUIUndoFlowTests(unittest.TestCase):
                 return
             results["init_moves"] = len(app.legal_moves)
             results["default_depth"] = app.get_ai_depth()
+            results["default_time_limit"] = app.get_ai_time_limit()
             results["init_eval_headline"] = app.eval_headline_label.cget("text")
             app.difficulty_var.set("Easy (Depth 1)")
             results["easy_depth"] = app.get_ai_depth()
@@ -137,12 +138,13 @@ class GambitUIUndoFlowTests(unittest.TestCase):
         self.assertTrue(results.get("done"))
         self.assertEqual(results["init_moves"], 20)
         self.assertEqual(results["init_eval_headline"], "Position is equal: 0.0")
-        self.assertEqual(results["default_depth"], 2)
+        self.assertEqual(results["default_depth"], 3)
+        self.assertEqual(results["default_time_limit"], 2.0)
         self.assertEqual(results["easy_depth"], 1)
         self.assertEqual(len(results["after_ai_history"]), 2)
         self.assertEqual(results["after_ai_history"][0], "e2e4")
         self.assertEqual(results["undo_state_before"], "normal")
-        self.assertIn("AI Search Eval", results["ai_eval_text"])
+        self.assertIn("AI Positional Eval", results["ai_eval_text"])
         self.assertEqual(results["after_undo_history"], [])
         self.assertEqual(results["after_undo_moves"], 20)
         self.assertTrue(results["after_undo_turn"])
@@ -161,6 +163,10 @@ class GambitUIUndoFlowTests(unittest.TestCase):
                 return
             results["pvp_mode_label"] = app.mode_label.cget("text")
             results["pvp_diff_state"] = str(app.difficulty_menu["state"])
+            app.select_mode_from_sidebar(ui.MODE_PVAI)
+            results["sidebar_switched_to_pvai"] = app.game_mode
+            app.select_mode_from_sidebar(ui.MODE_PVP)
+            results["sidebar_switched_back_to_pvp"] = app.game_mode
             app.make_move("e2e4")
             root.after(40, step_after_white)
 
@@ -237,6 +243,8 @@ class GambitUIUndoFlowTests(unittest.TestCase):
         self.assertTrue(results.get("done"))
         self.assertIn("Player vs Player", results["pvp_mode_label"])
         self.assertEqual(results["pvp_diff_state"], "disabled")
+        self.assertEqual(results["sidebar_switched_to_pvai"], ui.MODE_PVAI)
+        self.assertEqual(results["sidebar_switched_back_to_pvp"], ui.MODE_PVP)
         self.assertEqual(results["after_white_history"], ["e2e4"])
         self.assertFalse(results["after_white_turn"])
         self.assertEqual(results["after_black_history"], ["e2e4", "d7d5"])

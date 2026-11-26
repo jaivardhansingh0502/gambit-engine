@@ -82,6 +82,14 @@ class GambitAITests(unittest.TestCase):
             results["Minimax"]["nodes"],
         )
 
+    def test_captures_hanging_queen(self):
+        board, moves, _, turn = self.play_moves([
+            "e2e4", "e7e5",
+            "g1f3", "d8g5",
+        ])
+        best = self.ai.find_best_move(board, moves, turn, depth=2)
+        self.assertEqual(best, "f3g5")
+
 
 if __name__ == "__main__":
     unittest.main()

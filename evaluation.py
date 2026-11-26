@@ -12,53 +12,155 @@ PIECE_VALUES = {
     'q': -9
 }
 
+AI_PIECE_VALUES = {
+    'P': 100,
+    'N': 320,
+    'B': 330,
+    'R': 500,
+    'Q': 900,
 
-KNIGHT_TABLE = [
-    [-5, -4, -3, -3, -3, -3, -4, -5],
-    [-4, -2,  0,  0,  0,  0, -2, -4],
-    [-3,  0,  1,  2,  2,  1,  0, -3],
-    [-3,  1,  2,  3,  3,  2,  1, -3],
-    [-3,  1,  2,  3,  3,  2,  1, -3],
-    [-3,  0,  1,  2,  2,  1,  0, -3],
-    [-4, -2,  0,  0,  0,  0, -2, -4],
-    [-5, -4, -3, -3, -3, -3, -4, -5]
-]
+    'p': -100,
+    'n': -320,
+    'b': -330,
+    'r': -500,
+    'q': -900
+}
 
 
 PAWN_TABLE = [
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [5, 5, 5, 5, 5, 5, 5, 5],
-    [2, 2, 2, 3, 3, 2, 2, 2],
-    [1, 1, 2, 3, 3, 2, 1, 1],
-    [0, 0, 1, 2, 2, 1, 0, 0],
-    [0, 0, 0, 1, 1, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0]
+    [0,  0,  0,  0,  0,  0,  0,  0],
+    [50, 50, 50, 50, 50, 50, 50, 50],
+    [10, 10, 20, 30, 30, 20, 10, 10],
+    [5,  5, 10, 25, 25, 10,  5,  5],
+    [0,  0,  0, 22, 22,  0,  0,  0],
+    [5, -5,-10,  0,  0,-10, -5,  5],
+    [5, 10, 10,-20,-20, 10, 10,  5],
+    [0,  0,  0,  0,  0,  0,  0,  0]
 ]
+
+KNIGHT_TABLE = [
+    [-50,-40,-30,-30,-30,-30,-40,-50],
+    [-40,-20,  0,  0,  0,  0,-20,-40],
+    [-30,  0, 10, 15, 15, 10,  0,-30],
+    [-30,  5, 15, 20, 20, 15,  5,-30],
+    [-30,  0, 15, 20, 20, 15,  0,-30],
+    [-30,  5, 10, 15, 15, 10,  5,-30],
+    [-40,-20,  0,  5,  5,  0,-20,-40],
+    [-50,-40,-30,-30,-30,-30,-40,-50]
+]
+
+BISHOP_TABLE = [
+    [-20,-10,-10,-10,-10,-10,-10,-20],
+    [-10,  0,  0,  0,  0,  0,  0,-10],
+    [-10,  0,  5, 10, 10,  5,  0,-10],
+    [-10,  5,  5, 10, 10,  5,  5,-10],
+    [-10,  0, 10, 10, 10, 10,  0,-10],
+    [-10, 10, 10, 10, 10, 10, 10,-10],
+    [-10,  5,  0,  0,  0,  0,  5,-10],
+    [-20,-10,-10,-10,-10,-10,-10,-20]
+]
+
+ROOK_TABLE = [
+    [0,  0,  0,  0,  0,  0,  0,  0],
+    [5, 10, 10, 10, 10, 10, 10,  5],
+    [-5, 0,  0,  0,  0,  0,  0, -5],
+    [-5, 0,  0,  0,  0,  0,  0, -5],
+    [-5, 0,  0,  0,  0,  0,  0, -5],
+    [-5, 0,  0,  0,  0,  0,  0, -5],
+    [-5, 0,  0,  0,  0,  0,  0, -5],
+    [0,  0,  0,  5,  5,  0,  0,  0]
+]
+
+QUEEN_TABLE = [
+    [-20,-10,-10, -5, -5,-10,-10,-20],
+    [-10,  0,  0,  0,  0,  0,  0,-10],
+    [-10,  0,  5,  5,  5,  5,  0,-10],
+    [-5,   0,  5,  5,  5,  5,  0, -5],
+    [0,    0,  5,  5,  5,  5,  0, -5],
+    [-10,  5,  5,  5,  5,  5,  0,-10],
+    [-10,  0,  5,  0,  0,  0,  0,-10],
+    [-20,-10,-10, -5, -5,-10,-10,-20]
+]
+
+KING_MIDDLE_TABLE = [
+    [-30,-40,-40,-50,-50,-40,-40,-30],
+    [-30,-40,-40,-50,-50,-40,-40,-30],
+    [-30,-40,-40,-50,-50,-40,-40,-30],
+    [-30,-40,-40,-50,-50,-40,-40,-30],
+    [-20,-30,-30,-40,-40,-30,-30,-20],
+    [-10,-20,-20,-20,-20,-20,-20,-10],
+    [20,  20,  0,  0,  0,  0, 20, 20],
+    [20,  30, 10,  0,  0, 10, 30, 20]
+]
+
+KING_END_TABLE = [
+    [-50,-40,-30,-20,-20,-30,-40,-50],
+    [-30,-20,-10,  0,  0,-10,-20,-30],
+    [-30,-10, 20, 30, 30, 20,-10,-30],
+    [-30,-10, 30, 40, 40, 30,-10,-30],
+    [-30,-10, 30, 40, 40, 30,-10,-30],
+    [-30,-10, 20, 30, 30, 20,-10,-30],
+    [-30,-30,  0,  0,  0,  0,-30,-30],
+    [-50,-30,-30,-30,-30,-30,-30,-50]
+]
+
+WHITE_PST = {
+    'P': PAWN_TABLE,
+    'N': KNIGHT_TABLE,
+    'B': BISHOP_TABLE,
+    'R': ROOK_TABLE,
+    'Q': QUEEN_TABLE,
+}
 
 
 def evaluate_board(board):
-
+    """Evaluate position in centipawns from White's perspective."""
     score = 0
+    non_king_material = 0
+    white_bishops = 0
+    black_bishops = 0
+    white_king = None
+    black_king = None
 
     for row in range(8):
         for col in range(8):
-
             piece = board[row][col]
+            if piece in ('.', ' '):
+                continue
 
-            score += PIECE_VALUES.get(piece, 0)
+            val = AI_PIECE_VALUES.get(piece, 0)
+            score += val
+            if piece not in ('K', 'k'):
+                non_king_material += abs(val)
 
-            if piece == 'N':
-                score += KNIGHT_TABLE[row][col]
+            if piece == 'B':
+                white_bishops += 1
+            elif piece == 'b':
+                black_bishops += 1
+            elif piece == 'K':
+                white_king = (row, col)
+            elif piece == 'k':
+                black_king = (row, col)
 
-            elif piece == 'n':
-                score -= KNIGHT_TABLE[7 - row][col]
+            if piece in WHITE_PST:
+                score += WHITE_PST[piece][row][col]
+            else:
+                upper = piece.upper()
+                if upper in WHITE_PST:
+                    score -= WHITE_PST[upper][7 - row][col]
 
-            elif piece == 'P':
-                score += PAWN_TABLE[row][col]
+    # Bishop pair bonus
+    if white_bishops >= 2:
+        score += 30
+    if black_bishops >= 2:
+        score -= 30
 
-            elif piece == 'p':
-                score -= PAWN_TABLE[7 - row][col]
+    # King placement: safety in middlegame, centralization in endgame
+    king_table = KING_END_TABLE if non_king_material <= 2600 else KING_MIDDLE_TABLE
+    if white_king is not None:
+        score += king_table[white_king[0]][white_king[1]]
+    if black_king is not None:
+        score -= king_table[7 - black_king[0]][black_king[1]]
 
     return score
 

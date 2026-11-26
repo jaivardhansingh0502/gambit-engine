@@ -128,6 +128,7 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 6 — Game Mode Selection (PvP / PvAI) & Position Evaluation Panel
 
 - **Status:** Completed
+- **Commit:** `e59366c`
 - **Changes Implemented:**
   - `main.cpp`: Added `EVALUATE` command calling `evaluation.evaluateBoard(chessboard.getBoard())` (`Evaluation.cpp` material-only score) and recompiled `gambit.exe`.
   - `ai.py`: Added `get_engine_evaluation(engine)` to read `EVAL <score>` cleanly over the engine pipe.
@@ -149,3 +150,27 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
   - `g++ -std=c++17 -O2 main.cpp Board.cpp Move.cpp Pawn.cpp Knight.cpp Bishop.cpp Rook.cpp Queen.cpp King.cpp Evaluation.cpp -o gambit.exe` — Passed.
   - `python -m py_compile ai.py evaluation.py ui.py tests/test_engine.py tests/test_ai.py tests/test_evaluation.py tests/test_ui_logic.py` — Passed.
   - `python -m unittest discover -s tests -v` — 24 tests passed in 2.017s.
+
+---
+
+## Milestone 7 — Modern Tkinter UI Overhaul, Inline Mode Switcher & Competitive AI
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - `evaluation.py`: Switched `evaluate_board()` to balanced centipawn `AI_PIECE_VALUES` (`P=100, N=320, B=330, R=500, Q=900`), added full piece-square tables (`PAWN_TABLE`, `KNIGHT_TABLE`, `BISHOP_TABLE`, `ROOK_TABLE`, `QUEEN_TABLE`, `KING_MIDDLE_TABLE`, `KING_END_TABLE`), bishop pair bonus (`+30` cp), and endgame king centralization, while preserving conventional `1/3/5/9` `PIECE_VALUES` for `analyze_material()`.
+  - `ai.py`: Upgraded `AI` with iterative deepening (`depth` + optional `time_limit`), best-move transposition hint table (`best_move_table`), killer-move ordering (`killer_moves`), en passant capture ordering, and PST-delta quiet move ordering (`68.71%` alpha-beta node reduction vs minimax).
+  - `ui.py`:
+    - Redesigned Tkinter GUI with a modern dark slate theme (`THEME`), framed tournament board (`#EEEED2` / `#769656`), legal move dots & capture rings, and bold outlined solid piece glyphs.
+    - Added an always-visible segmented Game Mode selector (`Player vs AI` / `Player vs Player`) directly in the sidebar (`select_mode_from_sidebar()`, `_refresh_mode_buttons()`) alongside dark-themed startup/promotion modals.
+    - Upgraded default Medium AI difficulty to `Medium (Depth 3)` with a `2.0s` iterative-deepening budget (`Hard (Depth 4)` with `4.5s`, `Easy (Depth 1)` with `0.5s`) and formatted AI Positional Eval in pawns.
+  - `tests/test_ai.py`, `tests/test_ui_logic.py`: Added `test_captures_hanging_queen`, sidebar mode-switching checks, and Medium depth/time-limit assertions.
+- **Files Modified:**
+  - `evaluation.py`
+  - `ai.py`
+  - `ui.py`
+  - `tests/test_ai.py`
+  - `tests/test_ui_logic.py`
+  - `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `python -m py_compile ai.py evaluation.py ui.py tests/test_engine.py tests/test_ai.py tests/test_evaluation.py tests/test_ui_logic.py` — Passed.
+  - `python -m unittest discover -s tests -v` — 25 tests passed in 1.634s (68.71% Alpha-Beta node reduction).
