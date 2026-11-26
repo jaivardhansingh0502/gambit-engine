@@ -2,9 +2,78 @@
 import tkinter as tk
 import subprocess
 import threading
-from tkinter import simpledialog, messagebox
+from tkinter import messagebox
 
 from ai import AI, get_position, send_move_to_engine
+
+
+GAME_OVER_STATUSES = (
+    "CHECKMATE",
+    "STALEMATE",
+    "DRAW_INSUFFICIENT_MATERIAL",
+)
+
+
+def square_to_notation(row, col):
+    file_char = chr(ord("a") + col)
+    rank_char = str(8 - row)
+    return file_char + rank_char
+
+
+def find_king_square(board, white_turn):
+    target = "K" if white_turn else "k"
+    for row in range(len(board)):
+        for col in range(len(board[row])):
+            if board[row][col] == target:
+                return square_to_notation(row, col)
+    return None
+
+
+def get_promotion_map(moves):
+    return {
+        move[4].lower(): move
+        for move in moves
+        if len(move) >= 5 and move[4].lower() in "qrbn"
+    }
+
+
+def format_status_text(game_status, white_turn, engine_busy):
+    if not white_turn and engine_busy:
+        return "Black — AI thinking...", "#1D4ED8"
+
+    if game_status == "CHECK":
+        text = (
+            "White to move — CHECK"
+            if white_turn
+            else "Black to move — CHECK"
+        )
+        return text, "#B91C1C"
+
+    if game_status == "CHECKMATE":
+        text = (
+            "CHECKMATE — Black wins"
+            if white_turn
+            else "CHECKMATE — White wins"
+        )
+        return text, "#B91C1C"
+
+    if game_status == "STALEMATE":
+        return "STALEMATE — Draw", "#B45309"
+
+    if game_status == "DRAW_INSUFFICIENT_MATERIAL":
+        return "DRAW — Insufficient Material", "#B45309"
+
+    text = "White to move" if white_turn else "Black to move"
+    return text, "#111827"
+
+
+def get_board_geometry(width, height, top_margin=44):
+    available_height = max(80, height - top_margin - 12)
+    board_size = max(80, min(width - 16, available_height))
+    square_size = board_size / 8
+    offset_x = (width - board_size) / 2
+    offset_y = top_margin + (available_height - board_size) / 2
+    return board_size, square_size, offset_x, offset_y
 
 
 class GambitUI:
@@ -73,6 +142,19 @@ class GambitUI:
             pady=10
         )
 
+        self.undo_button = tk.Button(
+            self.history_frame,
+            text="Undo Move",
+            font=("Arial", 13, "bold"),
+            command=self.undo_last_turn,
+            state="disabled"
+        )
+        self.undo_button.pack(
+            fill="x",
+            padx=10,
+            pady=(0, 6)
+        )
+
         self.new_game_button = tk.Button(
             self.history_frame,
             text="New Game",
@@ -82,7 +164,7 @@ class GambitUI:
         self.new_game_button.pack(
             fill="x",
             padx=10,
-            pady=10
+            pady=(0, 10)
         )
 
         self.canvas.bind("<Configure>", self.on_resize)
@@ -122,6 +204,17 @@ class GambitUI:
                     )
                 )
 
+    def _update_controls(self):
+        if self.closing:
+            return
+        self.new_game_button.config(
+            state="disabled" if self.engine_busy else "normal"
+        )
+        can_undo = (not self.engine_busy) and len(self.move_history) > 0
+        self.undo_button.config(
+            state="normal" if can_undo else "disabled"
+        )
+
     def update_position(
         self,
         board,
@@ -146,6 +239,7 @@ class GambitUI:
             self.update_move_history()
         self.engine_busy = keep_busy
 
+        self._update_controls()
         self.draw_board()
 
     # ---------------- MOVE SELECTION ----------------
@@ -155,11 +249,7 @@ class GambitUI:
         if self.engine_busy:
             return
 
-        if self.game_status in (
-            "CHECKMATE",
-            "STALEMATE",
-            "DRAW_INSUFFICIENT_MATERIAL"
-        ):
+        if self.game_status in GAME_OVER_STATUSES:
             return
 
         if not self.white_turn:
@@ -171,11 +261,7 @@ class GambitUI:
         width = self.canvas.winfo_width()
         height = self.canvas.winfo_height()
 
-        board_size = min(width, height - 40)
-        square_size = board_size / 8
-
-        offset_x = (width - board_size) / 2
-        offset_y = 20 + (height - 40 - board_size) / 2
+        _, square_size, offset_x, offset_y = get_board_geometry(width, height)
 
         col = int((event.x - offset_x) / square_size)
         row = int((event.y - offset_y) / square_size)
@@ -261,33 +347,59 @@ class GambitUI:
     # ---------------- PROMOTION ----------------
 
     def choose_promotion(self, moves):
-
-        promotion_moves = {
-            move[4].lower(): move
-            for move in moves
-            if len(move) >= 5
-            and move[4].lower() in "qrbn"
-        }
+        promotion_moves = get_promotion_map(moves)
 
         if not promotion_moves:
             return moves[0] if moves else None
 
-        choice = simpledialog.askstring(
-            "Pawn Promotion",
-            "Choose piece:\n"
-            "q - Queen\n"
-            "r - Rook\n"
-            "b - Bishop\n"
-            "n - Knight",
-            parent=self.root
-        )
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Pawn Promotion")
+        dialog.resizable(False, False)
+        dialog.transient(self.root)
+        dialog.grab_set()
 
-        if choice is None:
-            return None
+        selected_move = {"value": None}
 
-        return promotion_moves.get(
-            choice.strip().lower()
-        )
+        tk.Label(
+            dialog,
+            text="Choose promotion piece:",
+            font=("Arial", 12, "bold"),
+            padx=16,
+            pady=10
+        ).pack()
+
+        button_frame = tk.Frame(dialog, padx=12, pady=10)
+        button_frame.pack()
+
+        labels = [
+            ("q", "♕ Queen"),
+            ("r", "♖ Rook"),
+            ("b", "♗ Bishop"),
+            ("n", "♘ Knight"),
+        ]
+
+        def select_piece(key):
+            selected_move["value"] = promotion_moves.get(key)
+            dialog.destroy()
+
+        for key, label in labels:
+            if key in promotion_moves:
+                tk.Button(
+                    button_frame,
+                    text=label,
+                    font=("Segoe UI Symbol", 12),
+                    width=10,
+                    command=lambda k=key: select_piece(k)
+                ).pack(side="left", padx=4)
+
+        dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
+        dialog.update_idletasks()
+        x = self.root.winfo_rootx() + (self.root.winfo_width() - dialog.winfo_width()) // 2
+        y = self.root.winfo_rooty() + (self.root.winfo_height() - dialog.winfo_height()) // 2
+        dialog.geometry(f"+{max(0, x)}+{max(0, y)}")
+
+        self.root.wait_window(dialog)
+        return selected_move["value"]
 
     # ---------------- HUMAN MOVE ----------------
 
@@ -297,6 +409,7 @@ class GambitUI:
             return
 
         self.engine_busy = True
+        self._update_controls()
         self.draw_board()
 
         threading.Thread(
@@ -357,6 +470,7 @@ class GambitUI:
         if not self.closing:
             messagebox.showerror(title, err)
             self.engine_busy = False
+            self._update_controls()
             self.draw_board()
 
     # ---------------- AI MOVE ----------------
@@ -427,7 +541,62 @@ class GambitUI:
                     lambda err=str(e): self._handle_move_error("AI Error", err)
                 )
 
-    # ---------------- NEW GAME ----------------
+    # ---------------- UNDO & NEW GAME ----------------
+
+    def undo_last_turn(self):
+        if self.engine_busy or not self.move_history:
+            return
+
+        undo_count = 1 if len(self.move_history) % 2 == 1 else 2
+        self.engine_busy = True
+        self._update_controls()
+
+        threading.Thread(
+            target=self._process_undo,
+            args=(undo_count,),
+            daemon=True
+        ).start()
+
+    def _process_undo(self, undo_count):
+        try:
+            with self.engine_lock:
+                for _ in range(undo_count):
+                    self.engine.stdin.write("UNDO_MOVE\n")
+                    self.engine.stdin.flush()
+                    response = self.engine.stdout.readline().strip()
+                    if response != "UNDO_OK":
+                        raise RuntimeError(f"Undo failed: {response}")
+
+                board, moves, status, turn = get_position(self.engine)
+
+            if not self.closing:
+                self.root.after(
+                    0,
+                    lambda: self._apply_undo_state(
+                        undo_count, board, moves, status, turn
+                    )
+                )
+
+        except Exception as e:
+            if not self.closing:
+                self.root.after(
+                    0,
+                    lambda err=str(e): self._handle_move_error("Undo Error", err)
+                )
+
+    def _apply_undo_state(self, undo_count, board, moves, status, turn):
+        if self.closing:
+            return
+
+        for _ in range(undo_count):
+            if self.move_history:
+                self.move_history.pop()
+
+        self.selected_square = None
+        self.selected_moves = []
+        self.last_move = self.move_history[-1] if self.move_history else None
+        self.update_move_history()
+        self.update_position(board, moves, status, turn)
 
     def new_game(self):
 
@@ -435,10 +604,7 @@ class GambitUI:
             return
 
         self.engine_busy = True
-
-        self.new_game_button.config(
-            state="disabled"
-        )
+        self._update_controls()
 
         threading.Thread(
             target=self.send_new_game,
@@ -478,15 +644,6 @@ class GambitUI:
                 self.root.after(
                     0,
                     lambda err=str(e): self._handle_move_error("New Game Error", err)
-                )
-
-        finally:
-            if not self.closing:
-                self.root.after(
-                    0,
-                    lambda: self.new_game_button.config(
-                        state="normal"
-                    )
                 )
 
     def _apply_new_game_state(self, board, moves, status, turn):
@@ -537,11 +694,7 @@ class GambitUI:
     # ---------------- BOARD DRAWING ----------------
 
     def square_to_notation(self, row, col):
-
-        file = chr(ord("a") + col)
-        rank = str(8 - row)
-
-        return file + rank
+        return square_to_notation(row, col)
 
     def on_resize(self, event):
 
@@ -558,59 +711,34 @@ class GambitUI:
         width = self.canvas.winfo_width()
         height = self.canvas.winfo_height()
 
-        if self.game_status == "CHECK":
-
-            turn_text = (
-                "White to move — CHECK"
-                if self.white_turn
-                else "Black to move — CHECK"
-            )
-
-        elif self.game_status == "CHECKMATE":
-
-            turn_text = (
-                "CHECKMATE — Black wins"
-                if self.white_turn
-                else "CHECKMATE — White wins"
-            )
-
-        elif self.game_status == "STALEMATE":
-
-            turn_text = "STALEMATE"
-
-        elif self.game_status == "DRAW_INSUFFICIENT_MATERIAL":
-
-            turn_text = "DRAW — Insufficient Material"
-
-        else:
-
-            turn_text = (
-                "White to move"
-                if self.white_turn
-                else "Black to move"
-            )
-
-        if not self.white_turn and self.engine_busy:
-            turn_text = "Black — AI thinking..."
+        turn_text, status_color = format_status_text(
+            self.game_status,
+            self.white_turn,
+            self.engine_busy
+        )
 
         self.canvas.create_text(
             width / 2,
-            10,
+            22,
             text=turn_text,
-            font=("Arial", 16, "bold")
+            font=("Arial", 16, "bold"),
+            fill=status_color
         )
 
-        board_size = min(width, height - 40)
-        square_size = board_size / 8
-
-        offset_x = (width - board_size) / 2
-        offset_y = 20 + (height - 40 - board_size) / 2
+        _, square_size, offset_x, offset_y = get_board_geometry(width, height)
 
         light = "#F0D9B5"
         dark = "#B58863"
         selected_color = "#F6F669"
         move_color = "#8FBC8F"
         last_move_color = "#D9A441"
+        check_color = "#E06C75"
+
+        king_in_check_square = (
+            find_king_square(self.board, self.white_turn)
+            if self.game_status in ("CHECK", "CHECKMATE")
+            else None
+        )
 
         for row in range(8):
 
@@ -638,6 +766,9 @@ class GambitUI:
                         or square == self.last_move[2:4]
                     ):
                         color = last_move_color
+
+                if square == king_in_check_square:
+                    color = check_color
 
                 if square == self.selected_square:
                     color = selected_color

@@ -47,6 +47,7 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 2 — Fix C++ Engine Promotion Bug & Add Automated Engine/Protocol Tests
 
 - **Status:** Completed
+- **Commit:** `780a14d`
 - **Changes Implemented:**
   - `main.cpp`: Fixed `MAKE_MOVE` parsing (`moveString.substr(2)` instead of `moveString.substr(2, 2)`) so 5-character promotion moves (e.g., `a7b8n`) preserve the promotion piece, and added input length/promotion-character validation returning `MOVE_INVALID` on malformed input.
   - Recompiled `gambit.exe` with `g++ -std=c++17 -O2` (note: `*.exe` is gitignored).
@@ -58,3 +59,22 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 - **Tests Performed:**
   - `g++ -std=c++17 -O2 main.cpp Board.cpp Move.cpp Pawn.cpp Knight.cpp Bishop.cpp Rook.cpp Queen.cpp King.cpp Evaluation.cpp -o gambit.exe` — Passed.
   - `python -m unittest discover -s tests -v` — 7 tests passed in 0.104s.
+
+---
+
+## Milestone 3 — GUI Interaction, Promotion Dialog & Game-State Indicators
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - `ui.py`:
+    - Replaced `simpledialog.askstring` in `choose_promotion()` with a clickable modal `tk.Toplevel` dialog (`♕ Queen`, `♖ Rook`, `♗ Bishop`, `♘ Knight`).
+    - Added king-in-check / checkmate square highlighting (`#E06C75`) via `find_king_square()`.
+    - Added `Undo Move` button (`undo_last_turn()`, `_process_undo()`, `_apply_undo_state()`) and `_update_controls()` so human players can cleanly undo turns without breaking AI turn parity.
+    - Extracted `square_to_notation()`, `find_king_square()`, `get_promotion_map()`, `format_status_text()`, and `get_board_geometry()` helpers, removing duplicated geometry math and fixing status label spacing/coloring.
+  - `tests/test_ui_logic.py`: Added 6 unit & headless UI integration tests covering UI helper functions and the full move → AI reply → undo → new game flow.
+- **Files Modified:**
+  - `ui.py`
+  - `tests/test_ui_logic.py`
+  - `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `python -m unittest discover -s tests -v` — 13 tests passed in 0.826s.
