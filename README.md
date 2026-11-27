@@ -36,10 +36,11 @@ Gambit is a chess engine built from the ground up — combining a C++17 rules, m
 
 ### Python Tkinter Interface
 
-- [x] Interactive graphical chess board with algebraic coordinates, drag-and-drop & click-to-move, and smooth move animations
+- [x] Interactive graphical chess board with algebraic coordinates, drag-and-drop, click-to-move, **Premoves**, right-click square highlights & analysis arrows, and slower smooth AI move animations
+- [x] Selectable board themes (`Classic Green`, `Walnut Wood`, `Slate Blue`, `Tournament Charcoal`) & keyboard shortcuts (`←`/`→`, `Home`/`End`, `F`, `H`, `M`, `Esc`)
 - [x] Legal move, selected square, last move, king-in-check highlighting, and `💡 Hint` best-move arrow
-- [x] Standard Algebraic Notation (`SAN`) move history, captured pieces tray, and `🔊` sound toggle
-- [x] Player vs AI (`White`/`Black`/`Random`) & Player vs Player modes with live chess clocks (`Bullet`/`Blitz`/`Rapid`), `⇅ Flip`, `Resign`, `½ Draw` offer, FEN import, and PGN export
+- [x] Clickable Standard Algebraic Notation (`SAN`) move history, evaluation swing graph, captured pieces tray, and `🔊` sound toggle
+- [x] Player vs AI (`White`/`Black`/`Random`, 30+ built-in ECO openings) & Player vs Player modes with live chess clocks (`Bullet`/`Blitz`/`Rapid`), `⇅ Flip`, `Resign`, `½ Draw` offer, FEN import, and PGN export
 - [x] Animated `Back` / `Next` / `Live` move review without unfair undo
 - [x] Thread-safe background engine communication & clean shutdown
 
@@ -117,6 +118,6 @@ python -m unittest discover -s tests -v
 
 ## 📌 Current Status
 
-Gambit is playable end-to-end as both Player vs AI (`White`/`Black`/`Random`) and Player vs Player desktop chess application powered by a compiled C++17 search and rules engine, backed by a 37-test `unittest` suite covering C++ rules/search/FEN/draws, SAN/PGN utilities, evaluation, AI, and Tkinter GUI workflows. See [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) for the milestone history.
+Gambit is playable end-to-end as both Player vs AI (`White`/`Black`/`Random`) and Player vs Player desktop chess application powered by a compiled C++17 search and rules engine, backed by a 39-test `unittest` suite covering C++ rules/search/openings/FEN/draws, SAN/PGN utilities, evaluation, AI, and Tkinter GUI workflows. See [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) for the milestone history.
 
 ♟️ One move at a time.

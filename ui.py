@@ -88,6 +88,53 @@ THEME = {
     "list_bg": "#1B1E26",
 }
 
+BOARD_THEMES = {
+    "Classic Green": {
+        "light": "#EEEED2",
+        "dark": "#769656",
+        "selected": "#F6F669",
+        "last_light": "#F5F682",
+        "last_dark": "#BACA44",
+        "check": "#E05252",
+        "dot_light": "#7B9361",
+        "dot_dark": "#4A6B35",
+        "ring": "#3D5A2A",
+    },
+    "Walnut Wood": {
+        "light": "#F0D9B5",
+        "dark": "#B58863",
+        "selected": "#F6E58D",
+        "last_light": "#E6D27A",
+        "last_dark": "#C2A14D",
+        "check": "#E05252",
+        "dot_light": "#A58A68",
+        "dot_dark": "#7B573B",
+        "ring": "#6D4C32",
+    },
+    "Slate Blue": {
+        "light": "#DEE3E6",
+        "dark": "#8CA2AD",
+        "selected": "#93C5FD",
+        "last_light": "#BAE6FD",
+        "last_dark": "#6B9EC2",
+        "check": "#E05252",
+        "dot_light": "#7690A0",
+        "dot_dark": "#526B7A",
+        "ring": "#3E5664",
+    },
+    "Tournament Charcoal": {
+        "light": "#DCDCDC",
+        "dark": "#6E7887",
+        "selected": "#FDE047",
+        "last_light": "#E5E79D",
+        "last_dark": "#9CA85E",
+        "check": "#E05252",
+        "dot_light": "#848C98",
+        "dot_dark": "#4B5563",
+        "ring": "#374151",
+    },
+}
+
 
 def can_human_interact(game_mode, white_turn, human_color=HUMAN_COLOR_WHITE):
     if game_mode == MODE_PVP:
@@ -299,6 +346,13 @@ class GambitUI:
         self._anim_after_id = None
         self._pending_live_animate = False
         self._drag_state = None
+        self._right_drag_start = None
+        self.user_arrows = []
+        self.highlighted_squares = set()
+        self.premove = None
+        self._premove_selected = None
+        self.board_theme_name = "Classic Green"
+        self.eval_history = []
         self.hint_move = None
         self.sound_enabled = bool(prompt_mode_on_start)
         self.game_status = "NORMAL"
@@ -392,6 +446,40 @@ class GambitUI:
             command=self.toggle_sound
         )
         self.sound_button.pack(side="right")
+
+        self.theme_var = tk.StringVar(value=self.board_theme_name)
+        self.theme_button = tk.Menubutton(
+            self.title_row,
+            text="🎨",
+            font=("Segoe UI", 9),
+            bg=THEME["btn_bg"],
+            fg=THEME["text"],
+            activebackground=THEME["btn_active"],
+            activeforeground="#FFFFFF",
+            relief="flat",
+            bd=0,
+            padx=5,
+            pady=1,
+            cursor="hand2",
+            direction="below"
+        )
+        self.theme_menu = tk.Menu(
+            self.theme_button,
+            tearoff=0,
+            bg=THEME["card"],
+            fg=THEME["text"],
+            activebackground=THEME["accent_blue"],
+            activeforeground="#FFFFFF"
+        )
+        for theme_name in BOARD_THEMES:
+            self.theme_menu.add_radiobutton(
+                label=theme_name,
+                variable=self.theme_var,
+                value=theme_name,
+                command=lambda t=theme_name: self.set_board_theme(t)
+            )
+        self.theme_button.config(menu=self.theme_menu)
+        self.theme_button.pack(side="right", padx=(0, 3))
 
         self.mode_label = tk.Label(
             self.header_frame,
@@ -534,14 +622,26 @@ class GambitUI:
 
         self.eval_bar = tk.Canvas(
             self.eval_frame,
-            height=13,
+            height=12,
             bg="#111827",
             highlightthickness=1,
             highlightbackground=THEME["border"]
         )
-        self.eval_bar.pack(fill="x", pady=(4, 4))
+        self.eval_bar.pack(fill="x", pady=(3, 3))
         self.eval_bar.bind("<Configure>", lambda _e: self._draw_eval_bar(self.current_material_score))
         self.current_material_score = 0
+
+        self.eval_graph = tk.Canvas(
+            self.eval_frame,
+            height=24,
+            bg="#111827",
+            highlightthickness=1,
+            highlightbackground=THEME["border"],
+            cursor="hand2"
+        )
+        self.eval_graph.pack(fill="x", pady=(0, 3))
+        self.eval_graph.bind("<Configure>", lambda _e: self._draw_eval_graph())
+        self.eval_graph.bind("<Button-1>", self.on_eval_graph_click)
 
         self.engine_eval_label = tk.Label(
             self.eval_frame,
@@ -895,6 +995,10 @@ class GambitUI:
         self.canvas.bind("<ButtonPress-1>", self.on_mouse_down)
         self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
+        self.canvas.bind("<ButtonPress-3>", self.on_right_down)
+        self.canvas.bind("<ButtonRelease-3>", self.on_right_up)
+        self.history_list.bind("<ButtonRelease-1>", self.on_history_click)
+        self._bind_shortcuts()
 
         self._reset_clocks(self.time_control_name)
         self._refresh_mode_buttons()
@@ -1201,6 +1305,121 @@ class GambitUI:
         self.sound_enabled = not self.sound_enabled
         self.sound_button.config(text="🔊" if self.sound_enabled else "🔇")
 
+    def set_board_theme(self, theme_name):
+        if theme_name not in BOARD_THEMES:
+            return
+        self.board_theme_name = theme_name
+        if hasattr(self, "theme_var"):
+            self.theme_var.set(theme_name)
+        self.draw_board()
+
+    def _shortcut_allowed(self):
+        if self.closing or self._in_modal:
+            return False
+        try:
+            focus = self.root.focus_get()
+            if isinstance(focus, (tk.Entry, tk.Text)):
+                return False
+        except Exception:
+            pass
+        return True
+
+    def _bind_shortcuts(self):
+        self.root.bind("<Left>", lambda _e: self._shortcut_allowed() and self.step_back())
+        self.root.bind("<Right>", lambda _e: self._shortcut_allowed() and self.step_forward())
+        self.root.bind("<Home>", lambda _e: self._shortcut_allowed() and (self._cancel_animation(), self._apply_view_index(0)))
+        self.root.bind("<End>", lambda _e: self._shortcut_allowed() and self.jump_to_live())
+        self.root.bind("<KeyPress-f>", lambda _e: self._shortcut_allowed() and self.flip_board())
+        self.root.bind("<KeyPress-F>", lambda _e: self._shortcut_allowed() and self.flip_board())
+        self.root.bind("<KeyPress-h>", lambda _e: self._shortcut_allowed() and self.request_hint())
+        self.root.bind("<KeyPress-H>", lambda _e: self._shortcut_allowed() and self.request_hint())
+        self.root.bind("<KeyPress-m>", lambda _e: self._shortcut_allowed() and self.toggle_sound())
+        self.root.bind("<KeyPress-M>", lambda _e: self._shortcut_allowed() and self.toggle_sound())
+        self.root.bind("<Escape>", lambda _e: self._shortcut_allowed() and self._clear_board_annotations())
+
+    def _clear_board_annotations(self):
+        self.selected_square = None
+        self.selected_moves = []
+        self.premove = None
+        self._premove_selected = None
+        self.user_arrows.clear()
+        self.highlighted_squares.clear()
+        self.hint_move = None
+        self.draw_board()
+
+    def on_history_click(self, event):
+        if self.engine_busy or not self.position_history or self.history_list.size() == 0:
+            return
+        row = self.history_list.nearest(event.y)
+        bbox = self.history_list.bbox(row)
+        if not bbox:
+            return
+        bx, by, bw, bh = bbox
+        if event.y < by or event.y > by + bh:
+            return
+
+        white_idx = row * 2 + 1
+        black_idx = row * 2 + 2
+        if white_idx >= len(self.position_history):
+            return
+
+        width = max(1, self.history_list.winfo_width())
+        if black_idx < len(self.position_history) and event.x >= width * 0.52:
+            target_idx = black_idx
+        else:
+            target_idx = white_idx
+
+        self._cancel_animation()
+        self._apply_view_index(target_idx)
+
+    def _draw_eval_graph(self):
+        if not hasattr(self, "eval_graph"):
+            return
+        gw = self.eval_graph.winfo_width()
+        gh = self.eval_graph.winfo_height()
+        if gw <= 4 or gh <= 4:
+            return
+
+        self.eval_graph.delete("all")
+        mid_y = gh / 2.0
+        self.eval_graph.create_rectangle(0, 0, gw, mid_y, fill="#1E293B", outline="")
+        self.eval_graph.create_rectangle(0, mid_y, gw, gh, fill="#0F172A", outline="")
+        self.eval_graph.create_line(0, mid_y, gw, mid_y, fill="#475569", width=1)
+
+        n = len(self.eval_history)
+        if n == 0:
+            return
+
+        col_w = gw / max(1, n)
+        for idx, score_pawns in enumerate(self.eval_history):
+            clamped = max(-8.0, min(8.0, float(score_pawns)))
+            x1 = idx * col_w
+            x2 = max(x1 + 1.5, (idx + 1) * col_w)
+            bar_h = (abs(clamped) / 8.0) * (mid_y - 2)
+            if clamped >= 0:
+                self.eval_graph.create_rectangle(
+                    x1, mid_y - bar_h, x2, mid_y,
+                    fill="#E2E8F0", outline=""
+                )
+            else:
+                self.eval_graph.create_rectangle(
+                    x1, mid_y, x2, mid_y + bar_h,
+                    fill="#64748B", outline=""
+                )
+
+        if 0 <= self.view_index < n:
+            mx = (self.view_index + 0.5) * col_w
+            self.eval_graph.create_line(mx, 0, mx, gh, fill="#38BDF8", width=2)
+
+    def on_eval_graph_click(self, event):
+        if self.engine_busy or not self.position_history or not self.eval_history:
+            return
+        gw = max(1, self.eval_graph.winfo_width())
+        idx = int((event.x / gw) * len(self.eval_history))
+        idx = max(0, min(len(self.position_history) - 1, idx))
+        self._cancel_animation()
+        self._apply_view_index(idx)
+
     def export_pgn(self, save_dialog=True):
         white_name = (
             "Human"
@@ -1374,6 +1593,10 @@ class GambitUI:
         self.initial_fen = loaded_fen
         self.selected_square = None
         self.selected_moves = []
+        self.premove = None
+        self._premove_selected = None
+        self.user_arrows.clear()
+        self.highlighted_squares.clear()
         self.last_move = None
         self.hint_move = None
         self.move_history = []
@@ -1381,6 +1604,7 @@ class GambitUI:
         self.captured_by_white = []
         self.captured_by_black = []
         self.position_history = []
+        self.eval_history = []
         self.view_index = -1
         self._reset_clocks(self.time_control_name)
         self.update_move_history()
@@ -1802,13 +2026,17 @@ class GambitUI:
         captured_piece=None,
         keep_busy=False,
         engine_eval=None,
-        animate_from=None
+        animate_from=None,
+        animate_steps=8,
+        animate_frame_ms=16
     ):
         if self.closing:
             return
 
         self._cancel_animation()
         self.hint_move = None
+        self.user_arrows.clear()
+        self.highlighted_squares.clear()
         self.board = [row[:] for row in board]
         self.legal_moves = moves
         self.game_status = status
@@ -1824,6 +2052,7 @@ class GambitUI:
                 else:
                     self.captured_by_black.append(captured_piece)
 
+        ai_pawns_eval = evaluate_board(board) / 100.0
         snapshot = {
             "board": [row[:] for row in board],
             "status": status,
@@ -1835,8 +2064,13 @@ class GambitUI:
         }
         if appended_move is not None or not self.position_history:
             self.position_history.append(snapshot)
+            self.eval_history.append(ai_pawns_eval)
         else:
             self.position_history[-1] = snapshot
+            if self.eval_history:
+                self.eval_history[-1] = ai_pawns_eval
+            else:
+                self.eval_history.append(ai_pawns_eval)
         self.view_index = len(self.position_history) - 1
 
         if appended_move is not None:
@@ -1860,11 +2094,33 @@ class GambitUI:
         self.engine_busy = keep_busy
 
         if self.game_status in GAME_OVER_STATUSES:
+            self.premove = None
+            self._premove_selected = None
             self._stop_clock()
 
         self.update_evaluation_panel(board, engine_eval=engine_eval)
+        self._draw_eval_graph()
         self._refresh_clocks()
         self._update_controls()
+
+        queued_premove = None
+        if (
+            not keep_busy
+            and self.premove
+            and self.game_status not in GAME_OVER_STATUSES
+            and can_human_interact(self.game_mode, self.white_turn, self.human_color)
+        ):
+            for lm in self.legal_moves:
+                if lm == self.premove or (lm[:4] == self.premove[:4] and (len(lm) == 4 or lm.endswith("q"))):
+                    queued_premove = lm
+                    break
+            self.premove = None
+            self._premove_selected = None
+
+        if queued_premove is not None:
+            self.draw_board()
+            self.root.after(20, lambda pm=queued_premove: self.make_move(pm, animate=False))
+            return
 
         if (
             animate_from is not None
@@ -1881,8 +2137,8 @@ class GambitUI:
                     moving_piece,
                     from_sq,
                     to_sq,
-                    total_steps=6,
-                    frame_ms=12,
+                    total_steps=animate_steps,
+                    frame_ms=animate_frame_ms,
                 )
                 return
 
@@ -1980,14 +2236,100 @@ class GambitUI:
         row, col, clicked_square = coords
         self._handle_square_click(clicked_square, row, col)
 
-    def on_mouse_down(self, event):
-        self._drag_state = None
-        if not self._can_interact_now():
+    def _can_premove_now(self):
+        return (
+            self.game_mode == MODE_PVAI
+            and self.engine_busy
+            and self.is_viewing_live()
+            and self.game_status not in GAME_OVER_STATUSES
+            and bool(self.board)
+        )
+
+    def _handle_premove_click(self, clicked_square, row, col):
+        human_is_white = (self.human_color == HUMAN_COLOR_WHITE)
+        piece = self.board[row][col]
+        if self._premove_selected is None:
+            if is_own_piece(piece, human_is_white):
+                self._premove_selected = clicked_square
+                self.premove = None
+                self.draw_board()
+            elif self.premove is not None:
+                self.premove = None
+                self.draw_board()
+            return
+
+        if clicked_square == self._premove_selected:
+            self._premove_selected = None
+            self.draw_board()
+            return
+
+        if is_own_piece(piece, human_is_white):
+            self._premove_selected = clicked_square
+            self.draw_board()
+            return
+
+        from_sq = self._premove_selected
+        self._premove_selected = None
+        fr, fc = notation_to_coords(from_sq)
+        moving_piece = self.board[fr][fc]
+        suffix = ""
+        if moving_piece.lower() == "p" and row in (0, 7):
+            suffix = "q"
+        self.premove = from_sq + clicked_square + suffix
+        self.draw_board()
+
+    def on_right_down(self, event):
+        coords = self._event_to_board_square(event)
+        if coords is None:
+            self._right_drag_start = None
+            return
+        self._right_drag_start = coords[2]
+
+    def on_right_up(self, event):
+        start_sq = self._right_drag_start
+        self._right_drag_start = None
+        if self.premove is not None or self._premove_selected is not None:
+            self.premove = None
+            self._premove_selected = None
+            self.draw_board()
+            return
+        if not start_sq:
             return
         coords = self._event_to_board_square(event)
         if coords is None:
             return
+        end_sq = coords[2]
+        if end_sq == start_sq:
+            if start_sq in self.highlighted_squares:
+                self.highlighted_squares.remove(start_sq)
+            else:
+                self.highlighted_squares.add(start_sq)
+        else:
+            arrow = (start_sq, end_sq)
+            if arrow in self.user_arrows:
+                self.user_arrows.remove(arrow)
+            else:
+                self.user_arrows.append(arrow)
+        self.draw_board()
+
+    def on_mouse_down(self, event):
+        self._drag_state = None
+        self.user_arrows.clear()
+        self.highlighted_squares.clear()
+
+        coords = self._event_to_board_square(event)
+        if coords is None:
+            self.draw_board()
+            return
         row, col, clicked_square = coords
+
+        if self._can_premove_now():
+            self._handle_premove_click(clicked_square, row, col)
+            return
+
+        if not self._can_interact_now():
+            self.draw_board()
+            return
         piece = self.board[row][col]
 
         if is_own_piece(piece, self.white_turn):
@@ -2261,6 +2603,7 @@ class GambitUI:
             depth = self.get_ai_depth()
             time_limit = self.get_ai_time_limit()
             time_limit_ms = max(100, int(time_limit * 1000))
+            t_start = time.monotonic()
 
             with self.engine_lock:
                 ai_move, _, _ = get_cpp_best_move(
@@ -2301,6 +2644,10 @@ class GambitUI:
                 )
                 engine_eval = get_engine_evaluation(self.engine)
 
+            elapsed = time.monotonic() - t_start
+            if elapsed < 0.22 and not self.closing:
+                time.sleep(0.22 - elapsed)
+
             san_text = format_san_move(
                 board_before,
                 moves_before,
@@ -2323,7 +2670,9 @@ class GambitUI:
                         captured_piece=captured_piece,
                         keep_busy=False,
                         engine_eval=engine_eval,
-                        animate_from=anim_pair
+                        animate_from=anim_pair,
+                        animate_steps=20,
+                        animate_frame_ms=25
                     )
                 )
 
@@ -2481,6 +2830,7 @@ class GambitUI:
             self.board,
             engine_eval=snapshot["engine_eval"]
         )
+        self._draw_eval_graph()
         self._refresh_clocks()
         self._highlight_history_for_view(idx)
         self._update_controls()
@@ -2738,6 +3088,10 @@ class GambitUI:
         self._cancel_animation()
         self.selected_square = None
         self.selected_moves = []
+        self.premove = None
+        self._premove_selected = None
+        self.user_arrows.clear()
+        self.highlighted_squares.clear()
         self.last_move = None
         self.hint_move = None
         self.move_history = []
@@ -2746,6 +3100,7 @@ class GambitUI:
         self.captured_by_black = []
         self.initial_fen = STANDARD_START_FEN
         self.position_history = []
+        self.eval_history = []
         self.view_index = -1
         self.update_move_history()
         self.update_position(board, moves, status, turn, engine_eval=engine_eval)
@@ -2776,15 +3131,15 @@ class GambitUI:
                 black_move = display_moves[i + 1]
 
                 text = (
-                    f"{move_number}. "
-                    f"{white_move}    "
+                    f"{move_number:>2}. "
+                    f"{white_move:<7} "
                     f"{black_move}"
                 )
 
             else:
 
                 text = (
-                    f"{move_number}. "
+                    f"{move_number:>2}. "
                     f"{white_move}"
                 )
 
@@ -2855,12 +3210,13 @@ class GambitUI:
             width=2
         )
 
-        light = "#EEEED2"
-        dark = "#769656"
-        selected_color = "#F6F669"
-        last_move_light = "#F5F682"
-        last_move_dark = "#BACA44"
-        check_color = "#E05252"
+        palette = BOARD_THEMES.get(self.board_theme_name, BOARD_THEMES["Classic Green"])
+        light = palette["light"]
+        dark = palette["dark"]
+        selected_color = palette["selected"]
+        last_move_light = palette["last_light"]
+        last_move_dark = palette["last_dark"]
+        check_color = palette["check"]
 
         legal_targets = {
             move[2:4]
@@ -2899,6 +3255,15 @@ class GambitUI:
                     ):
                         color = last_move_light if is_light else last_move_dark
 
+                if square in self.highlighted_squares:
+                    color = "#34D399" if is_light else "#059669"
+
+                if self.premove and (square == self.premove[:2] or square == self.premove[2:4]):
+                    color = "#FCA5A5" if is_light else "#EF4444"
+
+                if square == self._premove_selected:
+                    color = "#FBBF24"
+
                 if square == king_in_check_square:
                     color = check_color
 
@@ -2924,7 +3289,7 @@ class GambitUI:
                             y1 + ring_pad,
                             x2 - ring_pad,
                             y2 - ring_pad,
-                            outline="#3D5A2A",
+                            outline=palette["ring"],
                             width=max(3, int(square_size * 0.08))
                         )
                     else:
@@ -2934,7 +3299,7 @@ class GambitUI:
                             cy - dot_r,
                             cx + dot_r,
                             cy + dot_r,
-                            fill="#4A6B35" if not is_light else "#7B9361",
+                            fill=palette["dot_dark"] if not is_light else palette["dot_light"],
                             outline=""
                         )
 
@@ -2969,39 +3334,52 @@ class GambitUI:
                         fill=dark if is_light else light
                     )
 
+        for from_sq, to_sq in self.user_arrows:
+            self._draw_board_arrow(from_sq, to_sq, offset_x, offset_y, square_size, "#10B981")
+
         if (
             self.hint_move
             and len(self.hint_move) >= 4
             and viewing_live
         ):
-            from_r, from_c = notation_to_coords(self.hint_move[:2])
-            to_r, to_c = notation_to_coords(self.hint_move[2:4])
-            disp_from_r, disp_from_c = board_to_display_coords(
-                from_r, from_c, self.board_flipped
+            self._draw_board_arrow(
+                self.hint_move[:2],
+                self.hint_move[2:4],
+                offset_x,
+                offset_y,
+                square_size,
+                "#F59E0B"
             )
-            disp_to_r, disp_to_c = board_to_display_coords(
-                to_r, to_c, self.board_flipped
-            )
-            hx1 = offset_x + (disp_from_c + 0.5) * square_size
-            hy1 = offset_y + (disp_from_r + 0.5) * square_size
-            hx2 = offset_x + (disp_to_c + 0.5) * square_size
-            hy2 = offset_y + (disp_to_r + 0.5) * square_size
-            arrow_w = max(4, int(square_size * 0.12))
-            self.canvas.create_line(
-                hx1,
-                hy1,
-                hx2,
-                hy2,
-                fill="#F59E0B",
-                width=arrow_w,
-                arrow=tk.LAST,
-                arrowshape=(
-                    max(12, int(square_size * 0.24)),
-                    max(15, int(square_size * 0.28)),
-                    max(5, int(square_size * 0.10)),
-                ),
-                capstyle=tk.ROUND,
-            )
+
+    def _draw_board_arrow(self, from_sq, to_sq, offset_x, offset_y, square_size, color):
+        from_r, from_c = notation_to_coords(from_sq)
+        to_r, to_c = notation_to_coords(to_sq)
+        disp_from_r, disp_from_c = board_to_display_coords(
+            from_r, from_c, self.board_flipped
+        )
+        disp_to_r, disp_to_c = board_to_display_coords(
+            to_r, to_c, self.board_flipped
+        )
+        hx1 = offset_x + (disp_from_c + 0.5) * square_size
+        hy1 = offset_y + (disp_from_r + 0.5) * square_size
+        hx2 = offset_x + (disp_to_c + 0.5) * square_size
+        hy2 = offset_y + (disp_to_r + 0.5) * square_size
+        arrow_w = max(4, int(square_size * 0.12))
+        self.canvas.create_line(
+            hx1,
+            hy1,
+            hx2,
+            hy2,
+            fill=color,
+            width=arrow_w,
+            arrow=tk.LAST,
+            arrowshape=(
+                max(12, int(square_size * 0.24)),
+                max(15, int(square_size * 0.28)),
+                max(5, int(square_size * 0.10)),
+            ),
+            capstyle=tk.ROUND,
+        )
 
     def draw_piece(self, piece, x, y, square_size):
 

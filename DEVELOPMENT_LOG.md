@@ -290,6 +290,7 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 13 — Stronger, More Human C++ AI (Opening Book, Tapered Eval & Search Pruning Upgrades)
 
 - **Status:** Completed
+- **Commit:** `bb924d6`
 - **Changes Implemented:**
   - **Built-in ECO Opening Book (`Search.cpp`):**
     - Precomputes transposition-aware position keys (`Board::getPositionKey()`) across classic ECO openings (Italian, Ruy Lopez, Scotch, Sicilian Najdorf/Classical/Rossolimo, French, Caro-Kann, Queen's Gambit Declined/Slav/Accepted, Nimzo/Queen's/King's Indian, Grunfeld, English, Reti) and selects varied legal book moves instantaneously (`1` node).
@@ -309,3 +310,28 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
   - `g++ -std=c++17 -O2 main.cpp Board.cpp Move.cpp Pawn.cpp Knight.cpp Bishop.cpp Rook.cpp Queen.cpp King.cpp Evaluation.cpp Search.cpp -o gambit.exe` — Compiled cleanly (exit code 0, zero warnings in `Search.cpp`).
   - `python -m unittest discover -s tests -v` — 38 tests passed (`OK`) in 13.032s.
   - Open middlegame benchmark (`r1bq1rk1/ppp2ppp/2np1n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w - - 0 7`): Depth 4 `19,800` nodes in `0.4560s` (`43,417` nps, `c1g5`); Depth 6/7 at `54,020`–`56,084` nps.
+
+---
+
+## Milestone 14 — Expanded 30+ Opening Repertoire, Slower AI Move Animation & Option B Pro UX
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - **Expanded ECO Opening Book (`Search.cpp`):**
+    - Expanded `getOpeningBookMap()` to 42 theoretical lines covering 30+ distinct chess openings and variations (Ruy Lopez Morphy/Berlin/Exchange/Arkhangelsk, Italian Giuoco Piano/Evans Gambit/Two Knights/Fried Liver, Scotch, Petroff, Vienna, King's Gambit, Bishop's Opening, Philidor, Sicilian Najdorf/Dragon/Classical/Taimanov/Accelerated Dragon/Rossolimo/Alapin, French Classical/Winawer/Tarrasch/Advance, Caro-Kann Classical/Advance/Panov, Scandinavian, Pirc, Alekhine, Modern, QGD, Slav, Semi-Slav, QGA, London System, Catalan, Nimzo/Queen's/King's Indian, Grunfeld, Benoni, Dutch, English, Reti, and King's Indian Attack).
+  - **Slower, Visible AI Move Animations (`ui.py`):**
+    - Added minimum `0.22s` cadence before AI replies on instant book/shallow searches and parameterized `update_position(..., animate_steps=20, animate_frame_ms=25)` (~`500ms` smooth eased piece slide for AI moves vs `~128ms` for human clicks).
+  - **Option B Pro Desktop UX (`ui.py`):**
+    - **Clickable Move History:** Aligned columns (`on_history_click`) so clicking the White or Black column jumps directly to that ply.
+    - **Right-Click Highlights & Arrows:** Added `on_right_down` / `on_right_up` square highlights and emerald analysis arrows (cleared on left-click or move).
+    - **Premove Queue:** Added `_can_premove_now` / `_handle_premove_click` allowing players in PvAI to queue a premove while Gambit AI thinks, executing automatically if legal once the AI responds (right-click or `Esc` cancels).
+    - **Board Themes, Keyboard Shortcuts & Mini Eval Graph:** Added `🎨` `BOARD_THEMES` menu (`Classic Green`, `Walnut Wood`, `Slate Blue`, `Tournament Charcoal`), clickable `eval_graph` momentum chart inside the evaluation panel, and global shortcuts (`←`/`→`, `Home`/`End`, `F`, `H`, `M`, `Esc`).
+- **Files Modified:**
+  - `Search.cpp`, `ui.py`
+  - `tests/test_engine.py`, `tests/test_ui_logic.py`
+  - `README.md`, `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `g++ -std=c++17 -O2 main.cpp Board.cpp Move.cpp Pawn.cpp Knight.cpp Bishop.cpp Rook.cpp Queen.cpp King.cpp Evaluation.cpp Search.cpp -o gambit.exe` — Compiled cleanly (exit code 0).
+  - `python -m py_compile ai.py chess_utils.py evaluation.py ui.py tests/test_chess_utils.py tests/test_engine.py tests/test_ui_logic.py tests/test_ai.py tests/test_evaluation.py` — Passed.
+  - `python -m unittest discover -s tests -v` — 39 tests passed in 6.869s (`OK`).
+  - `1280x680` sidebar layout verification (`theme_button` through `new_game_button` bottom <= 710px within 729px window height) — Passed (`ALL_FIT_OK`).

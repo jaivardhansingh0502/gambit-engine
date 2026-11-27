@@ -663,6 +663,132 @@ class GambitUIFlowTests(unittest.TestCase):
         self.assertIn("4 4", results["fen_initial_stored"])
         self.assertEqual(results["mate_hint_move"], "h5f7")
 
+    def test_option_b_themes_history_click_annotations_eval_graph_and_premove(self):
+        prev_cwd = os.getcwd()
+        os.chdir(ROOT_DIR)
+        root = tk.Tk()
+        root.deiconify()
+        root.geometry("1280x680")
+        app = ui.GambitUI(root, game_mode=ui.MODE_PVP, prompt_mode_on_start=False)
+        results = {}
+
+        class DummyEvent:
+            def __init__(self, x, y):
+                self.x = x
+                self.y = y
+
+        def sq_center(sq):
+            width = app.canvas.winfo_width()
+            height = app.canvas.winfo_height()
+            _, sq_size, ox, oy = ui.get_board_geometry(width, height)
+            r, c = ui.notation_to_coords(sq)
+            dr, dc = ui.board_to_display_coords(r, c, app.board_flipped)
+            return ox + (dc + 0.5) * sq_size, oy + (dr + 0.5) * sq_size
+
+        def step_init():
+            if app.engine_busy:
+                root.after(40, step_init)
+                return
+            root.update_idletasks()
+            app.set_board_theme("Walnut Wood")
+            results["theme_name"] = app.board_theme_name
+
+            # Right-click highlight + arrow
+            ex, ey = sq_center("e4")
+            dx, dy = sq_center("d5")
+            app.on_right_down(DummyEvent(ex, ey))
+            app.on_right_up(DummyEvent(ex, ey))
+            results["highlight_added"] = "e4" in app.highlighted_squares
+            app.on_right_down(DummyEvent(ex, ey))
+            app.on_right_up(DummyEvent(dx, dy))
+            results["arrow_added"] = ("e4", "d5") in app.user_arrows
+
+            # Play 2 moves and test clickable Move History + Eval Graph
+            app.make_move("e2e4", animate=False)
+            root.after(40, step_after_w1)
+
+        def step_after_w1():
+            if app.engine_busy:
+                root.after(40, step_after_w1)
+                return
+            app.make_move("e7e5", animate=False)
+            root.after(40, step_after_b1)
+
+        def step_after_b1():
+            if app.engine_busy:
+                root.after(40, step_after_b1)
+                return
+            results["annotations_cleared_on_move"] = (
+                len(app.highlighted_squares) == 0 and len(app.user_arrows) == 0
+            )
+            results["eval_hist_len"] = len(app.eval_history)
+            bbox = app.history_list.bbox(0)
+            lw = app.history_list.winfo_width()
+            app.on_history_click(DummyEvent(lw * 0.25, bbox[1] + 2))
+            results["clicked_white_ply"] = app.view_index
+            app.on_history_click(DummyEvent(lw * 0.75, bbox[1] + 2))
+            results["clicked_black_ply"] = app.view_index
+
+            # Eval graph click back to start
+            app.on_eval_graph_click(DummyEvent(1, 5))
+            results["eval_graph_jumped_0"] = app.view_index
+            app.jump_to_live()
+
+            # Switch to PvAI and verify Premove queues during engine_busy and executes after
+            app.new_game(mode=ui.MODE_PVAI)
+            root.after(40, step_pvai_ready)
+
+        def step_pvai_ready():
+            if app.engine_busy:
+                root.after(40, step_pvai_ready)
+                return
+            app.difficulty_var.set("Easy (Depth 2)")
+            # Play 1. e4 and immediately queue premove d2d4 while AI is thinking
+            app.make_move("e2e4", animate=False)
+            d2x, d2y = sq_center("d2")
+            d4x, d4y = sq_center("d4")
+            app.on_mouse_down(DummyEvent(d2x, d2y))
+            app.on_mouse_down(DummyEvent(d4x, d4y))
+            results["premove_queued"] = app.premove
+            root.after(150, step_wait_premove_exec)
+
+        def step_wait_premove_exec():
+            if app.engine_busy or len(app.move_history) < 4:
+                root.after(50, step_wait_premove_exec)
+                return
+            results["history_after_premove"] = list(app.move_history)
+            results["premove_cleared"] = app.premove is None
+            results["done"] = True
+            app.close()
+
+        try:
+            root.after(120, step_init)
+            root.after(12000, lambda: app.close() if not results.get("done") else None)
+            root.mainloop()
+        finally:
+            os.chdir(prev_cwd)
+            if app.engine.poll() is None:
+                app.engine.terminate()
+                app.engine.wait(timeout=2)
+            if app.engine.stdin:
+                app.engine.stdin.close()
+            if app.engine.stdout:
+                app.engine.stdout.close()
+
+        self.assertTrue(results.get("done"))
+        self.assertEqual(results["theme_name"], "Walnut Wood")
+        self.assertTrue(results["highlight_added"])
+        self.assertTrue(results["arrow_added"])
+        self.assertTrue(results["annotations_cleared_on_move"])
+        self.assertEqual(results["eval_hist_len"], 3)
+        self.assertEqual(results["clicked_white_ply"], 1)
+        self.assertEqual(results["clicked_black_ply"], 2)
+        self.assertEqual(results["eval_graph_jumped_0"], 0)
+        self.assertEqual(results["premove_queued"], "d2d4")
+        self.assertGreaterEqual(len(results["history_after_premove"]), 4)
+        self.assertEqual(results["history_after_premove"][2], "d2d4")
+        self.assertTrue(results["premove_cleared"])
+
 
 if __name__ == "__main__":
     unittest.main()

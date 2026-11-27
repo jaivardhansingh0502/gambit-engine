@@ -212,17 +212,29 @@ class GambitEngineTests(unittest.TestCase):
         self.assertEqual(get_fen(self.engine), mate_fen)
 
     def test_opening_book_black_mate_sign_and_endgame_search(self):
-        # 1. Opening book returns classic move instantaneously (1 node)
+        # 1. Opening book returns classic move instantaneously (1 node) across varied systems
         best_open, open_score, open_nodes = get_cpp_best_move(self.engine, depth=5, time_limit_ms=1000)
-        self.assertIn(best_open, {"e2e4", "d2d4", "c2c4", "g1f3"})
+        self.assertIn(best_open, {"e2e4", "d2d4", "c2c4", "g1f3", "g2g3"})
         self.assertEqual(open_score, 0)
         self.assertEqual(open_nodes, 1)
 
-        # Black opening response after 1. e4
-        self.play_moves(["e2e4"])
-        black_open, _, black_nodes = get_cpp_best_move(self.engine, depth=5, time_limit_ms=1000)
-        self.assertIn(black_open, {"e7e5", "c7c5", "e7e6", "c7c6"})
-        self.assertEqual(black_nodes, 1)
+        book_probes = [
+            (["e2e4"], {"e7e5", "c7c5", "e7e6", "c7c6", "d7d5", "d7d6", "g8f6", "g7g6"}),
+            (["e2e4", "e7e5", "g1f3"], {"b8c6", "g8f6", "d7d6"}),
+            (["e2e4", "c7c5", "g1f3", "d7d6", "d2d4", "c5d4", "f3d4", "g8f6", "b1c3"], {"a7a6", "g7g6", "b8c6"}),
+            (["e2e4", "e7e6", "d2d4", "d7d5"], {"b1c3", "b1d2", "e4e5"}),
+            (["e2e4", "d7d5"], {"e4d5"}),
+            (["d2d4", "d7d5", "c2c4"], {"e7e6", "c7c6", "d5c4"}),
+            (["d2d4", "g8f6", "c2c4", "g7g6", "b1c3"], {"f8g7", "d7d5"}),
+            (["d2d4", "f7f5"], {"g2g3"}),
+            (["c2c4"], {"e7e5", "c7c5", "g8f6"}),
+        ]
+        for setup_moves, expected_replies in book_probes:
+            self.assertEqual(self.send_raw("NEW_GAME"), "NEW_GAME_OK")
+            self.play_moves(setup_moves)
+            reply, _, reply_nodes = get_cpp_best_move(self.engine, depth=5, time_limit_ms=1000)
+            self.assertIn(reply, expected_replies, f"Unexpected reply {reply} after {setup_moves}")
+            self.assertEqual(reply_nodes, 1, f"Expected book hit for {setup_moves}")
 
         # 2. Black mate-in-1 (Fool's mate) returns White-perspective negative mate score
         fools_fen = "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2"
