@@ -272,9 +272,12 @@ class GambitUIFlowTests(unittest.TestCase):
                 root.after(40, step_after_capture)
                 return
             results["capture_headline"] = app.eval_headline_label.cget("text")
+            results["capture_ai_eval"] = app.ai_eval_label.cget("text")
             results["capture_cpp_eval"] = app.engine_eval_label.cget("text")
             results["capture_diff"] = app.material_diff_label.cget("text")
-            # Step back 1 move -> evaluation updates to 0.0 without altering move_history
+            # Step back to initial position -> real-time AI+ eval restores equal without altering move_history
+            app.step_back(animate=False)
+            app.step_back(animate=False)
             app.step_back(animate=False)
             results["review_headline"] = app.eval_headline_label.cget("text")
             results["review_history_intact"] = list(app.move_history)
@@ -328,12 +331,13 @@ class GambitUIFlowTests(unittest.TestCase):
         self.assertFalse(results["after_white_turn"])
         self.assertEqual(results["after_black_history"], ["e2e4", "d7d5"])
         self.assertTrue(results["after_black_turn"])
-        self.assertEqual(results["capture_headline"], "White is better: +1.0")
+        self.assertTrue(results["capture_headline"].startswith("White is better: +"))
+        self.assertIn("Search AI+", results["capture_ai_eval"])
         self.assertIn("+1.0", results["capture_cpp_eval"])
         self.assertIn("pawn", results["capture_diff"])
         self.assertEqual(results["review_headline"], "Position is equal: 0.0")
         self.assertEqual(results["review_history_intact"], ["e2e4", "d7d5", "e4d5"])
-        self.assertEqual(results["live_headline_restored"], "White is better: +1.0")
+        self.assertEqual(results["live_headline_restored"], results["capture_headline"])
         self.assertEqual(results["pvp_black_resign_status"], "RESIGNED_BLACK")
         self.assertEqual(results["switched_mode"], ui.MODE_PVAI)
         self.assertIn("Player vs AI", results["switched_label"])
@@ -1091,6 +1095,68 @@ class GambitUIFlowTests(unittest.TestCase):
         self.assertTrue(results.get("done"))
         self.assertEqual(results["history"], ["e2e4", "e7e5"])
         self.assertTrue(results["alive"])
+
+    def test_realtime_ai_plus_evaluation_mate_and_replay(self):
+        prev_cwd = os.getcwd()
+        os.chdir(ROOT_DIR)
+        root = tk.Tk()
+        root.withdraw()
+        app = ui.GambitUI(root, game_mode=ui.MODE_PVP, prompt_mode_on_start=False)
+        results = {}
+
+        def step_init():
+            if app.engine_busy:
+                root.after(40, step_init)
+                return
+            # Scholar's Mate threat (material is 0.0, but White has Mate in 1)
+            app.load_fen("r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4")
+            root.after(50, step_after_fen)
+
+        def step_after_fen():
+            if app.engine_busy:
+                root.after(40, step_after_fen)
+                return
+            results["mate1_headline"] = app.eval_headline_label.cget("text")
+            results["mate1_ai_label"] = app.ai_eval_label.cget("text")
+            results["mate1_cpp_label"] = app.engine_eval_label.cget("text")
+            results["mate1_bar_score"] = app.current_eval_score
+            app.make_move("h5f7", animate=False)
+            root.after(50, step_after_mate)
+
+        def step_after_mate():
+            if app.engine_busy:
+                root.after(40, step_after_mate)
+                return
+            results["checkmate_headline"] = app.eval_headline_label.cget("text")
+            results["checkmate_ai_label"] = app.ai_eval_label.cget("text")
+            results["eval_history_len"] = len(app.eval_history)
+            app.step_back(animate=False)
+            results["back_mate1_headline"] = app.eval_headline_label.cget("text")
+            results["done"] = True
+            app.close()
+
+        try:
+            root.after(100, step_init)
+            root.mainloop()
+        finally:
+            os.chdir(prev_cwd)
+            if app.engine.poll() is None:
+                app.engine.terminate()
+                app.engine.wait(timeout=2)
+            if app.engine.stdin:
+                app.engine.stdin.close()
+            if app.engine.stdout:
+                app.engine.stdout.close()
+
+        self.assertTrue(results.get("done"))
+        self.assertEqual(results["mate1_headline"], "White has Mate in M1")
+        self.assertIn("+M1", results["mate1_ai_label"])
+        self.assertIn("0.0", results["mate1_cpp_label"])
+        self.assertEqual(results["mate1_bar_score"], 20.0)
+        self.assertEqual(results["checkmate_headline"], "White wins (Mate)")
+        self.assertIn("+M0", results["checkmate_ai_label"])
+        self.assertEqual(results["eval_history_len"], 2)
+        self.assertEqual(results["back_mate1_headline"], "White has Mate in M1")
 
 
 if __name__ == "__main__":

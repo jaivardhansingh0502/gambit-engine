@@ -32,7 +32,7 @@ Gambit is a chess engine built from the ground up — combining a C++17 rules, m
 ### Chess AI & Evaluation
 
 - [x] Material evaluation + positional piece-square tables (`Evaluation.cpp` / `evaluation.py`)
-- [x] Live Position Evaluation Panel (advantage bar, material breakdown, C++ eval vs positional eval)
+- [x] **Real-Time AI+ Position Evaluation Panel** (`AI+ LIVE` depth-4 search advantage & mate indicator, sleek advantage bar, live momentum graph, side-by-side material balance, and C++ material comparison synced across live play & history replay)
 - [x] Configurable search difficulty (`Easy (Depth 2)` / `Medium (Depth 4)` / `Hard (Depth 6)`)
 
 ### Python Tkinter Interface

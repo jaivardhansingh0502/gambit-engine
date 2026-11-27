@@ -84,18 +84,18 @@ AI_DIFFICULTY_TIME_LIMITS = {
 }
 
 THEME = {
-    "bg": "#181A20",
-    "sidebar": "#20232C",
-    "card": "#282C37",
-    "border": "#363B4A",
+    "bg": "#11141B",
+    "sidebar": "#181C26",
+    "card": "#212634",
+    "border": "#2E3548",
     "text": "#F3F4F6",
     "muted": "#9CA3AF",
     "accent_blue": "#2563EB",
     "accent_green": "#059669",
     "accent_red": "#DC2626",
-    "btn_bg": "#313644",
-    "btn_active": "#3E4556",
-    "list_bg": "#1B1E26",
+    "btn_bg": "#2B3244",
+    "btn_active": "#394259",
+    "list_bg": "#141821",
 }
 
 BOARD_THEMES = {
@@ -363,6 +363,8 @@ class GambitUI:
         self._in_modal = False
 
         self.engine_eval = 0
+        self.ai_eval_cp = 0
+        self.current_eval_score = 0.0
 
         self.board = []
         self.legal_moves = []
@@ -416,21 +418,21 @@ class GambitUI:
             bg=THEME["bg"],
             highlightthickness=0
         )
-        self.canvas.pack(side="left", fill="both", expand=True, padx=(10, 6), pady=8)
+        self.canvas.pack(side="left", fill="both", expand=True, padx=(14, 10), pady=12)
 
         self.history_frame = tk.Frame(
             self.main_frame,
-            width=350,
+            width=386,
             bg=THEME["sidebar"],
             highlightthickness=1,
             highlightbackground=THEME["border"]
         )
-        self.history_frame.pack(side="right", fill="y", padx=(0, 10), pady=8)
+        self.history_frame.pack(side="right", fill="y", padx=(0, 14), pady=12)
         self.history_frame.pack_propagate(False)
 
         # ---- Header & Mode Selector ----
         self.header_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
-        self.header_frame.pack(fill="x", padx=12, pady=(5, 4))
+        self.header_frame.pack(fill="x", padx=16, pady=(8, 5))
 
         self.title_row = tk.Frame(self.header_frame, bg=THEME["sidebar"])
         self.title_row.pack(fill="x")
@@ -537,7 +539,7 @@ class GambitUI:
             bg=THEME["sidebar"],
             anchor="w"
         )
-        self.mode_label.pack(fill="x", pady=(1, 4))
+        self.mode_label.pack(fill="x", pady=(1, 5))
 
         self.mode_switch_frame = tk.Frame(self.header_frame, bg=THEME["sidebar"])
         self.mode_switch_frame.pack(fill="x")
@@ -552,7 +554,7 @@ class GambitUI:
             cursor="hand2",
             command=lambda: self.select_mode_from_sidebar(MODE_PVAI)
         )
-        self.pvai_mode_btn.pack(side="left", fill="x", expand=True, padx=(0, 4))
+        self.pvai_mode_btn.pack(side="left", fill="x", expand=True, padx=(0, 5))
 
         self.pvp_mode_btn = tk.Button(
             self.mode_switch_frame,
@@ -564,7 +566,7 @@ class GambitUI:
             cursor="hand2",
             command=lambda: self.select_mode_from_sidebar(MODE_PVP)
         )
-        self.pvp_mode_btn.pack(side="left", fill="x", expand=True, padx=(4, 0))
+        self.pvp_mode_btn.pack(side="left", fill="x", expand=True, padx=(5, 0))
 
         # ---- Clocks Card ----
         self.clock_frame = tk.Frame(
@@ -572,13 +574,13 @@ class GambitUI:
             bg=THEME["card"],
             highlightthickness=1,
             highlightbackground=THEME["border"],
-            padx=6,
-            pady=4
+            padx=8,
+            pady=5
         )
-        self.clock_frame.pack(fill="x", padx=12, pady=(0, 4))
+        self.clock_frame.pack(fill="x", padx=16, pady=(0, 6))
 
-        self.top_clock_box = tk.Frame(self.clock_frame, bg=THEME["list_bg"], padx=8, pady=3)
-        self.top_clock_box.pack(side="left", fill="x", expand=True, padx=(0, 3))
+        self.top_clock_box = tk.Frame(self.clock_frame, bg=THEME["list_bg"], padx=10, pady=3)
+        self.top_clock_box.pack(side="left", fill="x", expand=True, padx=(0, 4))
 
         self.top_clock_name = tk.Label(
             self.top_clock_box,
@@ -610,8 +612,8 @@ class GambitUI:
         )
         self.top_captured_label.pack(fill="x")
 
-        self.bottom_clock_box = tk.Frame(self.clock_frame, bg=THEME["list_bg"], padx=8, pady=3)
-        self.bottom_clock_box.pack(side="left", fill="x", expand=True, padx=(3, 0))
+        self.bottom_clock_box = tk.Frame(self.clock_frame, bg=THEME["list_bg"], padx=10, pady=3)
+        self.bottom_clock_box.pack(side="left", fill="x", expand=True, padx=(4, 0))
 
         self.bottom_clock_name = tk.Label(
             self.bottom_clock_box,
@@ -644,19 +646,38 @@ class GambitUI:
         self.bottom_captured_label.pack(fill="x")
 
         # ---- Evaluation Card ----
-        self.eval_frame = tk.LabelFrame(
+        self.eval_frame = tk.Frame(
             self.history_frame,
-            text=" Position Evaluation ",
-            font=("Segoe UI", 9, "bold"),
+            bg=THEME["card"],
+            highlightthickness=1,
+            highlightbackground=THEME["border"],
+            padx=12,
+            pady=7
+        )
+        self.eval_frame.pack(fill="x", padx=16, pady=(0, 6))
+
+        self.eval_header_row = tk.Frame(self.eval_frame, bg=THEME["card"])
+        self.eval_header_row.pack(fill="x")
+
+        tk.Label(
+            self.eval_header_row,
+            text="POSITION EVALUATION",
+            font=("Segoe UI", 8, "bold"),
             fg=THEME["muted"],
             bg=THEME["card"],
-            bd=1,
-            relief="solid",
-            highlightbackground=THEME["border"],
-            padx=8,
-            pady=5
+            anchor="w"
+        ).pack(side="left")
+
+        self.eval_live_badge = tk.Label(
+            self.eval_header_row,
+            text="AI+ LIVE",
+            font=("Segoe UI", 7, "bold"),
+            fg="#60A5FA",
+            bg="#1E3A5F",
+            padx=6,
+            pady=1
         )
-        self.eval_frame.pack(fill="x", padx=12, pady=(0, 4))
+        self.eval_live_badge.pack(side="right")
 
         self.eval_headline_label = tk.Label(
             self.eval_frame,
@@ -666,86 +687,87 @@ class GambitUI:
             bg=THEME["card"],
             anchor="w"
         )
-        self.eval_headline_label.pack(fill="x")
+        self.eval_headline_label.pack(fill="x", pady=(2, 4))
 
         self.eval_bar = tk.Canvas(
             self.eval_frame,
-            height=12,
-            bg="#111827",
-            highlightthickness=1,
-            highlightbackground=THEME["border"]
+            height=9,
+            bg="#0F172A",
+            highlightthickness=0
         )
-        self.eval_bar.pack(fill="x", pady=(3, 3))
-        self.eval_bar.bind("<Configure>", lambda _e: self._draw_eval_bar(self.current_material_score))
+        self.eval_bar.pack(fill="x", pady=(0, 3))
+        self.eval_bar.bind("<Configure>", lambda _e: self._draw_eval_bar(self.current_eval_score))
         self.current_material_score = 0
 
         self.eval_graph = tk.Canvas(
             self.eval_frame,
-            height=24,
-            bg="#111827",
-            highlightthickness=1,
-            highlightbackground=THEME["border"],
+            height=22,
+            bg="#0F172A",
+            highlightthickness=0,
             cursor="hand2"
         )
-        self.eval_graph.pack(fill="x", pady=(0, 3))
+        self.eval_graph.pack(fill="x", pady=(0, 5))
         self.eval_graph.bind("<Configure>", lambda _e: self._draw_eval_graph())
         self.eval_graph.bind("<Button-1>", self.on_eval_graph_click)
+
+        self.ai_eval_label = tk.Label(
+            self.eval_frame,
+            text="AI Positional Eval (Search AI+): 0.00",
+            font=("Segoe UI", 9, "bold"),
+            fg="#E2E8F0",
+            bg=THEME["card"],
+            anchor="w"
+        )
+        self.ai_eval_label.pack(fill="x", pady=(0, 1))
 
         self.engine_eval_label = tk.Label(
             self.eval_frame,
             text="C++ Engine Eval (material-only): 0.0",
-            font=("Segoe UI", 9),
-            fg="#D1D5DB",
+            font=("Segoe UI", 8),
+            fg=THEME["muted"],
             bg=THEME["card"],
             anchor="w"
         )
-        self.engine_eval_label.pack(fill="x")
+        self.engine_eval_label.pack(fill="x", pady=(0, 4))
 
-        self.ai_eval_label = tk.Label(
-            self.eval_frame,
-            text="AI Positional Eval (Material + PST): 0.00",
-            font=("Segoe UI", 9),
-            fg="#D1D5DB",
-            bg=THEME["card"],
-            anchor="w"
-        )
-        self.ai_eval_label.pack(fill="x", pady=(0, 4))
+        self.material_row = tk.Frame(self.eval_frame, bg=THEME["card"])
+        self.material_row.pack(fill="x")
 
         self.white_material_label = tk.Label(
-            self.eval_frame,
-            text="White: Q:1  R:2  B:2  N:2  P:8",
-            font=("Consolas", 9),
+            self.material_row,
+            text="W: Q1 R2 B2 N2 P8",
+            font=("Consolas", 8),
             fg="#F9FAFB",
             bg=THEME["card"],
             anchor="w"
         )
-        self.white_material_label.pack(fill="x")
+        self.white_material_label.pack(side="left")
 
         self.black_material_label = tk.Label(
-            self.eval_frame,
-            text="Black: q:1  r:2  b:2  n:2  p:8",
-            font=("Consolas", 9),
+            self.material_row,
+            text="B: q1 r2 b2 n2 p8",
+            font=("Consolas", 8),
             fg="#CBD5E1",
             bg=THEME["card"],
-            anchor="w"
+            anchor="e"
         )
-        self.black_material_label.pack(fill="x")
+        self.black_material_label.pack(side="right")
 
         self.material_diff_label = tk.Label(
             self.eval_frame,
             text="Material is equal. (0.0 pts)",
-            font=("Segoe UI", 9),
+            font=("Segoe UI", 8),
             fg="#93C5FD",
             bg=THEME["card"],
             anchor="w",
             justify="left",
-            wraplength=300
+            wraplength=330
         )
         self.material_diff_label.pack(fill="x", pady=(3, 0))
 
         # ---- Bottom Controls (packed bottom-first so always visible!) ----
         self.action_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
-        self.action_frame.pack(side="bottom", fill="x", padx=12, pady=(0, 10))
+        self.action_frame.pack(side="bottom", fill="x", padx=16, pady=(0, 10))
 
         self.resign_button = tk.Button(
             self.action_frame,
@@ -801,7 +823,7 @@ class GambitUI:
         self.new_game_button.pack(side="left", fill="x", expand=True, padx=(3, 0))
 
         self.review_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
-        self.review_frame.pack(side="bottom", fill="x", padx=12, pady=(0, 6))
+        self.review_frame.pack(side="bottom", fill="x", padx=16, pady=(0, 5))
 
         self.back_button = tk.Button(
             self.review_frame,
@@ -892,10 +914,10 @@ class GambitUI:
         self.hint_button.pack(side="left", fill="x", expand=True, padx=(3, 0))
 
         self.settings_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
-        self.settings_frame.pack(side="bottom", fill="x", padx=12, pady=(0, 6))
+        self.settings_frame.pack(side="bottom", fill="x", padx=16, pady=(0, 5))
 
         self.options_row = tk.Frame(self.settings_frame, bg=THEME["sidebar"])
-        self.options_row.pack(fill="x", pady=(0, 5))
+        self.options_row.pack(fill="x", pady=(0, 4))
 
         tk.Label(
             self.options_row,
@@ -1006,7 +1028,7 @@ class GambitUI:
 
         # ---- Move History & Opening / Review Header ----
         self.history_header_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
-        self.history_header_frame.pack(fill="x", padx=12, pady=(0, 1))
+        self.history_header_frame.pack(fill="x", padx=16, pady=(0, 2))
 
         self.history_title = tk.Label(
             self.history_header_frame,
@@ -1045,7 +1067,7 @@ class GambitUI:
             bg=THEME["sidebar"],
             anchor="w"
         )
-        self.opening_label.pack(fill="x", padx=12, pady=(0, 2))
+        self.opening_label.pack(fill="x", padx=16, pady=(0, 4))
 
         self.history_list_frame = tk.Frame(
             self.history_frame,
@@ -1053,14 +1075,14 @@ class GambitUI:
             highlightthickness=1,
             highlightbackground=THEME["border"]
         )
-        self.history_list_frame.pack(fill="both", expand=True, padx=12, pady=(0, 6))
+        self.history_list_frame.pack(fill="both", expand=True, padx=16, pady=(0, 6))
 
         self.history_scroll = tk.Scrollbar(self.history_list_frame)
         self.history_scroll.pack(side="right", fill="y")
 
         self.history_list = tk.Listbox(
             self.history_list_frame,
-            height=4,
+            height=3,
             font=("Consolas", 11),
             bg=THEME["list_bg"],
             fg=THEME["text"],
@@ -1143,18 +1165,37 @@ class GambitUI:
             daemon=True
         ).start()
 
+    def _compute_live_ai_eval(self, status, turn):
+        """Query the C++ AI+ search engine for real-time White-perspective centipawn evaluation."""
+        if status == "CHECKMATE":
+            return -100000 if turn == "WHITE" else 100000
+        if status in GAME_OVER_STATUSES:
+            return 0
+        try:
+            _, score_cp, _ = analyze_position_with_engine(
+                self.engine,
+                depth=4,
+                time_limit_ms=160,
+            )
+            return int(score_cp)
+        except Exception:
+            if self.board:
+                return int(round(evaluate_board(self.board)))
+            return 0
+
     def load_initial_position(self):
         try:
             with self.engine_lock:
                 self._ensure_engine_alive(replay_state=False)
                 board, moves, status, turn = get_position(self.engine)
                 engine_eval = get_engine_evaluation(self.engine)
+                ai_eval = self._compute_live_ai_eval(status, turn)
 
             if not self.closing:
                 self.root.after(
                     0,
                     lambda: self._finish_initial_load(
-                        board, moves, status, turn, engine_eval
+                        board, moves, status, turn, engine_eval, ai_eval
                     )
                 )
 
@@ -1167,9 +1208,9 @@ class GambitUI:
                     )
                 )
 
-    def _finish_initial_load(self, board, moves, status, turn, engine_eval):
+    def _finish_initial_load(self, board, moves, status, turn, engine_eval, ai_eval=None):
         self.update_position(
-            board, moves, status, turn, engine_eval=engine_eval
+            board, moves, status, turn, engine_eval=engine_eval, ai_eval=ai_eval
         )
         if self.prompt_mode_on_start and not self.closing:
             config = self.choose_game_mode(allow_cancel=False)
@@ -1853,13 +1894,14 @@ class GambitUI:
                     raise ValueError(f"Invalid FEN string:\n{fen_str}")
                 board, moves, status, turn = get_position(self.engine)
                 engine_eval = get_engine_evaluation(self.engine)
+                ai_eval = self._compute_live_ai_eval(status, turn)
                 loaded_fen = get_fen(self.engine)
 
             if not self.closing:
                 self.root.after(
                     0,
                     lambda: self._apply_loaded_fen(
-                        board, moves, status, turn, engine_eval, loaded_fen
+                        board, moves, status, turn, engine_eval, loaded_fen, ai_eval
                     )
                 )
         except Exception as e:
@@ -1869,7 +1911,7 @@ class GambitUI:
                     lambda err=str(e): self._handle_move_error("FEN Error", err)
                 )
 
-    def _apply_loaded_fen(self, board, moves, status, turn, engine_eval, loaded_fen):
+    def _apply_loaded_fen(self, board, moves, status, turn, engine_eval, loaded_fen, ai_eval=None):
         if self.closing:
             return
         self._cancel_animation()
@@ -1894,7 +1936,7 @@ class GambitUI:
         self.view_index = -1
         self._reset_clocks(self.time_control_name)
         self.update_move_history()
-        self.update_position(board, moves, status, turn, engine_eval=engine_eval)
+        self.update_position(board, moves, status, turn, engine_eval=engine_eval, ai_eval=ai_eval)
         self._start_clock()
         if should_ai_move_for_turn(self.game_mode, status, turn, self.human_color):
             self.engine_busy = True
@@ -2236,33 +2278,55 @@ class GambitUI:
 
         self.eval_bar.create_rectangle(
             0, 0, split_x, bar_height,
-            fill="#F9FAFB",
+            fill="#F8FAFC",
             outline=""
         )
         self.eval_bar.create_rectangle(
             split_x, 0, bar_width, bar_height,
-            fill="#1F2937",
+            fill="#0F172A",
             outline=""
         )
         mid_x = bar_width // 2
         self.eval_bar.create_line(
             mid_x, 0, mid_x, bar_height,
-            fill="#DC2626",
+            fill="#64748B",
             width=1
         )
 
-    def update_evaluation_panel(self, board, engine_eval=None):
+    def _format_live_ai_display(self, ai_cp):
+        """Format White-perspective AI+ centipawn/mate score for the headline and eval bar."""
+        if abs(ai_cp) >= 100000:
+            if ai_cp > 0:
+                return "White wins (Mate)", "WHITE", 20.0, "+M0"
+            return "Black wins (Mate)", "BLACK", -20.0, "-M0"
+        if abs(ai_cp) >= 90000:
+            mate_in = max(1, (100000 - abs(ai_cp) + 1) // 2)
+            if ai_cp > 0:
+                return f"White has Mate in M{mate_in}", "WHITE", 20.0, f"+M{mate_in}"
+            return f"Black has Mate in M{mate_in}", "BLACK", -20.0, f"-M{mate_in}"
+        ai_pawns = ai_cp / 100.0
+        headline, side, _ = format_evaluation_summary(ai_pawns)
+        ai_sign = "+" if ai_pawns > 0 else ""
+        return headline, side, ai_pawns, f"{ai_sign}{ai_pawns:.2f}"
+
+    def update_evaluation_panel(self, board, engine_eval=None, ai_eval=None):
         if self.closing or not board:
             return
 
         if engine_eval is not None:
             self.engine_eval = engine_eval
+        if ai_eval is not None:
+            self.ai_eval_cp = int(ai_eval)
+        elif engine_eval is None and not self.position_history:
+            self.ai_eval_cp = int(round(evaluate_board(board)))
 
         material = analyze_material(board)
         material_score = material["score"]
         self.current_material_score = material_score
 
-        headline, side, _ = format_evaluation_summary(material_score)
+        headline, side, bar_score, ai_display = self._format_live_ai_display(self.ai_eval_cp)
+        self.current_eval_score = bar_score
+
         dark_colors = {
             "WHITE": "#4ADE80",
             "BLACK": "#F87171",
@@ -2272,7 +2336,11 @@ class GambitUI:
             text=headline,
             fg=dark_colors.get(side, "#E5E7EB")
         )
-        self._draw_eval_bar(material_score)
+        self._draw_eval_bar(bar_score)
+
+        self.ai_eval_label.config(
+            text=f"AI Positional Eval (Search AI+): {ai_display}"
+        )
 
         cpp_score = self.engine_eval if engine_eval is None else engine_eval
         cpp_sign = "+" if cpp_score > 0 else ""
@@ -2280,24 +2348,18 @@ class GambitUI:
             text=f"C++ Engine Eval (material-only): {cpp_sign}{cpp_score:.1f}"
         )
 
-        ai_pawns = evaluate_board(board) / 100.0
-        ai_sign = "+" if ai_pawns > 0 else ""
-        self.ai_eval_label.config(
-            text=f"AI Positional Eval (Material + PST): {ai_sign}{ai_pawns:.2f}"
-        )
-
         wc = material["white_counts"]
         bc = material["black_counts"]
         self.white_material_label.config(
             text=(
-                f"White: Q:{wc['Q']}  R:{wc['R']}  "
-                f"B:{wc['B']}  N:{wc['N']}  P:{wc['P']}"
+                f"W: Q{wc['Q']} R{wc['R']} "
+                f"B{wc['B']} N{wc['N']} P{wc['P']}"
             )
         )
         self.black_material_label.config(
             text=(
-                f"Black: q:{bc['Q']}  r:{bc['R']}  "
-                f"b:{bc['B']}  n:{bc['N']}  p:{bc['P']}"
+                f"B: q{bc['Q']} r{bc['R']} "
+                f"b{bc['B']} n{bc['N']} p{bc['P']}"
             )
         )
 
@@ -2321,6 +2383,7 @@ class GambitUI:
         captured_piece=None,
         keep_busy=False,
         engine_eval=None,
+        ai_eval=None,
         animate_from=None,
         animate_steps=8,
         animate_frame_ms=16
@@ -2350,13 +2413,20 @@ class GambitUI:
                 else:
                     self.captured_by_black.append(captured_piece)
 
-        ai_pawns_eval = evaluate_board(board) / 100.0
+        resolved_ai_cp = (
+            int(ai_eval)
+            if ai_eval is not None
+            else int(round(evaluate_board(board)))
+        )
+        self.ai_eval_cp = resolved_ai_cp
+        ai_pawns_eval = max(-8.0, min(8.0, resolved_ai_cp / 100.0))
         snapshot = {
             "board": [row[:] for row in board],
             "status": status,
             "white_turn": (turn == "WHITE"),
             "last_move": self.last_move,
             "engine_eval": self.engine_eval if engine_eval is None else engine_eval,
+            "ai_eval": resolved_ai_cp,
             "captured_by_white": list(self.captured_by_white),
             "captured_by_black": list(self.captured_by_black),
         }
@@ -2396,7 +2466,7 @@ class GambitUI:
             self._premove_selected = None
             self._stop_clock()
 
-        self.update_evaluation_panel(board, engine_eval=engine_eval)
+        self.update_evaluation_panel(board, engine_eval=engine_eval, ai_eval=resolved_ai_cp)
         self._update_opening_banner(self.view_index)
         self._draw_eval_graph()
         self._refresh_clocks()
@@ -2844,6 +2914,7 @@ class GambitUI:
                     self.engine
                 )
                 engine_eval = get_engine_evaluation(self.engine)
+                ai_eval = self._compute_live_ai_eval(status, turn)
 
             san_text = format_san_move(
                 board_before,
@@ -2871,6 +2942,7 @@ class GambitUI:
                         captured_piece=captured_piece,
                         keep_busy=should_ai_move,
                         engine_eval=engine_eval,
+                        ai_eval=ai_eval,
                         animate_from=anim_pair
                     )
                 )
@@ -2953,6 +3025,7 @@ class GambitUI:
                     self.engine
                 )
                 engine_eval = get_engine_evaluation(self.engine)
+                ai_eval = self._compute_live_ai_eval(status, turn)
 
             elapsed = time.monotonic() - t_start
             if elapsed < 0.22 and not self.closing:
@@ -2980,6 +3053,7 @@ class GambitUI:
                         captured_piece=captured_piece,
                         keep_busy=False,
                         engine_eval=engine_eval,
+                        ai_eval=ai_eval,
                         animate_from=anim_pair,
                         animate_steps=20,
                         animate_frame_ms=25
@@ -3311,7 +3385,8 @@ class GambitUI:
 
         self.update_evaluation_panel(
             self.board,
-            engine_eval=snapshot["engine_eval"]
+            engine_eval=snapshot["engine_eval"],
+            ai_eval=snapshot.get("ai_eval")
         )
         if (
             self.review_annotations
@@ -3544,12 +3619,13 @@ class GambitUI:
                     self.engine
                 )
                 engine_eval = get_engine_evaluation(self.engine)
+                ai_eval = self._compute_live_ai_eval(status, turn)
 
             if not self.closing:
                 self.root.after(
                     0,
                     lambda: self._apply_new_game_state(
-                        board, moves, status, turn, engine_eval, selected_config
+                        board, moves, status, turn, engine_eval, selected_config, ai_eval
                     )
                 )
 
@@ -3567,7 +3643,8 @@ class GambitUI:
         status,
         turn,
         engine_eval=None,
-        selected_config=None
+        selected_config=None,
+        ai_eval=None
     ):
         if self.closing:
             return
@@ -3606,7 +3683,7 @@ class GambitUI:
         self.review_best_move = None
         self.view_index = -1
         self.update_move_history()
-        self.update_position(board, moves, status, turn, engine_eval=engine_eval)
+        self.update_position(board, moves, status, turn, engine_eval=engine_eval, ai_eval=ai_eval)
         self._start_clock()
         self._maybe_start_ai_opening()
 

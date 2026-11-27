@@ -421,6 +421,7 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 18 — Fix Windows No-Console Engine Pipe Subprocess & Auto-Recovery (`[Errno 22] Invalid argument`)
 
 - **Status:** Completed
+- **Commit:** `926e4ed`
 - **Changes Implemented:**
   - `ui.py`:
     - Centralized engine launching in `_spawn_engine_process()` using the resolved `gambit.exe` directory path, `stderr=subprocess.DEVNULL`, and `creationflags=CREATE_NO_WINDOW` (eliminating stray console windows and invalid handles when running under `pythonw.exe` / `Launch Gambit Chess.vbs`).
@@ -432,3 +433,23 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
   - `python -m py_compile` across modified Python files — Passed.
   - Detached `pythonw.exe` (`DETACHED_PROCESS`) launch and move check — Passed (`OK hist=['e2e4', 'g7g6']`).
   - `python -m unittest discover -s tests -v` — 48 tests passed (`OK`).
+
+---
+
+## Milestone 19 — Real-Time C++ AI+ Position Evaluation & Cleaner Sidebar UI
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - **Real-Time AI+ Search Evaluation (`ui.py`):**
+    - Added `_compute_live_ai_eval(status, turn)` querying `analyze_position_with_engine(self.engine, depth=4, time_limit_ms=160)` (`ANALYZE_MOVE`) inside `with self.engine_lock:` on initial startup, FEN load, New Game, every human move, and every AI move (with exact mate-distance handling `White has Mate in M1` / `White wins (Mate)` / draws -> `0`).
+    - Replaced static material-only headline/bar updates with real-time White-perspective AI+ search scores in `update_evaluation_panel()` and `_format_live_ai_display()`, storing `ai_eval` in each `position_history` snapshot and plotting `eval_history` momentum live across every move and replay (`Back`/`Next`/History click/`Live`).
+  - **Cleaner, More Spacious Sidebar UI (`ui.py`):**
+    - Refined dark slate palette (`THEME`), widened sidebar (`width=386`) and outer spacing (`padx=16` inner rhythm), and replaced the congested `tk.LabelFrame` box with a flat modern `eval_frame` card featuring a `POSITION EVALUATION` + `AI+ LIVE` pill header, sleek borderless advantage bar/graph, concise AI+ Search & C++ material readouts, and a single-row side-by-side `White` / `Black` material balance (`W: Q1 R2 B2 N2 P8` / `B: q1 r2 b2 n2 p8`).
+  - **Tests (`tests/test_ui_logic.py`):**
+    - Updated `test_pvp_mode_replay_eval_and_resign_both_sides` for real-time AI+ score progression & equal replay restoration, and added `test_realtime_ai_plus_evaluation_mate_and_replay` verifying live AI+ mate detection (`+M1`, `+M0`, `current_eval_score == 20.0`) on equal-material tactical FENs and history replay.
+- **Files Modified:**
+  - `ui.py`, `tests/test_ui_logic.py`, `README.md`, `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `python -m py_compile ui.py tests/test_ui_logic.py` — Passed.
+  - `1280x680` sidebar geometry check (`sidebar=386x705`, `abs_action_bottom=706 <= 729`, `fit_ok=True`, `mat_gap=110px`) — Passed.
+  - `python -m unittest discover -s tests -v` — 49 tests passed in 10.946s (`OK`).
