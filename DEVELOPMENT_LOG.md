@@ -370,6 +370,7 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 16 — Persistent User Settings, Custom Time Controls & Windows Desktop Packaging (Option E)
 
 - **Status:** Completed
+- **Commit:** `d822c09`
 - **Changes Implemented:**
   - **Settings Persistence & Custom Time Controls (`chess_utils.py`, `ui.py`):**
     - Added `DEFAULT_TIME_CONTROLS` (`Untimed`, `Bullet (1+0)`, `Blitz (3+2)`, `Blitz (5+3)`, `Rapid (10+0)`, `Rapid (15+10)`), `parse_custom_time_control()`, and `resolve_time_control_spec()`.
@@ -388,3 +389,28 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 - **Tests Performed:**
   - `python -m py_compile` across all Python app and test modules — Passed.
   - `python -m unittest discover -s tests -v` — 43 tests passed in 7.820s (`OK`).
+
+---
+
+## Milestone 17 — Perft Verification, Standard UCI Protocol, Cleanup & Coverage Expansion (Option C)
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - **C++ Perft Verification (`Search.h`, `Search.cpp`, `main.cpp`, `ai.py`):**
+    - Added `Search::perft(Board&, int depth)` and `PERFT <depth>` protocol command (`get_perft()` in `ai.py`), preserving board state non-destructively via `saveState()`/`restoreState()`.
+    - Verified exact legal node counts against standard chess Perft suites: Starting position (`20`, `400`, `8,902`, `197,281`), Kiwipete (`48`, `2,039`, `97,862`), En-Passant Pos 3 (`14`, `191`, `2,812`, `43,238`), and Promotion/Castling Pos 4 (`6`, `264`).
+  - **Standard UCI Protocol (`main.cpp`):**
+    - Added `uci` (`id name Gambit Chess Engine`, `uciok`), `isready` (`readyok`), `ucinewgame`, `position [startpos | fen ...] [moves ...]`, `go [depth | movetime | wtime/btime/winc/binc | infinite]`, `setoption`, `stop`, `ponderhit`, and `quit` alongside Gambit's native GUI commands.
+  - **Code Cleanup & Expanded Tests (`ai.py`, `tests/test_ai.py`, `tests/test_engine.py`, `tests/test_ui_logic.py`):**
+    - Unified `get_cpp_best_move()` and `analyze_position_with_engine()` via shared `_run_cpp_search_command()`, removed unused standalone `play_test_moves()`/`__main__` code, and normalized spacing in `ai.py` (`1,356` → `959` lines).
+    - Added Perft, UCI, `undo_move`/promotion, PGN dialog, promotion modal, non-animated replay, and sound tests.
+- **Files Modified:**
+  - `Search.h`, `Search.cpp`, `main.cpp`
+  - `ai.py`
+  - `tests/test_ai.py`, `tests/test_engine.py`, `tests/test_ui_logic.py`
+  - `README.md`, `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `g++ -std=c++17 -O2 main.cpp Board.cpp Move.cpp Pawn.cpp Knight.cpp Bishop.cpp Rook.cpp Queen.cpp King.cpp Evaluation.cpp Search.cpp -o gambit.exe` — Compiled cleanly (exit code 0).
+  - `python -m py_compile` across all Python app and test modules — Passed.
+  - `python -m unittest discover -s tests -v` — 47 tests passed (`OK`).
+  - Python `trace` coverage across `47/47` tests: `78.0%` overall (`ai.py` `84.7%`, `chess_utils.py` `93.9%`, `evaluation.py` `97.9%`, `ui.py` `73.5%`).

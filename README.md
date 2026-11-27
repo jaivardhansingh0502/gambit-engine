@@ -26,7 +26,8 @@ Gambit is a chess engine built from the ground up — combining a C++17 rules, m
 - [x] FEN import/export (`GET_FEN`, `SET_FEN`) and Board-state stack (`UNDO_MOVE`, `NEW_GAME`)
 - [x] High-speed C++17 search (`BEST_MOVE` with Built-in Opening Book, Negamax PVS + Aspiration Windows, Null-Move Pruning, Late Move Reductions, Check Extensions, Quiescence + Delta Pruning, 64-bit Zobrist TT, MVV-LVA, Killer Moves, and History Heuristic)
 - [x] Tapered middlegame/endgame positional evaluation (King safety pawn shield, passed/doubled/isolated pawns, knight outposts, rook open files & 7th rank, bishop pair)
-- [x] Line-based stdin/stdout protocol (`GET_MOVES`, `MAKE_MOVE`, `UNDO_MOVE`, `NEW_GAME`, `EVALUATE`, `GET_FEN`, `SET_FEN`, `BEST_MOVE`, `ANALYZE_MOVE`)
+- [x] **Perft(1..4) Rules Verification (`PERFT`)** & **Standard UCI Protocol** (`uci`, `isready`, `ucinewgame`, `position startpos/fen moves ...`, `go depth/movetime/wtime/btime`, `quit`) compatible with Arena / CuteChess
+- [x] Line-based native stdin/stdout protocol (`GET_MOVES`, `MAKE_MOVE`, `UNDO_MOVE`, `NEW_GAME`, `EVALUATE`, `GET_FEN`, `SET_FEN`, `BEST_MOVE`, `ANALYZE_MOVE`, `PERFT`)
 
 ### Chess AI & Evaluation
 
@@ -126,6 +127,6 @@ python -m unittest discover -s tests -v
 
 ## 📌 Current Status
 
-Gambit is playable end-to-end as both Player vs AI (`White`/`Black`/`Random`) and Player vs Player desktop chess application powered by a compiled C++17 search and rules engine, backed by a 43-test `unittest` suite covering C++ rules/search/openings/FEN/draws, SAN/PGN/review/settings/icon utilities, evaluation, AI, and Tkinter GUI workflows. See [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) for the milestone history.
+Gambit is playable end-to-end as both Player vs AI (`White`/`Black`/`Random`) and Player vs Player desktop chess application powered by a Perft-verified, UCI-compatible C++17 search and rules engine, backed by a 47-test `unittest` suite covering C++ rules/Perft/UCI/search/openings/FEN/draws, SAN/PGN/review/settings/icon utilities, evaluation, AI, and Tkinter GUI workflows. See [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) for the milestone history.
 
 ♟️ One move at a time.

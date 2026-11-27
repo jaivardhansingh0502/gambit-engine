@@ -1244,3 +1244,24 @@ SearchResult Search::findBestMove(Board& board, int maxDepth, int timeLimitMs, b
     result.nodes = ctx.nodes;
     return result;
 }
+
+unsigned long long Search::perft(Board& board, int depth)
+{
+    if(depth <= 0) return 1ULL;
+    bool whiteTurn = board.getWhiteTurn();
+    vector<Move> moves = board.generateLegalMoves(whiteTurn);
+    if(depth == 1)
+    {
+        return static_cast<unsigned long long>(moves.size());
+    }
+
+    unsigned long long nodes = 0;
+    for(auto& m : moves)
+    {
+        BoardState st = board.saveState();
+        board.makeMove(m);
+        nodes += perft(board, depth - 1);
+        board.restoreState(st);
+    }
+    return nodes;
+}

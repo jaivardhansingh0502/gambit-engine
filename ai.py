@@ -3,67 +3,36 @@ import time
 
 from evaluation import WHITE_PST, evaluate_board
 
-
-
 def make_move(board, move):
 
-
-
     new_board = [row[:] for row in board]
-
 
     start = move[:2]
     end = move[2:4]
 
-
-
-
     start_row = 8 - int(start[1])
     start_col = ord(start[0]) - ord('a')
-
-
-
 
     end_row = 8 - int(end[1])
     end_col = ord(end[0]) - ord('a')
 
-
-
-
     new_board[end_row][end_col] = new_board[start_row][start_col]
     new_board[start_row][start_col] = ' '
-
-
-
 
     # Basic promotion support for local board simulation
     if len(move) == 5 and new_board[end_row][end_col] in ('P', 'p'):
 
-
-
         promotion = move[4]
-
-
 
         if new_board[end_row][end_col] == 'P':
 
-
-
             new_board[end_row][end_col] = promotion.upper()
-
-
 
         else:
 
-
-
             new_board[end_row][end_col] = promotion.lower()
 
-
     return new_board
-
-
-
 
 def send_move_to_engine(engine, move, verbose=False):
     if verbose:
@@ -82,140 +51,75 @@ def send_move_to_engine(engine, move, verbose=False):
 
     return response
 
-
-
-
 def get_position(engine):
 
     turn = "WHITE"
 
-
-
-
     engine.stdin.write("GET_MOVES\n")
     engine.stdin.flush()
 
-
     board = []
 
-
     legal_moves = []
-
-
 
     status = "NORMAL"
     section = None
 
-
-
     while True:
-
 
         line = engine.stdout.readline()
 
-
         if line == "":
-
 
             raise RuntimeError("C++ engine closed its output.")
 
-
-
-
-
         line = line.strip()
-
-
-
-
 
         if line == "BOARD":
 
             section = "board"
             continue
 
-
-
-
         elif line == "MOVES":
 
             section = "moves"
             continue
-
-
-
 
         elif line == "STATUS":
 
             section = "status"
             continue
 
-
-
-
-
         elif line == "TURN":
 
             section = "turn"
             continue
 
-
-
-
-
-
         elif line == "END":
 
             break
-
-
-
-
-
 
         if section == "board":
 
             board.append(list(line))
 
-
-
-
-
         elif section == "moves":
 
             legal_moves.append(line)
-
-
-
-
-
 
         elif section == "status":
 
             status = line
 
-
-
-
-
-
         elif section == "turn":
 
             turn = line
-
-
-
-
 
     if len(board) != 8 or any(len(row) != 8 for row in board):
 
         raise RuntimeError("Invalid board received from C++ engine.")
 
-
-
-
     return board, legal_moves, status, turn
-
 
 def get_engine_evaluation(engine):
     engine.stdin.write("EVALUATE\n")
@@ -231,42 +135,41 @@ def get_engine_evaluation(engine):
 
     return int(parts[1])
 
+def _run_cpp_search_command(engine, cmd_prefix, depth, time_limit_ms):
+    engine.stdin.write(f"{cmd_prefix} {int(depth)} {int(time_limit_ms)}\n")
+    engine.stdin.flush()
+
+    line = engine.stdout.readline()
+    if line == "":
+        raise RuntimeError(f"C++ engine closed its output during {cmd_prefix}.")
+
+    parts = line.strip().split()
+    if len(parts) < 4 or parts[0] != cmd_prefix:
+        raise RuntimeError(f"Unexpected {cmd_prefix} response: {line.strip()}")
+
+    move = None if parts[1] == "NONE" else parts[1]
+    score = int(parts[2])
+    nodes = int(parts[3])
+    return move, score, nodes
 
 def get_cpp_best_move(engine, depth=5, time_limit_ms=1500):
-    engine.stdin.write(f"BEST_MOVE {int(depth)} {int(time_limit_ms)}\n")
-    engine.stdin.flush()
-
-    line = engine.stdout.readline()
-    if line == "":
-        raise RuntimeError("C++ engine closed its output during BEST_MOVE.")
-
-    parts = line.strip().split()
-    if len(parts) < 4 or parts[0] != "BEST_MOVE":
-        raise RuntimeError(f"Unexpected BEST_MOVE response: {line.strip()}")
-
-    move = None if parts[1] == "NONE" else parts[1]
-    score = int(parts[2])
-    nodes = int(parts[3])
-    return move, score, nodes
-
+    return _run_cpp_search_command(engine, "BEST_MOVE", depth, time_limit_ms)
 
 def analyze_position_with_engine(engine, depth=3, time_limit_ms=150):
-    engine.stdin.write(f"ANALYZE_MOVE {int(depth)} {int(time_limit_ms)}\n")
+    return _run_cpp_search_command(engine, "ANALYZE_MOVE", depth, time_limit_ms)
+
+def get_perft(engine, depth):
+    engine.stdin.write(f"PERFT {int(depth)}\n")
     engine.stdin.flush()
 
     line = engine.stdout.readline()
     if line == "":
-        raise RuntimeError("C++ engine closed its output during ANALYZE_MOVE.")
+        raise RuntimeError("C++ engine closed its output during PERFT.")
 
     parts = line.strip().split()
-    if len(parts) < 4 or parts[0] != "ANALYZE_MOVE":
-        raise RuntimeError(f"Unexpected ANALYZE_MOVE response: {line.strip()}")
-
-    move = None if parts[1] == "NONE" else parts[1]
-    score = int(parts[2])
-    nodes = int(parts[3])
-    return move, score, nodes
-
+    if len(parts) != 2 or parts[0] != "PERFT":
+        raise RuntimeError(f"Unexpected PERFT response: {line.strip()}")
+    return int(parts[1])
 
 def get_fen(engine):
     engine.stdin.write("GET_FEN\n")
@@ -282,7 +185,6 @@ def get_fen(engine):
 
     return stripped[4:]
 
-
 def set_fen(engine, fen):
     engine.stdin.write(f"SET_FEN {fen.strip()}\n")
     engine.stdin.flush()
@@ -293,14 +195,7 @@ def set_fen(engine, fen):
 
     return line.strip() == "FEN_OK"
 
-
-
-
 class AI:
-
-
-
-
 
     def __init__(self, engine, verbose=False):
 
@@ -323,29 +218,16 @@ class AI:
             if len(killers) > 2:
                 killers.pop()
 
-
-
-
     def undo_move(self):
 
         self.engine.stdin.write("UNDO_MOVE\n")
         self.engine.stdin.flush()
 
-
-
-
-
         response = self.engine.stdout.readline().strip()
-
 
         if response != "UNDO_OK":
 
             raise RuntimeError(f"Undo failed: {response}")
-
-
-
-
-
 
     def find_best_move(self, board, legal_moves, turn, depth=2, time_limit=None):
 
@@ -535,10 +417,6 @@ class AI:
             reverse=True
         )
 
-
-
-
-
     def minimax(
         self,
         board,
@@ -552,18 +430,15 @@ class AI:
 
         self.nodes_searched += 1
 
-
         # Terminal positions (prefer faster checkmates)
         if status == "CHECKMATE":
 
             mate_score = 100000 + (depth * 10)
             return -mate_score if maximizing_player else mate_score
 
-
         if status in ("STALEMATE", "DRAW_INSUFFICIENT_MATERIAL"):
 
             return 0
-
 
         # Leaf node evaluation
         if depth == 0:
@@ -576,13 +451,9 @@ class AI:
                 status
             )
 
-
         if not legal_moves:
 
             return evaluate_board(board)
-
-
-
 
         node_key = self._board_key(board, maximizing_player)
 
@@ -698,11 +569,6 @@ class AI:
 
             return best_score
 
-
-
-
-
-    
     def quiescence_search(
     self,
     board,
@@ -715,41 +581,20 @@ class AI:
 ):
         self.nodes_searched += 1
 
-
-
-
-
-
         # Terminal positions (prefer faster checkmates)
         if status == "CHECKMATE":
             mate_score = 100000 + remaining_depth
             return -mate_score if maximizing_player else mate_score
 
-
-
-
-
         if status in ("STALEMATE", "DRAW_INSUFFICIENT_MATERIAL"):
             return 0
-
-
-
-
 
         in_check = status == "CHECK"
         stand_pat = evaluate_board(board)
 
-
-
-
-
         # At the depth limit, return static evaluation unless in check.
         if remaining_depth <= 0 and not in_check:
             return stand_pat
-
-
-
-
 
         # Stand-pat is allowed only when the king is not in check.
         if not in_check:
@@ -757,38 +602,15 @@ class AI:
                 if stand_pat >= beta:
                     return stand_pat
 
-
-
-
-                
                 alpha = max(alpha, stand_pat)
-
-
-
-
-
-
 
             else:
                 if stand_pat <= alpha:
                     return stand_pat
 
-
-                
                 beta = min(beta, stand_pat)
 
-
-
-
-
-
             best_score = stand_pat
-
-
-
-
-
-
 
         else:
             # In check, a legal evasion must be played.
@@ -796,18 +618,9 @@ class AI:
                 float('-inf') if maximizing_player else float('inf')
             )
 
-
-
-
-
-
         # In check: examine every legal evasion.
         # Otherwise: examine captures and promotions only.
         tactical_moves = []
-
-
-
-
 
         for move in legal_moves:
             start_row = 8 - int(move[1])
@@ -815,19 +628,10 @@ class AI:
             end_row = 8 - int(move[3])
             end_col = ord(move[2]) - ord('a')
 
-
-
-
-
             attacker = board[start_row][start_col]
             victim = board[end_row][end_col]
 
-
-
-
             is_capture = victim not in ('.', ' ')
-
-
 
             # En passant capture
             if (
@@ -836,35 +640,20 @@ class AI:
                 and not is_capture
             ):
 
-
-                
                 is_capture = True
 
             is_promotion = len(move) == 5
 
-
-
-
             if in_check or is_capture or is_promotion:
                 tactical_moves.append(move)
 
-
-
-
-
         for move in self.order_moves(board, tactical_moves):
             response = send_move_to_engine(self.engine, move)
-
-
-
 
             if response != "MOVE_OK":
                 raise RuntimeError(
                     f"Engine rejected legal move {move}: {response}"
                 )
-
-
-            
 
             try:
                 (
@@ -874,17 +663,10 @@ class AI:
                     next_turn
                 ) = get_position(self.engine)
 
-
-
-
                 next_maximizing = next_turn == "WHITE"
 
                 # At the depth limit, still allow one legal evasion
                 # if the current side is in check, then stop recursing.
-
-
-
-
 
                 if in_check and remaining_depth <= 0:
                     if next_status == "CHECKMATE":
@@ -892,29 +674,14 @@ class AI:
                             -100000 if next_maximizing else 100000
                         )
 
-
-
-
-
-
-
                     elif next_status in (
                         "STALEMATE",
                         "DRAW_INSUFFICIENT_MATERIAL"
                     ):
 
-
-
-
-                        
                         score = 0
                     else:
                         score = evaluate_board(new_board)
-
-
-
-
-
 
                 else:
                     score = self.quiescence_search(
@@ -927,43 +694,21 @@ class AI:
                         remaining_depth=remaining_depth - 1
                     )
 
-
-
-
-
-
-
             finally:
                 self.undo_move()
-
-
-
-
 
             if maximizing_player:
                 best_score = max(best_score, score)
                 alpha = max(alpha, best_score)
 
-
-
-
             else:
                 best_score = min(best_score, score)
                 beta = min(beta, best_score)
 
-
-
-
-
             if alpha >= beta:
                 break
 
-
-
-
-
         return best_score
-
 
     def minimax_without_pruning(
     
@@ -977,56 +722,46 @@ class AI:
         ):
     
             self.nodes_searched += 1
-    
-    
+
             # Terminal positions
             if status == "CHECKMATE":
     
                 return -100000 if maximizing_player else 100000
-    
-    
+
             if status in ("STALEMATE", "DRAW_INSUFFICIENT_MATERIAL"):
     
                 return 0
-    
-    
+
             # Leaf node evaluation
             if depth == 0:
     
                 return evaluate_board(board)
-    
-    
+
             if not legal_moves:
     
                 return evaluate_board(board)
-    
-    
-    
+
             # Maximizing player: White
             if maximizing_player:
     
                 best_score = float('-inf')
-    
-    
+
                 for move in legal_moves:
     
                     response = send_move_to_engine(self.engine, move)
-    
-    
+
                     if response != "MOVE_OK":
     
                         raise RuntimeError(
                             f"Engine rejected legal move {move}: {response}"
                         )
-    
-    
+
                     try:
     
                         new_board, next_moves, next_status, next_turn = (
                             get_position(self.engine)
                         )
-    
-    
+
                         score = self.minimax_without_pruning(
     
                             new_board,
@@ -1036,45 +771,36 @@ class AI:
                             status=next_status
     
                         )
-    
-    
+
                     finally:
     
                         self.undo_move()
-    
-    
+
                     best_score = max(best_score, score)
-    
-    
+
                 return best_score
-    
-    
-    
+
             # Minimizing player: Black
             else:
     
                 best_score = float('inf')
-    
-    
+
                 for move in legal_moves:
     
                     response = send_move_to_engine(self.engine, move)
-    
-    
+
                     if response != "MOVE_OK":
     
                         raise RuntimeError(
                             f"Engine rejected legal move {move}: {response}"
                         )
-    
-    
+
                     try:
     
                         new_board, next_moves, next_status, next_turn = (
                             get_position(self.engine)
                         )
-    
-    
+
                         score = self.minimax_without_pruning(
     
                             new_board,
@@ -1084,33 +810,21 @@ class AI:
                             status=next_status
     
                         )
-    
-    
+
                     finally:
     
                         self.undo_move()
-    
-    
-                    best_score = min(best_score, score)
-    
-    
-                return best_score
-    
-    
-    
-    
-    
-        
 
+                    best_score = min(best_score, score)
+
+                return best_score
 
     def compare_searches(self, board, legal_moves, turn, depth=2):
     
             import time
-    
-    
+
             results = {}
-    
-    
+
             # Run both algorithms from the same root position
             for algorithm in ("Minimax", "Alpha-Beta"):
     
@@ -1126,11 +840,9 @@ class AI:
                 alpha = float('-inf')
     
                 beta = float('inf')
-    
-    
+
                 start_time = time.perf_counter()
-    
-    
+
                 for move in legal_moves:
     
                     response = send_move_to_engine(self.engine, move)
@@ -1140,15 +852,13 @@ class AI:
                         raise RuntimeError(
                             f"Engine rejected legal move {move}: {response}"
                         )
-    
-    
+
                     try:
     
                         new_board, next_moves, next_status, next_turn = (
                             get_position(self.engine)
                         )
-    
-    
+
                         if algorithm == "Minimax":
     
                             score = self.minimax_without_pruning(
@@ -1178,8 +888,7 @@ class AI:
                     finally:
     
                         self.undo_move()
-    
-    
+
                     if turn == "WHITE":
     
                         if score > best_score:
@@ -1203,11 +912,9 @@ class AI:
                         if algorithm == "Alpha-Beta":
     
                             beta = min(beta, best_score)
-    
-    
+
                 elapsed = time.perf_counter() - start_time
-    
-    
+
                 results[algorithm] = {
     
                     "best_move": best_move,
@@ -1219,11 +926,9 @@ class AI:
                     "time": elapsed
     
                 }
-    
-    
+
             print("\n===== SEARCH COMPARISON =====")
-    
-    
+
             for algorithm, result in results.items():
     
                 print(f"\n{algorithm}")
@@ -1235,16 +940,13 @@ class AI:
                 print(f"Nodes searched: {result['nodes']}")
     
                 print(f"Time: {result['time']:.4f} seconds")
-    
-    
+
             print("\n===== IMPROVEMENT =====")
-    
-    
+
             minimax_nodes = results["Minimax"]["nodes"]
     
             alpha_beta_nodes = results["Alpha-Beta"]["nodes"]
-    
-    
+
             if minimax_nodes > 0:
     
                 reduction = (
@@ -1253,100 +955,5 @@ class AI:
                 ) * 100
     
                 print(f"Node reduction: {reduction:.2f}%")
-    
-    
+
             return results
-
-
-
-
-
-def play_test_moves(engine, moves):
-
-    for move in moves:
-
-        response = send_move_to_engine(engine, move)
-
-        if response != "MOVE_OK":
-
-            raise RuntimeError(
-                f"Test move failed: {move} -> {response}"
-            )
-
-    return get_position(engine)
-
-
-
-
-
-if __name__ == "__main__":
-
-
-    engine = subprocess.Popen(
-        ["gambit.exe"],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        text=True,
-        encoding="utf-8",
-        bufsize=1
-    )
-
-
-    try:
-
-        ai = AI(engine)
-
-
-        # board, legal_moves, status, turn = get_position(engine)
-
-
-        board, legal_moves, status, turn = get_position(engine)
-
-
-
-
-        
-        
-
-
-
-
-        print("Board received:")
-
-        for row in board:
-
-            print("".join(row))
-
-
-        print("\nLegal moves:")
-
-        print(legal_moves)
-
-
-        print("\nGame status:", status)
-        print("Turn:", turn)
-
-
-        if status in (
-            "CHECKMATE",
-            "STALEMATE",
-            "DRAW_INSUFFICIENT_MATERIAL"
-        ):
-
-            print("Game has ended.")
-
-
-        else:
-
-            ai.compare_searches(board, legal_moves, turn, depth=2)
-
-
-    finally:
-
-        engine.terminate()
-        engine.wait()
-
-
-
-
-    

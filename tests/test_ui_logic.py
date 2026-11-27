@@ -3,6 +3,7 @@ import sys
 import tempfile
 import tkinter as tk
 import unittest
+from unittest import mock
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
@@ -960,6 +961,85 @@ class GambitUIFlowTests(unittest.TestCase):
         self.assertEqual(r2["loaded_diff"], "Hard (Depth 6)")
         self.assertEqual(r2["loaded_tc"], "Custom (7+5)")
         self.assertEqual(r2["loaded_white_time"], 420.0)
+
+    def test_option_c_pgn_file_dialog_shortcuts_promotion_and_sound_paths(self):
+        prev_cwd = os.getcwd()
+        os.chdir(ROOT_DIR)
+        tmpdir = tempfile.TemporaryDirectory()
+        pgn_out = os.path.join(tmpdir.name, "test_export.pgn")
+        root = tk.Tk()
+        root.withdraw()
+        app = ui.GambitUI(root, game_mode=ui.MODE_PVP, prompt_mode_on_start=False)
+        results = {}
+
+        def step_init():
+            if app.engine_busy:
+                root.after(40, step_init)
+                return
+            # 1. Sound enabled with mocked winsound.Beep
+            app.sound_enabled = True
+            with mock.patch("chess_utils.winsound") as mock_ws:
+                ui.play_sound("move", enabled=True)
+                root.after(40, lambda: results.__setitem__("sound_called", mock_ws.Beep.called))
+
+            # 2. PGN save dialog path
+            with mock.patch.object(ui.filedialog, "asksaveasfilename", return_value=pgn_out), \
+                 mock.patch.object(ui.messagebox, "showinfo"):
+                app.export_pgn(save_dialog=True)
+            results["pgn_file_exists"] = os.path.exists(pgn_out)
+
+            # 3. Choose promotion dialog selection ('q')
+            def click_promo():
+                for w in root.winfo_children():
+                    if isinstance(w, tk.Toplevel) and w.title() == "Pawn Promotion":
+                        for frame in w.winfo_children():
+                            if isinstance(frame, tk.Frame):
+                                for btn in frame.winfo_children():
+                                    if isinstance(btn, tk.Button) and "Queen" in btn.cget("text"):
+                                        btn.invoke()
+                                        return
+                root.after(20, click_promo)
+
+            root.after(30, click_promo)
+            results["promo_choice"] = app.choose_promotion(["a7a8q", "a7a8r", "a7a8b", "a7a8n"])
+
+            # 4. Non-animated step_back/forward & shortcuts helpers
+            app.make_move("e2e4", animate=False)
+            root.after(50, step_after_mv)
+
+        def step_after_mv():
+            if app.engine_busy:
+                root.after(40, step_after_mv)
+                return
+            app.step_back(animate=False)
+            results["back_no_anim_idx"] = app.view_index
+            app.step_forward(animate=False)
+            results["fwd_no_anim_idx"] = app.view_index
+            results["shortcut_allowed"] = app._shortcut_allowed()
+            app._clear_board_annotations()
+            results["done"] = True
+            app.close()
+
+        try:
+            root.after(100, step_init)
+            root.mainloop()
+        finally:
+            os.chdir(prev_cwd)
+            tmpdir.cleanup()
+            if app.engine.poll() is None:
+                app.engine.terminate()
+                app.engine.wait(timeout=2)
+            if app.engine.stdin:
+                app.engine.stdin.close()
+            if app.engine.stdout:
+                app.engine.stdout.close()
+
+        self.assertTrue(results.get("done"))
+        self.assertTrue(results["pgn_file_exists"])
+        self.assertEqual(results["promo_choice"], "a7a8q")
+        self.assertEqual(results["back_no_anim_idx"], 0)
+        self.assertEqual(results["fwd_no_anim_idx"], 1)
+        self.assertTrue(results["shortcut_allowed"])
 
 
 if __name__ == "__main__":

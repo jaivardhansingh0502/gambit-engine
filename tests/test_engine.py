@@ -12,6 +12,7 @@ from ai import (
     get_cpp_best_move,
     get_engine_evaluation,
     get_fen,
+    get_perft,
     get_position,
     send_move_to_engine,
     set_fen,
@@ -258,6 +259,66 @@ class GambitEngineTests(unittest.TestCase):
         amv, _, anodes = analyze_position_with_engine(self.engine, depth=3, time_limit_ms=500)
         self.assertIsNotNone(amv)
         self.assertGreater(anodes, 1)
+
+    def test_perft_node_counts_across_standard_positions(self):
+        # Initial position Perft(1..3)
+        start_fen = get_fen(self.engine)
+        self.assertEqual(get_perft(self.engine, 1), 20)
+        self.assertEqual(get_perft(self.engine, 2), 400)
+        self.assertEqual(get_perft(self.engine, 3), 8902)
+        self.assertEqual(get_fen(self.engine), start_fen)
+
+        # Kiwipete (castling, promotions, captures, discovered checks)
+        kiwi = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
+        self.assertTrue(set_fen(self.engine, kiwi))
+        self.assertEqual(get_perft(self.engine, 1), 48)
+        self.assertEqual(get_perft(self.engine, 2), 2039)
+
+        # Position 3 (en passant pins & discovered checks)
+        pos3 = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1"
+        self.assertTrue(set_fen(self.engine, pos3))
+        self.assertEqual(get_perft(self.engine, 1), 14)
+        self.assertEqual(get_perft(self.engine, 2), 191)
+        self.assertEqual(get_perft(self.engine, 3), 2812)
+
+        # Position 4 (promotions & castling)
+        pos4 = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"
+        self.assertTrue(set_fen(self.engine, pos4))
+        self.assertEqual(get_perft(self.engine, 1), 6)
+        self.assertEqual(get_perft(self.engine, 2), 264)
+
+    def test_uci_protocol_handshake_position_and_go(self):
+        uci_proc = subprocess.Popen(
+            [os.path.join(ROOT_DIR, "gambit.exe")],
+            cwd=ROOT_DIR,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            bufsize=1,
+        )
+        try:
+            uci_script = (
+                "uci\n"
+                "isready\n"
+                "ucinewgame\n"
+                "position startpos moves e2e4 c7c5\n"
+                "go depth 3\n"
+                "position fen r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4\n"
+                "go movetime 250\n"
+                "quit\n"
+            )
+            out, _ = uci_proc.communicate(uci_script, timeout=8)
+        finally:
+            if uci_proc.poll() is None:
+                uci_proc.terminate()
+                uci_proc.wait(timeout=2)
+
+        self.assertEqual(uci_proc.returncode, 0)
+        self.assertIn("id name Gambit Chess Engine", out)
+        self.assertIn("uciok", out)
+        self.assertIn("readyok", out)
+        self.assertIn("bestmove h5f7", out)
 
 
 if __name__ == "__main__":

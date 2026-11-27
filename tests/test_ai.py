@@ -7,7 +7,7 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from ai import AI, get_position, send_move_to_engine
+from ai import AI, get_position, make_move, send_move_to_engine
 
 
 class GambitAITests(unittest.TestCase):
@@ -89,6 +89,20 @@ class GambitAITests(unittest.TestCase):
         ])
         best = self.ai.find_best_move(board, moves, turn, depth=2)
         self.assertEqual(best, "f3g5")
+
+    def test_make_move_promotion_and_undo_sync(self):
+        board_before = [["." for _ in range(8)] for _ in range(8)]
+        board_before[1][0] = "P"
+        board_before[6][1] = "p"
+        w_promo = make_move(board_before, "a7a8q")
+        b_promo = make_move(board_before, "b2b1n")
+        self.assertEqual(w_promo[0][0], "Q")
+        self.assertEqual(b_promo[7][1], "n")
+
+        self.play_moves(["e2e4", "e7e5"])
+        self.ai.undo_move()
+        _, _, _, turn_after = get_position(self.engine)
+        self.assertEqual(turn_after, "BLACK")
 
 
 if __name__ == "__main__":

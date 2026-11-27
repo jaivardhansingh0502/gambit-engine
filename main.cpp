@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <algorithm>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -352,6 +353,173 @@ int main()
             {
                 cout << "ANALYZE_MOVE " << res.bestMove << " " << res.score << " " << res.nodes << endl;
             }
+        }
+
+        else if(command == "PERFT")
+        {
+            int depth = 1;
+            cin >> depth;
+            BoardState backup = chessboard.saveState();
+            unsigned long long count = searchEngine.perft(chessboard, depth);
+            chessboard.restoreState(backup);
+            cout << "PERFT " << count << endl;
+        }
+
+        else if(command == "uci")
+        {
+            cout << "id name Gambit Chess Engine" << endl;
+            cout << "id author Jaivardhan Singh" << endl;
+            cout << "uciok" << endl;
+        }
+
+        else if(command == "isready")
+        {
+            cout << "readyok" << endl;
+        }
+
+        else if(command == "ucinewgame")
+        {
+            chessboard.initializeBoard();
+            stateStack.clear();
+            positionHistory.clear();
+            positionHistory.push_back(chessboard.getPositionKey());
+        }
+
+        else if(command == "position")
+        {
+            string rest;
+            getline(cin, rest);
+            istringstream iss(rest);
+            string tok;
+            bool parseMoves = false;
+
+            if(iss >> tok)
+            {
+                if(tok == "startpos")
+                {
+                    chessboard.initializeBoard();
+                    stateStack.clear();
+                    positionHistory.clear();
+                    positionHistory.push_back(chessboard.getPositionKey());
+                    if(iss >> tok && tok == "moves")
+                    {
+                        parseMoves = true;
+                    }
+                }
+                else if(tok == "fen")
+                {
+                    string fenStr;
+                    while(iss >> tok)
+                    {
+                        if(tok == "moves")
+                        {
+                            parseMoves = true;
+                            break;
+                        }
+                        if(!fenStr.empty()) fenStr += ' ';
+                        fenStr += tok;
+                    }
+                    if(chessboard.loadFEN(fenStr))
+                    {
+                        stateStack.clear();
+                        positionHistory.clear();
+                        positionHistory.push_back(chessboard.getPositionKey());
+                    }
+                }
+            }
+
+            if(parseMoves)
+            {
+                string mv;
+                while(iss >> mv)
+                {
+                    if(mv.size() < 4 || mv.size() > 5) continue;
+                    Move m(mv.substr(0, 2), mv.substr(2));
+                    if(chessboard.isValid(m))
+                    {
+                        stateStack.push_back(chessboard.saveState());
+                        chessboard.makeMove(m);
+                        positionHistory.push_back(chessboard.getPositionKey());
+                    }
+                }
+            }
+        }
+
+        else if(command == "go")
+        {
+            string rest;
+            getline(cin, rest);
+            istringstream iss(rest);
+            string tok;
+            bool hasDepth = false;
+            bool hasMoveTime = false;
+            int maxDepth = 5;
+            int timeLimitMs = 1500;
+            int wtime = 0, btime = 0, winc = 0, binc = 0;
+
+            while(iss >> tok)
+            {
+                if(tok == "depth" && (iss >> maxDepth))
+                {
+                    hasDepth = true;
+                    maxDepth = max(1, maxDepth);
+                }
+                else if(tok == "movetime" && (iss >> timeLimitMs))
+                {
+                    hasMoveTime = true;
+                    timeLimitMs = max(10, timeLimitMs);
+                }
+                else if(tok == "wtime") { iss >> wtime; }
+                else if(tok == "btime") { iss >> btime; }
+                else if(tok == "winc") { iss >> winc; }
+                else if(tok == "binc") { iss >> binc; }
+                else if(tok == "infinite")
+                {
+                    hasDepth = true;
+                    maxDepth = 8;
+                    timeLimitMs = 10000;
+                    hasMoveTime = true;
+                }
+            }
+
+            if(hasDepth && !hasMoveTime && wtime == 0 && btime == 0)
+            {
+                timeLimitMs = 30000;
+            }
+            else if(!hasMoveTime && (wtime > 0 || btime > 0))
+            {
+                if(!hasDepth) maxDepth = 8;
+                int remain = chessboard.getWhiteTurn() ? wtime : btime;
+                int inc = chessboard.getWhiteTurn() ? winc : binc;
+                timeLimitMs = max(50, min(5000, remain / 25 + inc / 2));
+            }
+            else if(hasMoveTime && !hasDepth)
+            {
+                maxDepth = 10;
+            }
+
+            SearchResult res = searchEngine.findBestMove(chessboard, maxDepth, timeLimitMs, true);
+            if(res.bestMove.empty())
+            {
+                cout << "bestmove 0000" << endl;
+            }
+            else
+            {
+                int sideScore = chessboard.getWhiteTurn() ? res.score : -res.score;
+                cout << "info depth " << maxDepth << " score cp " << sideScore << " nodes " << res.nodes << endl;
+                cout << "bestmove " << res.bestMove << endl;
+            }
+        }
+
+        else if(command == "setoption" || command == "stop" || command == "ponderhit")
+        {
+            string ignoreRest;
+            getline(cin, ignoreRest);
+        }
+
+        else if(command == "quit")
+        {
+            break;
         }
 
     }
