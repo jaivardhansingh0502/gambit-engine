@@ -342,6 +342,7 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 15 — Live ECO Opening Name Banner & Post-Game Blunder Review / Accuracy % (Option D)
 
 - **Status:** Completed
+- **Commit:** `7f554a4`
 - **Changes Implemented:**
   - **C++ Engine Analysis Protocol (`Search.h`, `Search.cpp`, `main.cpp`, `ai.py`):**
     - Added `bool useBook = true` to `Search::findBestMove` and exposed `ANALYZE_MOVE <depth> <time_ms>` in `main.cpp` and `analyze_position_with_engine()` in `ai.py` to obtain unbiased engine evaluations and best moves across opening book positions too.
@@ -363,3 +364,27 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
   - `python -m py_compile` across all Python app and test modules — Passed.
   - `python -m unittest discover -s tests -v` — 41 tests passed (`OK`).
   - `1280x680` sidebar layout verification (`theme_button` through `new_game_button` bottom <= 710px within 729px window height) — Passed (`ALL_FIT_OK`).
+
+---
+
+## Milestone 16 — Persistent User Settings, Custom Time Controls & Windows Desktop Packaging (Option E)
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - **Settings Persistence & Custom Time Controls (`chess_utils.py`, `ui.py`):**
+    - Added `DEFAULT_TIME_CONTROLS` (`Untimed`, `Bullet (1+0)`, `Blitz (3+2)`, `Blitz (5+3)`, `Rapid (10+0)`, `Rapid (15+10)`), `parse_custom_time_control()`, and `resolve_time_control_spec()`.
+    - Added `load_user_settings()` / `save_user_settings()` reading/writing `settings.json` (git-ignored) and preserving board theme, sound toggle, AI difficulty, game mode, side, and custom/preset time control across launches (`settings_path` injectable for isolated tests).
+    - Added `Custom...` option (`prompt_custom_time_control()`, `apply_custom_time_control()`) in the sidebar Time menu.
+  - **Custom Windows App Icon & Desktop Launchers (`chess_utils.py`, `assets/gambit.ico`, `Launch Gambit Chess.vbs`, `install_desktop_shortcut.ps1`):**
+    - Added pure-stdlib multi-bitmap 32×32 BGRA `.ico` generator (`generate_app_icon()`) creating `assets/gambit.ico` and applied `root.iconbitmap(...)` on startup.
+    - Added zero-console `Launch Gambit Chess.vbs` (`pythonw.exe ui.py`) and `install_desktop_shortcut.ps1` to rebuild `gambit.exe` and create a Desktop shortcut cleanly.
+  - **Tests (`tests/test_chess_utils.py`, `tests/test_ui_logic.py`):**
+    - Added `test_custom_time_settings_persistence_and_icon_generation` and `test_option_e_settings_persistence_custom_time_and_icon`.
+- **Files Created / Modified:**
+  - `.gitignore`, `chess_utils.py`, `ui.py`
+  - `assets/gambit.ico`, `Launch Gambit Chess.vbs`, `install_desktop_shortcut.ps1`
+  - `tests/test_chess_utils.py`, `tests/test_ui_logic.py`
+  - `README.md`, `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `python -m py_compile` across all Python app and test modules — Passed.
+  - `python -m unittest discover -s tests -v` — 43 tests passed in 7.820s (`OK`).

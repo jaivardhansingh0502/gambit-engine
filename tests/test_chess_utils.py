@@ -1,5 +1,6 @@
 import os
 import sys
+import tempfile
 import unittest
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -14,9 +15,14 @@ from chess_utils import (
     detect_opening_name,
     format_captured_tray,
     format_san_move,
+    generate_app_icon,
     get_captured_piece,
+    load_user_settings,
+    parse_custom_time_control,
     pgn_result,
     play_sound,
+    resolve_time_control_spec,
+    save_user_settings,
 )
 
 
@@ -156,6 +162,43 @@ class ChessUtilsTests(unittest.TestCase):
         mid_acc = calculate_accuracy([20, 80, 350])
         self.assertGreater(mid_acc, 20.0)
         self.assertLess(mid_acc, 95.0)
+
+    def test_custom_time_settings_persistence_and_icon_generation(self):
+        label, spec = parse_custom_time_control(7, 5)
+        self.assertEqual(label, "Custom (7+5)")
+        self.assertEqual(spec, (420, 5))
+        self.assertEqual(resolve_time_control_spec("Custom (7+5)"), (420, 5))
+        self.assertEqual(resolve_time_control_spec("Blitz (5+3)"), (300, 3))
+        with self.assertRaises(ValueError):
+            parse_custom_time_control(0, 0)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cfg_path = os.path.join(tmpdir, "settings.json")
+            defaults = load_user_settings(cfg_path)
+            self.assertEqual(defaults["board_theme"], "Classic Green")
+            self.assertTrue(
+                save_user_settings(
+                    {
+                        "board_theme": "Slate Blue",
+                        "sound_enabled": False,
+                        "difficulty": "Hard (Depth 6)",
+                        "time_control": "Custom (7+5)",
+                    },
+                    cfg_path,
+                )
+            )
+            loaded = load_user_settings(cfg_path)
+            self.assertEqual(loaded["board_theme"], "Slate Blue")
+            self.assertFalse(loaded["sound_enabled"])
+            self.assertEqual(loaded["difficulty"], "Hard (Depth 6)")
+            self.assertEqual(loaded["time_control"], "Custom (7+5)")
+
+            ico_path = os.path.join(tmpdir, "gambit.ico")
+            generate_app_icon(ico_path)
+            with open(ico_path, "rb") as f:
+                data = f.read()
+            self.assertGreater(len(data), 4000)
+            self.assertEqual(data[:4], b"\x00\x00\x01\x00")
 
 
 if __name__ == "__main__":

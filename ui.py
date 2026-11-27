@@ -1,4 +1,5 @@
 
+import os
 import random
 import subprocess
 import threading
@@ -17,6 +18,9 @@ from ai import (
     set_fen,
 )
 from chess_utils import (
+    DEFAULT_APP_ICON_PATH,
+    DEFAULT_SETTINGS_PATH,
+    DEFAULT_TIME_CONTROLS,
     STANDARD_START_FEN,
     build_pgn,
     calculate_accuracy,
@@ -24,8 +28,13 @@ from chess_utils import (
     detect_opening_name,
     format_captured_tray,
     format_san_move,
+    generate_app_icon,
     get_captured_piece,
+    load_user_settings,
+    parse_custom_time_control,
     play_sound,
+    resolve_time_control_spec,
+    save_user_settings,
 )
 from evaluation import (
     analyze_material,
@@ -58,12 +67,9 @@ GAME_MODE_LABELS = {
     MODE_PVAI: "Player vs AI (PvAI)",
 }
 
-TIME_CONTROLS = {
-    "Untimed": None,
-    "Bullet (1+0)": (60, 0),
-    "Blitz (3+2)": (180, 2),
-    "Rapid (10+0)": (600, 0),
-}
+TIME_CONTROLS = dict(DEFAULT_TIME_CONTROLS)
+
+SETTINGS_AUTO = "__AUTO__"
 
 AI_DIFFICULTY_DEPTHS = {
     "Easy (Depth 2)": 2,
@@ -291,12 +297,32 @@ class GambitUI:
         game_mode=None,
         prompt_mode_on_start=True,
         human_color=HUMAN_COLOR_WHITE,
-        time_control="Untimed"
+        time_control=None,
+        settings_path=SETTINGS_AUTO
     ):
         self.root = root
         self.root.title("Gambit Chess")
         self.root.minsize(880, 620)
         self.root.configure(bg=THEME["bg"])
+
+        try:
+            if not os.path.exists(DEFAULT_APP_ICON_PATH):
+                generate_app_icon(DEFAULT_APP_ICON_PATH)
+            if os.path.exists(DEFAULT_APP_ICON_PATH):
+                self.root.iconbitmap(DEFAULT_APP_ICON_PATH)
+        except Exception:
+            pass
+
+        if settings_path == SETTINGS_AUTO:
+            self.settings_path = DEFAULT_SETTINGS_PATH if prompt_mode_on_start else None
+        else:
+            self.settings_path = settings_path
+
+        saved_prefs = (
+            load_user_settings(self.settings_path)
+            if self.settings_path
+            else {}
+        )
 
         self.engine = subprocess.Popen(
             ["gambit.exe"],
@@ -310,21 +336,34 @@ class GambitUI:
         self.ai = AI(self.engine)
 
         self.prompt_mode_on_start = prompt_mode_on_start
-        self.game_mode = (
-            game_mode if game_mode in GAME_MODE_LABELS else MODE_PVAI
-        )
-        self.human_color = (
-            human_color
-            if human_color in (HUMAN_COLOR_WHITE, HUMAN_COLOR_BLACK)
-            else HUMAN_COLOR_WHITE
-        )
+        pref_mode = saved_prefs.get("game_mode")
+        if game_mode in GAME_MODE_LABELS:
+            self.game_mode = game_mode
+        elif pref_mode in GAME_MODE_LABELS:
+            self.game_mode = pref_mode
+        else:
+            self.game_mode = MODE_PVAI
+
+        pref_color = saved_prefs.get("human_color")
+        if human_color in (HUMAN_COLOR_WHITE, HUMAN_COLOR_BLACK) and (
+            game_mode is not None or not self.settings_path or pref_color not in (HUMAN_COLOR_WHITE, HUMAN_COLOR_BLACK)
+        ):
+            self.human_color = human_color
+        elif pref_color in (HUMAN_COLOR_WHITE, HUMAN_COLOR_BLACK):
+            self.human_color = pref_color
+        else:
+            self.human_color = HUMAN_COLOR_WHITE
+
         self.board_flipped = (
             self.game_mode == MODE_PVAI
             and self.human_color == HUMAN_COLOR_BLACK
         )
-        self.time_control_name = (
-            time_control if time_control in TIME_CONTROLS else "Untimed"
-        )
+
+        chosen_tc = time_control if time_control is not None else saved_prefs.get("time_control", "Untimed")
+        resolved_spec = resolve_time_control_spec(chosen_tc)
+        if chosen_tc not in TIME_CONTROLS and resolved_spec is not None:
+            TIME_CONTROLS[chosen_tc] = resolved_spec
+        self.time_control_name = chosen_tc if chosen_tc in TIME_CONTROLS else "Untimed"
         self.white_time = None
         self.black_time = None
         self._clock_last_tick = None
@@ -355,7 +394,8 @@ class GambitUI:
         self.highlighted_squares = set()
         self.premove = None
         self._premove_selected = None
-        self.board_theme_name = "Classic Green"
+        pref_theme = saved_prefs.get("board_theme")
+        self.board_theme_name = pref_theme if pref_theme in BOARD_THEMES else "Classic Green"
         self.eval_history = []
         self.opening_name = "Starting Position"
         self.review_annotations = []
@@ -363,7 +403,14 @@ class GambitUI:
         self.review_busy = False
         self.review_best_move = None
         self.hint_move = None
-        self.sound_enabled = bool(prompt_mode_on_start)
+        if "sound_enabled" in saved_prefs:
+            self.sound_enabled = bool(saved_prefs["sound_enabled"])
+        else:
+            self.sound_enabled = bool(prompt_mode_on_start)
+        pref_diff = saved_prefs.get("difficulty")
+        self._initial_difficulty = (
+            pref_diff if pref_diff in AI_DIFFICULTY_DEPTHS else "Medium (Depth 4)"
+        )
         self.game_status = "NORMAL"
         self.engine_busy = True
         self.closing = False
@@ -871,6 +918,7 @@ class GambitUI:
             self.options_row,
             self.time_var,
             *TIME_CONTROLS.keys(),
+            "Custom...",
             command=self.on_sidebar_time_change
         )
         self.time_menu.config(
@@ -939,11 +987,12 @@ class GambitUI:
             bg=THEME["sidebar"]
         ).pack(side="left")
 
-        self.difficulty_var = tk.StringVar(value="Medium (Depth 4)")
+        self.difficulty_var = tk.StringVar(value=self._initial_difficulty)
         self.difficulty_menu = tk.OptionMenu(
             self.difficulty_frame,
             self.difficulty_var,
-            *AI_DIFFICULTY_DEPTHS.keys()
+            *AI_DIFFICULTY_DEPTHS.keys(),
+            command=self.on_sidebar_difficulty_change
         )
         self.difficulty_menu.config(
             font=("Segoe UI", 9),
@@ -1120,17 +1169,167 @@ class GambitUI:
         self._refresh_mode_buttons()
         self._refresh_clocks()
         self._update_controls()
+        self._save_preferences()
         self.draw_board()
 
+    def _save_preferences(self):
+        if not self.settings_path or self.closing:
+            return
+        save_user_settings(
+            {
+                "board_theme": self.board_theme_name,
+                "sound_enabled": bool(self.sound_enabled),
+                "difficulty": self.difficulty_var.get(),
+                "time_control": self.time_control_name,
+                "game_mode": self.game_mode,
+                "human_color": self.human_color,
+            },
+            path=self.settings_path,
+        )
+
+    def on_sidebar_difficulty_change(self, _choice=None):
+        self._save_preferences()
+
+    def apply_custom_time_control(self, minutes, increment, confirm_reset=False):
+        label, spec = parse_custom_time_control(minutes, increment)
+        if label not in TIME_CONTROLS:
+            TIME_CONTROLS[label] = spec
+            if hasattr(self, "time_menu"):
+                menu = self.time_menu["menu"]
+                idx_custom = menu.index("end")
+                menu.insert_radiobutton(
+                    max(0, idx_custom),
+                    label=label,
+                    variable=self.time_var,
+                    value=label,
+                    command=lambda ch=label: self.on_sidebar_time_change(ch)
+                )
+        self.time_var.set(label)
+        if not self.move_history and self.game_status not in GAME_OVER_STATUSES:
+            self._reset_clocks(label)
+            self._start_clock()
+            self._save_preferences()
+            return label
+        if (not confirm_reset) or messagebox.askyesno(
+            "Change Time Control",
+            f"Start a new game with {label}?"
+        ):
+            self.new_game(time_control=label)
+        else:
+            self.time_var.set(self.time_control_name)
+        return label
+
+    def prompt_custom_time_control(self):
+        self._in_modal = True
+        self._stop_clock()
+        custom_vals = {"value": None}
+        try:
+            dialog = tk.Toplevel(self.root)
+            dialog.title("Custom Time Control")
+            dialog.resizable(False, False)
+            dialog.configure(bg=THEME["sidebar"])
+            dialog.transient(self.root)
+            dialog.grab_set()
+
+            tk.Label(
+                dialog,
+                text="Custom Clock (Minutes + Increment)",
+                font=("Segoe UI", 11, "bold"),
+                fg=THEME["text"],
+                bg=THEME["sidebar"],
+                padx=20
+            ).pack(pady=(14, 8))
+
+            row = tk.Frame(dialog, bg=THEME["card"], padx=14, pady=10)
+            row.pack(fill="x", padx=20, pady=(0, 10))
+
+            tk.Label(row, text="Minutes (1–180):", font=("Segoe UI", 9, "bold"), fg=THEME["text"], bg=THEME["card"]).grid(row=0, column=0, sticky="w", pady=4)
+            mins_entry = tk.Entry(row, width=8, font=("Consolas", 10), bg=THEME["list_bg"], fg=THEME["text"], insertbackground=THEME["text"], relief="flat", bd=4)
+            mins_entry.insert(0, "5")
+            mins_entry.grid(row=0, column=1, padx=(10, 0), pady=4)
+
+            tk.Label(row, text="Increment sec (0–60):", font=("Segoe UI", 9, "bold"), fg=THEME["text"], bg=THEME["card"]).grid(row=1, column=0, sticky="w", pady=4)
+            inc_entry = tk.Entry(row, width=8, font=("Consolas", 10), bg=THEME["list_bg"], fg=THEME["text"], insertbackground=THEME["text"], relief="flat", bd=4)
+            inc_entry.insert(0, "3")
+            inc_entry.grid(row=1, column=1, padx=(10, 0), pady=4)
+
+            btn_row = tk.Frame(dialog, bg=THEME["sidebar"], padx=20)
+            btn_row.pack(fill="x", pady=(0, 14))
+
+            def on_apply():
+                try:
+                    mins = int(mins_entry.get().strip())
+                    inc = int(inc_entry.get().strip())
+                    parse_custom_time_control(mins, inc)
+                    custom_vals["value"] = (mins, inc)
+                    dialog.destroy()
+                except Exception as exc:
+                    messagebox.showerror("Invalid Time Control", str(exc), parent=dialog)
+
+            tk.Button(
+                btn_row,
+                text="Apply",
+                font=("Segoe UI", 10, "bold"),
+                bg=THEME["accent_blue"],
+                fg="#FFFFFF",
+                relief="flat",
+                bd=0,
+                pady=6,
+                cursor="hand2",
+                command=on_apply
+            ).pack(side="left", expand=True, fill="x", padx=(0, 4))
+
+            tk.Button(
+                btn_row,
+                text="Cancel",
+                font=("Segoe UI", 10),
+                bg=THEME["btn_bg"],
+                fg=THEME["text"],
+                relief="flat",
+                bd=0,
+                pady=6,
+                cursor="hand2",
+                command=dialog.destroy
+            ).pack(side="left", expand=True, fill="x", padx=(4, 0))
+
+            dialog.bind("<Return>", lambda _e: on_apply())
+            dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
+            dialog.update_idletasks()
+            x = self.root.winfo_rootx() + (self.root.winfo_width() - dialog.winfo_width()) // 2
+            y = self.root.winfo_rooty() + (self.root.winfo_height() - dialog.winfo_height()) // 2
+            dialog.geometry(f"+{max(0, x)}+{max(0, y)}")
+            dialog.lift()
+            self.root.wait_window(dialog)
+        finally:
+            self._in_modal = False
+
+        if custom_vals["value"] is not None:
+            mins, inc = custom_vals["value"]
+            return self.apply_custom_time_control(mins, inc, confirm_reset=True)
+        self.time_var.set(self.time_control_name)
+        self._start_clock()
+        return None
+
     def on_sidebar_time_change(self, choice):
-        if self.engine_busy or choice not in TIME_CONTROLS:
+        if self.engine_busy:
             self.time_var.set(self.time_control_name)
             return
+        if choice == "Custom...":
+            self.prompt_custom_time_control()
+            return
+        if choice not in TIME_CONTROLS:
+            spec = resolve_time_control_spec(choice)
+            if spec is not None:
+                TIME_CONTROLS[choice] = spec
+            else:
+                self.time_var.set(self.time_control_name)
+                return
         if choice == self.time_control_name:
             return
         if not self.move_history and self.game_status not in GAME_OVER_STATUSES:
             self._reset_clocks(choice)
             self._start_clock()
+            self._save_preferences()
             return
         if messagebox.askyesno(
             "Change Time Control",
@@ -1345,6 +1544,7 @@ class GambitUI:
     def toggle_sound(self):
         self.sound_enabled = not self.sound_enabled
         self.sound_button.config(text="🔊" if self.sound_enabled else "🔇")
+        self._save_preferences()
 
     def set_board_theme(self, theme_name):
         if theme_name not in BOARD_THEMES:
@@ -1352,6 +1552,7 @@ class GambitUI:
         self.board_theme_name = theme_name
         if hasattr(self, "theme_var"):
             self.theme_var.set(theme_name)
+        self._save_preferences()
         self.draw_board()
 
     def _shortcut_allowed(self):

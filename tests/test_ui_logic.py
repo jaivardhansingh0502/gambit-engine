@@ -1,5 +1,6 @@
 import os
 import sys
+import tempfile
 import tkinter as tk
 import unittest
 
@@ -479,7 +480,7 @@ class GambitUIFlowTests(unittest.TestCase):
         os.chdir(ROOT_DIR)
         root = tk.Tk()
         root.withdraw()
-        app = ui.GambitUI(root, prompt_mode_on_start=True)
+        app = ui.GambitUI(root, prompt_mode_on_start=True, settings_path=None)
         results = {}
 
         def step_interact_modal():
@@ -867,6 +868,98 @@ class GambitUIFlowTests(unittest.TestCase):
         self.assertIn("g4??", results["history_row2"])
         self.assertIsNotNone(results["blunder_best_move"])
         self.assertGreaterEqual(results["summary"]["blunders"], 1)
+
+    def test_option_e_settings_persistence_custom_time_and_icon(self):
+        prev_cwd = os.getcwd()
+        os.chdir(ROOT_DIR)
+        tmpdir = tempfile.TemporaryDirectory()
+        settings_file = os.path.join(tmpdir.name, "gambit_prefs.json")
+
+        def run_session_1():
+            root = tk.Tk()
+            root.withdraw()
+            app = ui.GambitUI(
+                root,
+                game_mode=ui.MODE_PVAI,
+                prompt_mode_on_start=False,
+                settings_path=settings_file,
+            )
+            out = {}
+
+            def step_init():
+                if app.engine_busy:
+                    root.after(40, step_init)
+                    return
+                app.set_board_theme("Slate Blue")
+                app.difficulty_var.set("Hard (Depth 6)")
+                app.on_sidebar_difficulty_change("Hard (Depth 6)")
+                label = app.apply_custom_time_control(7, 5, confirm_reset=False)
+                out["custom_label"] = label
+                out["white_time"] = app.white_time
+                out["icon_exists"] = os.path.exists(ui.DEFAULT_APP_ICON_PATH)
+                app.close()
+
+            try:
+                root.after(100, step_init)
+                root.mainloop()
+            finally:
+                if app.engine.poll() is None:
+                    app.engine.terminate()
+                    app.engine.wait(timeout=2)
+                if app.engine.stdin:
+                    app.engine.stdin.close()
+                if app.engine.stdout:
+                    app.engine.stdout.close()
+            return out
+
+        def run_session_2():
+            root = tk.Tk()
+            root.withdraw()
+            app = ui.GambitUI(
+                root,
+                prompt_mode_on_start=False,
+                settings_path=settings_file,
+            )
+            out = {}
+
+            def step_verify():
+                if app.engine_busy:
+                    root.after(40, step_verify)
+                    return
+                out["loaded_theme"] = app.board_theme_name
+                out["loaded_diff"] = app.difficulty_var.get()
+                out["loaded_tc"] = app.time_control_name
+                out["loaded_white_time"] = app.white_time
+                app.close()
+
+            try:
+                root.after(100, step_verify)
+                root.mainloop()
+            finally:
+                if app.engine.poll() is None:
+                    app.engine.terminate()
+                    app.engine.wait(timeout=2)
+                if app.engine.stdin:
+                    app.engine.stdin.close()
+                if app.engine.stdout:
+                    app.engine.stdout.close()
+            return out
+
+        try:
+            r1 = run_session_1()
+            r2 = run_session_2()
+        finally:
+            ui.TIME_CONTROLS.pop("Custom (7+5)", None)
+            os.chdir(prev_cwd)
+            tmpdir.cleanup()
+
+        self.assertEqual(r1["custom_label"], "Custom (7+5)")
+        self.assertEqual(r1["white_time"], 420.0)
+        self.assertTrue(r1["icon_exists"])
+        self.assertEqual(r2["loaded_theme"], "Slate Blue")
+        self.assertEqual(r2["loaded_diff"], "Hard (Depth 6)")
+        self.assertEqual(r2["loaded_tc"], "Custom (7+5)")
+        self.assertEqual(r2["loaded_white_time"], 420.0)
 
 
 if __name__ == "__main__":

@@ -58,6 +58,12 @@ compile_commands.json
 *.bak
 *.swp
 
+# Local user preferences, desktop shortcuts & build outputs
+settings.json
+*.lnk
+dist/
+.venv/
+
 # vcpkg
 vcpkg_installed/
 

@@ -1,4 +1,8 @@
+import json
 import math
+import os
+import re
+import struct
 import threading
 
 try:
@@ -8,6 +12,34 @@ except ImportError:
 
 
 STANDARD_START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+DEFAULT_SETTINGS_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "settings.json",
+)
+DEFAULT_APP_ICON_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "assets",
+    "gambit.ico",
+)
+
+DEFAULT_TIME_CONTROLS = {
+    "Untimed": None,
+    "Bullet (1+0)": (60, 0),
+    "Blitz (3+2)": (180, 2),
+    "Blitz (5+3)": (300, 3),
+    "Rapid (10+0)": (600, 0),
+    "Rapid (15+10)": (900, 10),
+}
+
+DEFAULT_USER_SETTINGS = {
+    "board_theme": "Classic Green",
+    "sound_enabled": True,
+    "difficulty": "Medium (Depth 4)",
+    "time_control": "Untimed",
+    "game_mode": "PvAI",
+    "human_color": "WHITE",
+}
 
 OPENING_LINES = [
     (("e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "a7a6", "b5a4", "g8f6", "e1g1", "f8e7"), "Ruy Lopez: Closed Morphy"),
@@ -286,3 +318,151 @@ def play_sound(kind, enabled=True):
             pass
 
     threading.Thread(target=_beep, daemon=True).start()
+
+
+def parse_custom_time_control(minutes, increment):
+    """Validate and format custom minutes + increment into (label, (secs, inc))."""
+    mins = int(minutes)
+    inc = int(increment)
+    if mins < 1 or mins > 180 or inc < 0 or inc > 60:
+        raise ValueError("Minutes must be 1..180 and increment must be 0..60 seconds.")
+    return f"Custom ({mins}+{inc})", (mins * 60, inc)
+
+
+def resolve_time_control_spec(name):
+    """Return (base_seconds, increment) or None for preset or Custom (M+I) names."""
+    if name in DEFAULT_TIME_CONTROLS:
+        return DEFAULT_TIME_CONTROLS[name]
+    match = re.fullmatch(r"Custom \((\d+)\+(\d+)\)", str(name or "").strip())
+    if match:
+        _, spec = parse_custom_time_control(match.group(1), match.group(2))
+        return spec
+    return None
+
+
+def load_user_settings(path=DEFAULT_SETTINGS_PATH):
+    """Load persisted Gambit preferences safely with defaults."""
+    settings = dict(DEFAULT_USER_SETTINGS)
+    if not path or not os.path.exists(path):
+        return settings
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+        if isinstance(raw, dict):
+            for key, default_val in DEFAULT_USER_SETTINGS.items():
+                if key in raw and type(raw[key]) is type(default_val):
+                    settings[key] = raw[key]
+    except Exception:
+        pass
+    return settings
+
+
+def save_user_settings(settings, path=DEFAULT_SETTINGS_PATH):
+    """Persist Gambit preferences to JSON cleanly."""
+    if not path:
+        return False
+    merged = dict(DEFAULT_USER_SETTINGS)
+    for key in DEFAULT_USER_SETTINGS:
+        if key in settings:
+            merged[key] = settings[key]
+    try:
+        parent = os.path.dirname(os.path.abspath(path))
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(merged, f, indent=2)
+        return True
+    except Exception:
+        return False
+
+
+def generate_app_icon(ico_path=DEFAULT_APP_ICON_PATH):
+    """Generate a crisp 32x32 32-bit BGRA Windows .ico chess emblem using stdlib."""
+    size = 32
+    crown_bitmap = [
+        "................................",
+        "................................",
+        "................................",
+        "................................",
+        "..............XXXX..............",
+        "..............XXXX..............",
+        ".........XX...XXXX...XX.........",
+        "........XXXX..XXXX..XXXX........",
+        "........XXXX..XXXX..XXXX........",
+        "....XX..XXXX..XXXX..XXXX..XX....",
+        "...XXXX..XXXX.XXXX.XXXX..XXXX...",
+        "...XXXX..XXXXXXXXXXXXXX..XXXX...",
+        "....XXXXXXXXXXXXXXXXXXXXXXXX....",
+        "....XXXXXXXXXXXXXXXXXXXXXXXX....",
+        ".....XXXXXXXXXXXXXXXXXXXXXX.....",
+        ".....XXXXXXXXXXXXXXXXXXXXXX.....",
+        "......XXXXXXXXXXXXXXXXXXXX......",
+        "......XXXXXXXXXXXXXXXXXXXX......",
+        ".......XXXXXXXXXXXXXXXXXX.......",
+        ".......XXXXXXXXXXXXXXXXXX.......",
+        ".......GGGGGGGGGGGGGGGGGG.......",
+        "......XXXXXXXXXXXXXXXXXXXX......",
+        "......XXXXXXXXXXXXXXXXXXXX......",
+        ".....GGGGGGGGGGGGGGGGGGGGGG.....",
+        "....XXXXXXXXXXXXXXXXXXXXXXXX....",
+        "....XXXXXXXXXXXXXXXXXXXXXXXX....",
+        "................................",
+        "................................",
+        "................................",
+        "................................",
+        "................................",
+        "................................",
+    ]
+
+    pixels = bytearray()
+    # BMP DIB stores rows bottom-up
+    for row in range(size - 1, -1, -1):
+        for col in range(size):
+            border = row < 2 or row >= size - 2 or col < 2 or col >= size - 2
+            cell = crown_bitmap[row][col]
+            if cell == "X":
+                r, g, b, a = (24, 26, 32, 255)
+            elif cell == "G":
+                r, g, b, a = (245, 158, 11, 255)
+            elif border:
+                r, g, b, a = (37, 99, 235, 255)
+            else:
+                light_sq = ((row // 7) + (col // 7)) % 2 == 0
+                r, g, b, a = (238, 238, 210, 255) if light_sq else (118, 150, 86, 255)
+            pixels.extend((b, g, r, a))
+
+    and_mask = b"\x00" * (size * (size // 8))
+    bih = struct.pack(
+        "<IiiHHIIiiII",
+        40,
+        size,
+        size * 2,
+        1,
+        32,
+        0,
+        len(pixels) + len(and_mask),
+        0,
+        0,
+        0,
+        0,
+    )
+    image_data = bih + bytes(pixels) + and_mask
+    icon_dir = struct.pack("<HHH", 0, 1, 1)
+    dir_entry = struct.pack(
+        "<BBBBHHII",
+        size,
+        size,
+        0,
+        0,
+        1,
+        32,
+        len(image_data),
+        6 + 16,
+    )
+
+    parent = os.path.dirname(os.path.abspath(ico_path))
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    with open(ico_path, "wb") as f:
+        f.write(icon_dir + dir_entry + image_data)
+    return ico_path

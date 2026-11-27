@@ -42,6 +42,8 @@ Gambit is a chess engine built from the ground up — combining a C++17 rules, m
 - [x] Clickable Standard Algebraic Notation (`SAN`) move history, **Live ECO Opening Name Banner**, **Post-Game Blunder Review (`!`, `?!`, `?`, `??`) & Accuracy %**, evaluation swing graph, captured pieces tray, and `🔊` sound toggle
 - [x] Player vs AI (`White`/`Black`/`Random`, 30+ built-in ECO openings) & Player vs Player modes with live chess clocks (`Bullet`/`Blitz`/`Rapid`), `⇅ Flip`, `Resign`, `½ Draw` offer, FEN import, and PGN export
 - [x] Animated `Back` / `Next` / `Live` move review without unfair undo
+- [x] **Persistent User Preferences (`settings.json`)** for board theme, sound mute, AI difficulty, and time control (including **Custom `M+I` time controls** alongside `Bullet`/`Blitz`/`Rapid` presets)
+- [x] Custom Windows `.ico` app emblem (`assets/gambit.ico`), silent launcher (`Launch Gambit Chess.vbs`), and one-click Desktop shortcut installer (`install_desktop_shortcut.ps1`)
 - [x] Thread-safe background engine communication & clean shutdown
 
 ---
@@ -82,6 +84,10 @@ Chess/
 ├── chess_utils.py
 ├── evaluation.py
 ├── ui.py
+├── assets/
+│   └── gambit.ico
+├── Launch Gambit Chess.vbs
+├── install_desktop_shortcut.ps1
 ├── tests/
 │   ├── test_chess_utils.py
 │   ├── test_engine.py
@@ -108,6 +114,8 @@ g++ -std=c++17 -O2 main.cpp Board.cpp Move.cpp Pawn.cpp Knight.cpp Bishop.cpp Ro
 python ui.py
 ```
 
+Or double-click `Launch Gambit Chess.vbs` to run without a console window, or run `powershell -ExecutionPolicy Bypass -File install_desktop_shortcut.ps1` to create a Windows Desktop shortcut with Gambit's icon.
+
 ### 3. Run the Automated Test Suite
 
 ```bash
@@ -118,6 +126,6 @@ python -m unittest discover -s tests -v
 
 ## 📌 Current Status
 
-Gambit is playable end-to-end as both Player vs AI (`White`/`Black`/`Random`) and Player vs Player desktop chess application powered by a compiled C++17 search and rules engine, backed by a 41-test `unittest` suite covering C++ rules/search/openings/FEN/draws, SAN/PGN/review utilities, evaluation, AI, and Tkinter GUI workflows. See [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) for the milestone history.
+Gambit is playable end-to-end as both Player vs AI (`White`/`Black`/`Random`) and Player vs Player desktop chess application powered by a compiled C++17 search and rules engine, backed by a 43-test `unittest` suite covering C++ rules/search/openings/FEN/draws, SAN/PGN/review/settings/icon utilities, evaluation, AI, and Tkinter GUI workflows. See [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) for the milestone history.
 
 ♟️ One move at a time.
