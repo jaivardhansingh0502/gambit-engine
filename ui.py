@@ -84,18 +84,24 @@ AI_DIFFICULTY_TIME_LIMITS = {
 }
 
 THEME = {
-    "bg": "#11141B",
-    "sidebar": "#181C26",
-    "card": "#212634",
-    "border": "#2E3548",
+    "bg": "#0D1012",
+    "sidebar": "#15191D",
+    "card": "#1D2329",
+    "border": "#2B333C",
     "text": "#F3F4F6",
     "muted": "#9CA3AF",
-    "accent_blue": "#2563EB",
+    "accent_blue": "#0D9488",
+    "accent_primary_hover": "#0F766E",
+    "accent_soft": "#5EEAD4",
+    "accent_badge_bg": "#113832",
+    "accent_badge_fg": "#2DD4BF",
     "accent_green": "#059669",
     "accent_red": "#DC2626",
-    "btn_bg": "#2B3244",
-    "btn_active": "#394259",
-    "list_bg": "#141821",
+    "btn_bg": "#262D35",
+    "btn_active": "#323B46",
+    "list_bg": "#101417",
+    "graph_top": "#1B2228",
+    "graph_bottom": "#0F1316",
 }
 
 BOARD_THEMES = {
@@ -535,7 +541,7 @@ class GambitUI:
             self.header_frame,
             text=f"Mode: {GAME_MODE_LABELS[self.game_mode]}",
             font=("Segoe UI", 9, "bold"),
-            fg="#93C5FD",
+            fg=THEME["accent_soft"],
             bg=THEME["sidebar"],
             anchor="w"
         )
@@ -672,8 +678,8 @@ class GambitUI:
             self.eval_header_row,
             text="AI+ LIVE",
             font=("Segoe UI", 7, "bold"),
-            fg="#60A5FA",
-            bg="#1E3A5F",
+            fg=THEME["accent_badge_fg"],
+            bg=THEME["accent_badge_bg"],
             padx=6,
             pady=1
         )
@@ -692,7 +698,7 @@ class GambitUI:
         self.eval_bar = tk.Canvas(
             self.eval_frame,
             height=9,
-            bg="#0F172A",
+            bg=THEME["list_bg"],
             highlightthickness=0
         )
         self.eval_bar.pack(fill="x", pady=(0, 3))
@@ -702,7 +708,7 @@ class GambitUI:
         self.eval_graph = tk.Canvas(
             self.eval_frame,
             height=22,
-            bg="#0F172A",
+            bg=THEME["list_bg"],
             highlightthickness=0,
             cursor="hand2"
         )
@@ -757,7 +763,7 @@ class GambitUI:
             self.eval_frame,
             text="Material is equal. (0.0 pts)",
             font=("Segoe UI", 8),
-            fg="#93C5FD",
+            fg=THEME["accent_soft"],
             bg=THEME["card"],
             anchor="w",
             justify="left",
@@ -811,9 +817,9 @@ class GambitUI:
             font=("Segoe UI", 9, "bold"),
             bg=THEME["accent_blue"],
             fg="#FFFFFF",
-            activebackground="#1D4ED8",
+            activebackground=THEME["accent_primary_hover"],
             activeforeground="#FFFFFF",
-            disabledforeground="#93C5FD",
+            disabledforeground="#99F6E4",
             relief="flat",
             bd=0,
             pady=7,
@@ -1045,9 +1051,9 @@ class GambitUI:
             text="🔍 Review",
             font=("Segoe UI", 8, "bold"),
             bg=THEME["btn_bg"],
-            fg="#38BDF8",
+            fg=THEME["accent_badge_fg"],
             activebackground=THEME["btn_active"],
-            activeforeground="#BAE6FD",
+            activeforeground="#99F6E4",
             disabledforeground="#6B7280",
             relief="flat",
             bd=0,
@@ -1063,7 +1069,7 @@ class GambitUI:
             self.history_frame,
             text="Opening: Starting Position",
             font=("Segoe UI", 8, "bold"),
-            fg="#93C5FD",
+            fg=THEME["accent_soft"],
             bg=THEME["sidebar"],
             anchor="w"
         )
@@ -1598,7 +1604,7 @@ class GambitUI:
 
         self.top_clock_name.config(
             text=top_name,
-            fg="#93C5FD" if top_active else THEME["muted"]
+            fg=THEME["accent_soft"] if top_active else THEME["muted"]
         )
         self.top_clock_time.config(
             text=format_clock_time(top_val),
@@ -1608,7 +1614,7 @@ class GambitUI:
         )
         self.bottom_clock_name.config(
             text=bottom_name,
-            fg="#93C5FD" if bottom_active else THEME["muted"]
+            fg=THEME["accent_soft"] if bottom_active else THEME["muted"]
         )
         self.bottom_clock_time.config(
             text=format_clock_time(bottom_val),
@@ -1705,9 +1711,9 @@ class GambitUI:
 
         self.eval_graph.delete("all")
         mid_y = gh / 2.0
-        self.eval_graph.create_rectangle(0, 0, gw, mid_y, fill="#1E293B", outline="")
-        self.eval_graph.create_rectangle(0, mid_y, gw, gh, fill="#0F172A", outline="")
-        self.eval_graph.create_line(0, mid_y, gw, mid_y, fill="#475569", width=1)
+        self.eval_graph.create_rectangle(0, 0, gw, mid_y, fill=THEME["graph_top"], outline="")
+        self.eval_graph.create_rectangle(0, mid_y, gw, gh, fill=THEME["graph_bottom"], outline="")
+        self.eval_graph.create_line(0, mid_y, gw, mid_y, fill=THEME["border"], width=1)
 
         n = len(self.eval_history)
         if n == 0:
@@ -1732,7 +1738,7 @@ class GambitUI:
 
         if 0 <= self.view_index < n:
             mx = (self.view_index + 0.5) * col_w
-            self.eval_graph.create_line(mx, 0, mx, gh, fill="#38BDF8", width=2)
+            self.eval_graph.create_line(mx, 0, mx, gh, fill=THEME["accent_badge_fg"], width=2)
 
     def on_eval_graph_click(self, event):
         if self.engine_busy or not self.position_history or not self.eval_history:
@@ -2120,7 +2126,7 @@ class GambitUI:
                 font=("Segoe UI", 11, "bold"),
                 bg=THEME["accent_blue"],
                 fg="#FFFFFF",
-                activebackground="#1D4ED8",
+                activebackground=THEME["accent_primary_hover"],
                 activeforeground="#FFFFFF",
                 relief="flat",
                 bd=0,
@@ -2283,7 +2289,7 @@ class GambitUI:
         )
         self.eval_bar.create_rectangle(
             split_x, 0, bar_width, bar_height,
-            fill="#0F172A",
+            fill=THEME["list_bg"],
             outline=""
         )
         mid_x = bar_width // 2
