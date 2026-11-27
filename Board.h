@@ -71,6 +71,7 @@ public:
     void takeinput();
     void makeMove(Move move);
     void makeTemporaryMove(Move move);
+    void makeNullMove();
 
     bool isValid(Move move);
     bool isKinginCheck(bool whiteTurn) ;

@@ -261,6 +261,7 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 12 — SAN & Captured Tray, Sound Effects, FIDE Draws, FEN/PGN, C++17 Search Engine, Drag-and-Drop, Live Animation & Hints
 
 - **Status:** Completed
+- **Commit:** `0b83ca0`
 - **Changes Implemented:**
   - **C++ Rules, FEN & Search Engine (`Board.h`, `Board.cpp`, `Search.h`, `Search.cpp`, `main.cpp`):**
     - Tracked `halfmoveClock` and `fullmoveNumber` across `initializeBoard()`, `makeMove()`, `saveState()`, `restoreState()`; added `isFiftyMoveDraw()`, `getPositionKey()`, `getFEN()`, and `loadFEN()`.
@@ -283,3 +284,28 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
   - `python -m py_compile ai.py chess_utils.py evaluation.py ui.py tests/test_chess_utils.py tests/test_engine.py tests/test_ui_logic.py tests/test_ai.py tests/test_evaluation.py` — Passed.
   - `python -m unittest discover -s tests -v` — 37 tests passed in 5.861s (`OK`).
   - `1280x680` sidebar layout verification (`fen_button` through `new_game_button` bottom <= 710px within 729px window height) — Passed (`ALL_FIT_OK`).
+
+---
+
+## Milestone 13 — Stronger, More Human C++ AI (Opening Book, Tapered Eval & Search Pruning Upgrades)
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - **Built-in ECO Opening Book (`Search.cpp`):**
+    - Precomputes transposition-aware position keys (`Board::getPositionKey()`) across classic ECO openings (Italian, Ruy Lopez, Scotch, Sicilian Najdorf/Classical/Rossolimo, French, Caro-Kann, Queen's Gambit Declined/Slav/Accepted, Nimzo/Queen's/King's Indian, Grunfeld, English, Reti) and selects varied legal book moves instantaneously (`1` node).
+  - **Tapered Eval & Positional Knowledge (`Search.cpp`):**
+    - Added phase-interpolated middlegame/endgame piece-square tables (`PAWN_MG_PST` / `PAWN_EG_PST`, `KING_MID_PST` / `KING_END_PST`) weighted via non-king piece phases (`N/B=1, R=2, Q=4`).
+    - Added zero-allocation stack evaluation for passed pawns, doubled & isolated pawns, protected pawn chains, bishop pair, knight outposts, rooks on open/semi-open files & 7th rank, king middlegame pawn shields, and side-to-move tempo.
+  - **Search Speed & Pruning Upgrades (`Board.h`, `Board.cpp`, `Search.cpp`):**
+    - Added `Board::makeNullMove()` for safe null-move state transitions (`saveState()` / `restoreState()`).
+    - Converted C++ search to Negamax with Principal Variation Search (PVS), root Aspiration Windows (`±60` cp at `d >= 4`), Null-Move Pruning (`R = 2/3`, guarded in PV/check/pawn-only endgames), Late Move Reductions (LMR), check extensions, 2-fold search-path repetition detection, mate-distance TT score adjustment, History Heuristic, and early stand-pat / delta pruning in Quiescence.
+  - **Tests (`tests/test_engine.py`):**
+    - Added `test_opening_book_black_mate_sign_and_endgame_search` verifying instant White/Black opening book hits, White-perspective negative mate score on Fool's Mate, and K+P vs K endgame opposition search.
+- **Files Modified:**
+  - `Board.h`, `Board.cpp`, `Search.cpp`
+  - `tests/test_engine.py`
+  - `README.md`, `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `g++ -std=c++17 -O2 main.cpp Board.cpp Move.cpp Pawn.cpp Knight.cpp Bishop.cpp Rook.cpp Queen.cpp King.cpp Evaluation.cpp Search.cpp -o gambit.exe` — Compiled cleanly (exit code 0, zero warnings in `Search.cpp`).
+  - `python -m unittest discover -s tests -v` — 38 tests passed (`OK`) in 13.032s.
+  - Open middlegame benchmark (`r1bq1rk1/ppp2ppp/2np1n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w - - 0 7`): Depth 4 `19,800` nodes in `0.4560s` (`43,417` nps, `c1g5`); Depth 6/7 at `54,020`–`56,084` nps.

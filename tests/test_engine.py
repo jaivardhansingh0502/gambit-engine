@@ -211,6 +211,35 @@ class GambitEngineTests(unittest.TestCase):
         # Engine board must stay intact after search
         self.assertEqual(get_fen(self.engine), mate_fen)
 
+    def test_opening_book_black_mate_sign_and_endgame_search(self):
+        # 1. Opening book returns classic move instantaneously (1 node)
+        best_open, open_score, open_nodes = get_cpp_best_move(self.engine, depth=5, time_limit_ms=1000)
+        self.assertIn(best_open, {"e2e4", "d2d4", "c2c4", "g1f3"})
+        self.assertEqual(open_score, 0)
+        self.assertEqual(open_nodes, 1)
+
+        # Black opening response after 1. e4
+        self.play_moves(["e2e4"])
+        black_open, _, black_nodes = get_cpp_best_move(self.engine, depth=5, time_limit_ms=1000)
+        self.assertIn(black_open, {"e7e5", "c7c5", "e7e6", "c7c6"})
+        self.assertEqual(black_nodes, 1)
+
+        # 2. Black mate-in-1 (Fool's mate) returns White-perspective negative mate score
+        fools_fen = "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2"
+        self.assertTrue(set_fen(self.engine, fools_fen))
+        black_mate, mate_score, mate_nodes = get_cpp_best_move(self.engine, depth=4, time_limit_ms=1000)
+        self.assertEqual(black_mate, "d8h4")
+        self.assertLess(mate_score, -50000)
+        self.assertGreater(mate_nodes, 0)
+
+        # 3. K+P vs K endgame search runs deep cleanly without null-move zugzwang glitches
+        kp_fen = "4k3/8/8/4K3/4P3/8/8/8 w - - 0 1"
+        self.assertTrue(set_fen(self.engine, kp_fen))
+        kp_move, kp_score, kp_nodes = get_cpp_best_move(self.engine, depth=7, time_limit_ms=1500)
+        self.assertIn(kp_move, {"e5d6", "e5f6"})
+        self.assertGreater(kp_score, 100)
+        self.assertGreater(kp_nodes, 10)
+
 
 if __name__ == "__main__":
     unittest.main()

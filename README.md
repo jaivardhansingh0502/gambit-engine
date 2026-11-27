@@ -24,7 +24,8 @@ Gambit is a chess engine built from the ground up — combining a C++17 rules, m
 - [x] Checkmate, stalemate, insufficient material, 50-move rule, and threefold repetition draw detection
 - [x] Castling (kingside & queenside), en passant, and pawn promotion (`q`/`r`/`b`/`n`)
 - [x] FEN import/export (`GET_FEN`, `SET_FEN`) and Board-state stack (`UNDO_MOVE`, `NEW_GAME`)
-- [x] High-speed C++17 search (`BEST_MOVE` with Iterative Deepening Alpha-Beta, Quiescence, 64-bit Zobrist Transposition Table, MVV-LVA, Killer Moves, PST)
+- [x] High-speed C++17 search (`BEST_MOVE` with Built-in Opening Book, Negamax PVS + Aspiration Windows, Null-Move Pruning, Late Move Reductions, Check Extensions, Quiescence + Delta Pruning, 64-bit Zobrist TT, MVV-LVA, Killer Moves, and History Heuristic)
+- [x] Tapered middlegame/endgame positional evaluation (King safety pawn shield, passed/doubled/isolated pawns, knight outposts, rook open files & 7th rank, bishop pair)
 - [x] Line-based stdin/stdout protocol (`GET_MOVES`, `MAKE_MOVE`, `UNDO_MOVE`, `NEW_GAME`, `EVALUATE`, `GET_FEN`, `SET_FEN`, `BEST_MOVE`)
 
 ### Chess AI & Evaluation

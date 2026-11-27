@@ -3730,6 +3730,14 @@ void Board :: restoreState(BoardState state)
     fullmoveNumber = state.fullmoveNumber;
 }
 
+void Board::makeNullMove()
+{
+    lastPawnRow = -1;
+    lastPawnCol = -1;
+    lastMoveWasDoublePawn = false;
+    whiteTurn = !whiteTurn;
+}
+
 
 void Board::makeTemporaryMove(Move move)
 {
