@@ -26,7 +26,7 @@ Gambit is a chess engine built from the ground up — combining a C++17 rules, m
 - [x] FEN import/export (`GET_FEN`, `SET_FEN`) and Board-state stack (`UNDO_MOVE`, `NEW_GAME`)
 - [x] High-speed C++17 search (`BEST_MOVE` with Built-in Opening Book, Negamax PVS + Aspiration Windows, Null-Move Pruning, Late Move Reductions, Check Extensions, Quiescence + Delta Pruning, 64-bit Zobrist TT, MVV-LVA, Killer Moves, and History Heuristic)
 - [x] Tapered middlegame/endgame positional evaluation (King safety pawn shield, passed/doubled/isolated pawns, knight outposts, rook open files & 7th rank, bishop pair)
-- [x] Line-based stdin/stdout protocol (`GET_MOVES`, `MAKE_MOVE`, `UNDO_MOVE`, `NEW_GAME`, `EVALUATE`, `GET_FEN`, `SET_FEN`, `BEST_MOVE`)
+- [x] Line-based stdin/stdout protocol (`GET_MOVES`, `MAKE_MOVE`, `UNDO_MOVE`, `NEW_GAME`, `EVALUATE`, `GET_FEN`, `SET_FEN`, `BEST_MOVE`, `ANALYZE_MOVE`)
 
 ### Chess AI & Evaluation
 
@@ -39,7 +39,7 @@ Gambit is a chess engine built from the ground up — combining a C++17 rules, m
 - [x] Interactive graphical chess board with algebraic coordinates, drag-and-drop, click-to-move, **Premoves**, right-click square highlights & analysis arrows, and slower smooth AI move animations
 - [x] Selectable board themes (`Classic Green`, `Walnut Wood`, `Slate Blue`, `Tournament Charcoal`) & keyboard shortcuts (`←`/`→`, `Home`/`End`, `F`, `H`, `M`, `Esc`)
 - [x] Legal move, selected square, last move, king-in-check highlighting, and `💡 Hint` best-move arrow
-- [x] Clickable Standard Algebraic Notation (`SAN`) move history, evaluation swing graph, captured pieces tray, and `🔊` sound toggle
+- [x] Clickable Standard Algebraic Notation (`SAN`) move history, **Live ECO Opening Name Banner**, **Post-Game Blunder Review (`!`, `?!`, `?`, `??`) & Accuracy %**, evaluation swing graph, captured pieces tray, and `🔊` sound toggle
 - [x] Player vs AI (`White`/`Black`/`Random`, 30+ built-in ECO openings) & Player vs Player modes with live chess clocks (`Bullet`/`Blitz`/`Rapid`), `⇅ Flip`, `Resign`, `½ Draw` offer, FEN import, and PGN export
 - [x] Animated `Back` / `Next` / `Live` move review without unfair undo
 - [x] Thread-safe background engine communication & clean shutdown
@@ -118,6 +118,6 @@ python -m unittest discover -s tests -v
 
 ## 📌 Current Status
 
-Gambit is playable end-to-end as both Player vs AI (`White`/`Black`/`Random`) and Player vs Player desktop chess application powered by a compiled C++17 search and rules engine, backed by a 39-test `unittest` suite covering C++ rules/search/openings/FEN/draws, SAN/PGN utilities, evaluation, AI, and Tkinter GUI workflows. See [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) for the milestone history.
+Gambit is playable end-to-end as both Player vs AI (`White`/`Black`/`Random`) and Player vs Player desktop chess application powered by a compiled C++17 search and rules engine, backed by a 41-test `unittest` suite covering C++ rules/search/openings/FEN/draws, SAN/PGN/review utilities, evaluation, AI, and Tkinter GUI workflows. See [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) for the milestone history.
 
 ♟️ One move at a time.

@@ -8,6 +8,7 @@ from tkinter import filedialog, messagebox
 
 from ai import (
     AI,
+    analyze_position_with_engine,
     get_cpp_best_move,
     get_engine_evaluation,
     get_fen,
@@ -18,6 +19,9 @@ from ai import (
 from chess_utils import (
     STANDARD_START_FEN,
     build_pgn,
+    calculate_accuracy,
+    classify_cp_loss,
+    detect_opening_name,
     format_captured_tray,
     format_san_move,
     get_captured_piece,
@@ -353,6 +357,11 @@ class GambitUI:
         self._premove_selected = None
         self.board_theme_name = "Classic Green"
         self.eval_history = []
+        self.opening_name = "Starting Position"
+        self.review_annotations = []
+        self.review_summary = None
+        self.review_busy = False
+        self.review_best_move = None
         self.hint_move = None
         self.sound_enabled = bool(prompt_mode_on_start)
         self.game_status = "NORMAL"
@@ -382,7 +391,7 @@ class GambitUI:
 
         # ---- Header & Mode Selector ----
         self.header_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
-        self.header_frame.pack(fill="x", padx=12, pady=(8, 6))
+        self.header_frame.pack(fill="x", padx=12, pady=(5, 4))
 
         self.title_row = tk.Frame(self.header_frame, bg=THEME["sidebar"])
         self.title_row.pack(fill="x")
@@ -527,7 +536,7 @@ class GambitUI:
             padx=6,
             pady=4
         )
-        self.clock_frame.pack(fill="x", padx=12, pady=(0, 6))
+        self.clock_frame.pack(fill="x", padx=12, pady=(0, 4))
 
         self.top_clock_box = tk.Frame(self.clock_frame, bg=THEME["list_bg"], padx=8, pady=3)
         self.top_clock_box.pack(side="left", fill="x", expand=True, padx=(0, 3))
@@ -608,7 +617,7 @@ class GambitUI:
             padx=8,
             pady=5
         )
-        self.eval_frame.pack(fill="x", padx=12, pady=(0, 6))
+        self.eval_frame.pack(fill="x", padx=12, pady=(0, 4))
 
         self.eval_headline_label = tk.Label(
             self.eval_frame,
@@ -954,16 +963,48 @@ class GambitUI:
         )
         self.difficulty_menu.pack(side="right", fill="x", expand=True, padx=(8, 0))
 
-        # ---- Move History (fills remaining space cleanly) ----
+        # ---- Move History & Opening / Review Header ----
+        self.history_header_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
+        self.history_header_frame.pack(fill="x", padx=12, pady=(0, 1))
+
         self.history_title = tk.Label(
-            self.history_frame,
+            self.history_header_frame,
             text="Move History",
             font=("Segoe UI", 10, "bold"),
             fg=THEME["muted"],
             bg=THEME["sidebar"],
             anchor="w"
         )
-        self.history_title.pack(fill="x", padx=12, pady=(0, 2))
+        self.history_title.pack(side="left")
+
+        self.review_game_button = tk.Button(
+            self.history_header_frame,
+            text="🔍 Review",
+            font=("Segoe UI", 8, "bold"),
+            bg=THEME["btn_bg"],
+            fg="#38BDF8",
+            activebackground=THEME["btn_active"],
+            activeforeground="#BAE6FD",
+            disabledforeground="#6B7280",
+            relief="flat",
+            bd=0,
+            padx=6,
+            pady=1,
+            cursor="hand2",
+            command=self.review_game,
+            state="disabled"
+        )
+        self.review_game_button.pack(side="right")
+
+        self.opening_label = tk.Label(
+            self.history_frame,
+            text="Opening: Starting Position",
+            font=("Segoe UI", 8, "bold"),
+            fg="#93C5FD",
+            bg=THEME["sidebar"],
+            anchor="w"
+        )
+        self.opening_label.pack(fill="x", padx=12, pady=(0, 2))
 
         self.history_list_frame = tk.Frame(
             self.history_frame,
@@ -1605,6 +1646,9 @@ class GambitUI:
         self.captured_by_black = []
         self.position_history = []
         self.eval_history = []
+        self.review_annotations = []
+        self.review_summary = None
+        self.review_best_move = None
         self.view_index = -1
         self._reset_clocks(self.time_control_name)
         self.update_move_history()
@@ -1928,6 +1972,15 @@ class GambitUI:
         self.live_button.config(
             state="normal" if can_forward else "disabled"
         )
+        can_review = (
+            not self.engine_busy
+            and not self.review_busy
+            and len(self.move_history) > 0
+        )
+        self.review_game_button.config(
+            text="🔍 Reviewing..." if self.review_busy else "🔍 Review",
+            state="normal" if can_review else "disabled"
+        )
 
     def _draw_eval_bar(self, score):
         bar_width = self.eval_bar.winfo_width()
@@ -2046,6 +2099,9 @@ class GambitUI:
         if appended_move is not None:
             self.move_history.append(appended_move)
             self.san_history.append(appended_san or appended_move)
+            self.review_annotations = []
+            self.review_summary = None
+            self.review_best_move = None
             if captured_piece is not None:
                 if captured_piece.islower():
                     self.captured_by_white.append(captured_piece)
@@ -2099,6 +2155,7 @@ class GambitUI:
             self._stop_clock()
 
         self.update_evaluation_panel(board, engine_eval=engine_eval)
+        self._update_opening_banner(self.view_index)
         self._draw_eval_graph()
         self._refresh_clocks()
         self._update_controls()
@@ -2796,6 +2853,178 @@ class GambitUI:
         self._update_controls()
         self.draw_board()
 
+    def _update_opening_banner(self, upto_ply=None):
+        if not hasattr(self, "opening_label"):
+            return
+        ply = self.view_index if upto_ply is None else upto_ply
+        if ply < 0:
+            ply = len(self.move_history)
+        self.opening_name = detect_opening_name(
+            self.move_history[:max(0, ply)],
+            self.initial_fen
+        )
+        if self.review_summary is not None:
+            self.opening_label.config(
+                text=(
+                    f"{self.opening_name} · "
+                    f"W {self.review_summary['white_acc']:.1f}% | "
+                    f"B {self.review_summary['black_acc']:.1f}%"
+                )
+            )
+        else:
+            self.opening_label.config(text=f"Opening: {self.opening_name}")
+
+    def review_game(self):
+        if self.engine_busy or self.review_busy or not self.move_history:
+            return
+        self.review_busy = True
+        self._update_controls()
+        moves_copy = list(self.move_history)
+        start_fen = self.initial_fen
+        threading.Thread(
+            target=self._run_game_review,
+            args=(moves_copy, start_fen),
+            daemon=True
+        ).start()
+
+    def _run_game_review(self, moves_list, start_fen):
+        proc = None
+        annotations = []
+        eval_history_pawns = []
+        white_losses = []
+        black_losses = []
+        try:
+            creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+            proc = subprocess.Popen(
+                ["gambit.exe"],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                bufsize=1,
+                creationflags=creation_flags,
+            )
+            if start_fen and start_fen != STANDARD_START_FEN:
+                set_fen(proc, start_fen)
+
+            positions_cache = []
+            # Collect pre-move position info + score sequentially
+            board, legal, status, turn = get_position(proc)
+            _, cur_eval_cp, _ = analyze_position_with_engine(proc, depth=3, time_limit_ms=130)
+            positions_cache.append((board, legal, status, turn, cur_eval_cp))
+            eval_history_pawns.append(max(-8.0, min(8.0, cur_eval_cp / 100.0)))
+
+            best_moves = []
+            for idx, mv in enumerate(moves_list):
+                board_b, legal_b, _, turn_b, pre_eval_cp = positions_cache[idx]
+                best_mv, _, _ = analyze_position_with_engine(proc, depth=3, time_limit_ms=130)
+                best_moves.append((board_b, legal_b, turn_b, pre_eval_cp, best_mv))
+
+                resp = send_move_to_engine(proc, mv)
+                if resp != "MOVE_OK":
+                    raise RuntimeError(f"Review move rejected: {mv} -> {resp}")
+                next_board, next_legal, next_status, next_turn = get_position(proc)
+                if next_status == "CHECKMATE":
+                    after_eval_cp = -10000 if next_turn == "WHITE" else 10000
+                elif next_status in GAME_OVER_STATUSES:
+                    after_eval_cp = 0
+                else:
+                    _, after_eval_cp, _ = analyze_position_with_engine(
+                        proc, depth=3, time_limit_ms=130
+                    )
+                positions_cache.append((next_board, next_legal, next_status, next_turn, after_eval_cp))
+                eval_history_pawns.append(max(-8.0, min(8.0, after_eval_cp / 100.0)))
+
+            for idx, mv in enumerate(moves_list):
+                board_b, legal_b, turn_b, pre_eval_cp, best_mv = best_moves[idx]
+                after_eval_cp = positions_cache[idx + 1][4]
+
+                pre_clamped = max(-1500, min(1500, pre_eval_cp))
+                after_clamped = max(-1500, min(1500, after_eval_cp))
+                is_white = (turn_b == "WHITE")
+                cp_loss = (
+                    max(0, pre_clamped - after_clamped)
+                    if is_white
+                    else max(0, after_clamped - pre_clamped)
+                )
+                is_best = (best_mv is not None and mv == best_mv)
+                symbol, label = classify_cp_loss(cp_loss, is_best_move=is_best)
+
+                best_san = (
+                    format_san_move(board_b, legal_b, best_mv)
+                    if best_mv else ""
+                )
+                if is_white:
+                    white_losses.append(cp_loss)
+                else:
+                    black_losses.append(cp_loss)
+
+                annotations.append({
+                    "symbol": symbol,
+                    "label": label,
+                    "cp_loss": cp_loss,
+                    "best_uci": best_mv,
+                    "best_san": best_san,
+                    "eval_pawns": after_eval_cp / 100.0,
+                })
+
+            summary = {
+                "white_acc": calculate_accuracy(white_losses),
+                "black_acc": calculate_accuracy(black_losses),
+                "inaccuracies": sum(1 for a in annotations if a["symbol"] == "?!"),
+                "mistakes": sum(1 for a in annotations if a["symbol"] == "?"),
+                "blunders": sum(1 for a in annotations if a["symbol"] == "??"),
+            }
+            if not self.closing:
+                self.root.after(
+                    0,
+                    lambda: self._finish_game_review(
+                        annotations, summary, eval_history_pawns
+                    )
+                )
+        except Exception as e:
+            if not self.closing:
+                self.root.after(
+                    0,
+                    lambda err=str(e): self._fail_game_review(err)
+                )
+        finally:
+            if proc is not None:
+                try:
+                    if proc.poll() is None:
+                        proc.terminate()
+                        proc.wait(timeout=2)
+                    if proc.stdin:
+                        proc.stdin.close()
+                    if proc.stdout:
+                        proc.stdout.close()
+                except Exception:
+                    pass
+
+    def _finish_game_review(self, annotations, summary, eval_history_pawns):
+        if self.closing:
+            return
+        self.review_busy = False
+        if len(annotations) == len(self.move_history):
+            self.review_annotations = annotations
+            self.review_summary = summary
+            if len(eval_history_pawns) == len(self.position_history):
+                self.eval_history = eval_history_pawns
+            self._apply_view_index(self.view_index)
+            self.update_move_history()
+            self._highlight_history_for_view(self.view_index)
+            self._update_opening_banner(self.view_index)
+            self._draw_eval_graph()
+        self._update_controls()
+        self.draw_board()
+
+    def _fail_game_review(self, err):
+        if self.closing:
+            return
+        self.review_busy = False
+        self._update_controls()
+        messagebox.showerror("Review Error", err)
+
     def _cancel_animation(self):
         if self._anim_after_id is not None:
             try:
@@ -2825,11 +3054,36 @@ class GambitUI:
         self.hint_move = None
         self.selected_square = None
         self.selected_moves = []
+        self.review_best_move = None
+        if (
+            self.review_annotations
+            and idx > 0
+            and idx - 1 < len(self.review_annotations)
+        ):
+            ann = self.review_annotations[idx - 1]
+            if ann["symbol"] in ("?!", "?", "??") and ann["best_uci"]:
+                self.review_best_move = ann["best_uci"]
 
         self.update_evaluation_panel(
             self.board,
             engine_eval=snapshot["engine_eval"]
         )
+        if (
+            self.review_annotations
+            and idx > 0
+            and idx - 1 < len(self.review_annotations)
+        ):
+            ann = self.review_annotations[idx - 1]
+            played_san = (
+                self.san_history[idx - 1]
+                if idx - 1 < len(self.san_history)
+                else self.move_history[idx - 1]
+            )
+            detail = f"{played_san}{ann['symbol']} ({ann['label']})"
+            if ann["symbol"] in ("?!", "?", "??") and ann["best_san"]:
+                detail += f" — Best: {ann['best_san']}"
+            self.material_diff_label.config(text=detail)
+        self._update_opening_banner(idx)
         self._draw_eval_graph()
         self._refresh_clocks()
         self._highlight_history_for_view(idx)
@@ -3101,6 +3355,9 @@ class GambitUI:
         self.initial_fen = STANDARD_START_FEN
         self.position_history = []
         self.eval_history = []
+        self.review_annotations = []
+        self.review_summary = None
+        self.review_best_move = None
         self.view_index = -1
         self.update_move_history()
         self.update_position(board, moves, status, turn, engine_eval=engine_eval)
@@ -3120,19 +3377,25 @@ class GambitUI:
             if len(self.san_history) == len(self.move_history)
             else self.move_history
         )
+        annotated = []
+        for idx, mv in enumerate(display_moves):
+            sym = ""
+            if idx < len(self.review_annotations):
+                sym = self.review_annotations[idx].get("symbol", "")
+            annotated.append(f"{mv}{sym}")
 
-        for i in range(0, len(display_moves), 2):
+        for i in range(0, len(annotated), 2):
 
             move_number = (i // 2) + 1
-            white_move = display_moves[i]
+            white_move = annotated[i]
 
-            if i + 1 < len(display_moves):
+            if i + 1 < len(annotated):
 
-                black_move = display_moves[i + 1]
+                black_move = annotated[i + 1]
 
                 text = (
                     f"{move_number:>2}. "
-                    f"{white_move:<7} "
+                    f"{white_move:<8} "
                     f"{black_move}"
                 )
 
@@ -3336,6 +3599,20 @@ class GambitUI:
 
         for from_sq, to_sq in self.user_arrows:
             self._draw_board_arrow(from_sq, to_sq, offset_x, offset_y, square_size, "#10B981")
+
+        if (
+            self.review_best_move
+            and len(self.review_best_move) >= 4
+            and not self.hint_move
+        ):
+            self._draw_board_arrow(
+                self.review_best_move[:2],
+                self.review_best_move[2:4],
+                offset_x,
+                offset_y,
+                square_size,
+                "#38BDF8"
+            )
 
         if (
             self.hint_move

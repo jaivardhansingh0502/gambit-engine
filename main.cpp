@@ -326,7 +326,7 @@ int main()
             int timeLimitMs = 1500;
             cin >> maxDepth >> timeLimitMs;
 
-            SearchResult res = searchEngine.findBestMove(chessboard, maxDepth, timeLimitMs);
+            SearchResult res = searchEngine.findBestMove(chessboard, maxDepth, timeLimitMs, true);
             if(res.bestMove.empty())
             {
                 cout << "BEST_MOVE NONE 0 0" << endl;
@@ -334,6 +334,23 @@ int main()
             else
             {
                 cout << "BEST_MOVE " << res.bestMove << " " << res.score << " " << res.nodes << endl;
+            }
+        }
+
+        else if(command == "ANALYZE_MOVE")
+        {
+            int maxDepth = 3;
+            int timeLimitMs = 150;
+            cin >> maxDepth >> timeLimitMs;
+
+            SearchResult res = searchEngine.findBestMove(chessboard, maxDepth, timeLimitMs, false);
+            if(res.bestMove.empty())
+            {
+                cout << "ANALYZE_MOVE NONE 0 0" << endl;
+            }
+            else
+            {
+                cout << "ANALYZE_MOVE " << res.bestMove << " " << res.score << " " << res.nodes << endl;
             }
         }
 

@@ -1,3 +1,4 @@
+import math
 import threading
 
 try:
@@ -7,6 +8,112 @@ except ImportError:
 
 
 STANDARD_START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+OPENING_LINES = [
+    (("e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "a7a6", "b5a4", "g8f6", "e1g1", "f8e7"), "Ruy Lopez: Closed Morphy"),
+    (("e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "a7a6", "b5c6"), "Ruy Lopez: Exchange Variation"),
+    (("e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "g8f6"), "Ruy Lopez: Berlin Defense"),
+    (("e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "a7a6"), "Ruy Lopez: Morphy Defense"),
+    (("e2e4", "e7e5", "g1f3", "b8c6", "f1b5"), "Ruy Lopez"),
+    (("e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "f8c5", "b2b4"), "Italian Game: Evans Gambit"),
+    (("e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "f8c5"), "Italian Game: Giuoco Piano"),
+    (("e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "g8f6", "f3g5"), "Italian Game: Fried Liver Attack"),
+    (("e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "g8f6"), "Italian Game: Two Knights"),
+    (("e2e4", "e7e5", "g1f3", "b8c6", "f1c4"), "Italian Game"),
+    (("e2e4", "e7e5", "g1f3", "b8c6", "d2d4", "e5d4", "f3d4"), "Scotch Game"),
+    (("e2e4", "e7e5", "g1f3", "b8c6", "d2d4"), "Scotch Opening"),
+    (("e2e4", "e7e5", "g1f3", "g8f6"), "Petroff Defense"),
+    (("e2e4", "e7e5", "g1f3", "d7d6"), "Philidor Defense"),
+    (("e2e4", "e7e5", "b1c3"), "Vienna Game"),
+    (("e2e4", "e7e5", "f2f4"), "King's Gambit"),
+    (("e2e4", "e7e5", "f1c4"), "Bishop's Opening"),
+    (("e2e4", "c7c5", "g1f3", "d7d6", "d2d4", "c5d4", "f3d4", "g8f6", "b1c3", "a7a6"), "Sicilian Defense: Najdorf"),
+    (("e2e4", "c7c5", "g1f3", "d7d6", "d2d4", "c5d4", "f3d4", "g8f6", "b1c3", "g7g6"), "Sicilian Defense: Dragon"),
+    (("e2e4", "c7c5", "g1f3", "d7d6", "d2d4", "c5d4", "f3d4", "g8f6", "b1c3", "b8c6"), "Sicilian Defense: Classical"),
+    (("e2e4", "c7c5", "g1f3", "e7e6", "d2d4", "c5d4", "f3d4", "b8c6"), "Sicilian Defense: Taimanov"),
+    (("e2e4", "c7c5", "g1f3", "b8c6", "d2d4", "c5d4", "f3d4", "g7g6"), "Sicilian: Accelerated Dragon"),
+    (("e2e4", "c7c5", "g1f3", "b8c6", "f1b5"), "Sicilian Defense: Rossolimo"),
+    (("e2e4", "c7c5", "c2c3"), "Sicilian Defense: Alapin"),
+    (("e2e4", "c7c5"), "Sicilian Defense"),
+    (("e2e4", "e7e6", "d2d4", "d7d5", "b1c3", "f8b4"), "French Defense: Winawer"),
+    (("e2e4", "e7e6", "d2d4", "d7d5", "b1c3", "g8f6"), "French Defense: Classical"),
+    (("e2e4", "e7e6", "d2d4", "d7d5", "b1d2"), "French Defense: Tarrasch"),
+    (("e2e4", "e7e6", "d2d4", "d7d5", "e4e5"), "French Defense: Advance"),
+    (("e2e4", "e7e6"), "French Defense"),
+    (("e2e4", "c7c6", "d2d4", "d7d5", "b1c3", "d5e4", "c3e4", "c8f5"), "Caro-Kann: Classical"),
+    (("e2e4", "c7c6", "d2d4", "d7d5", "e4e5"), "Caro-Kann: Advance"),
+    (("e2e4", "c7c6", "d2d4", "d7d5", "e4d5", "c6d5", "c2c4"), "Caro-Kann: Panov Attack"),
+    (("e2e4", "c7c6"), "Caro-Kann Defense"),
+    (("e2e4", "d7d5"), "Scandinavian Defense"),
+    (("e2e4", "d7d6", "d2d4", "g8f6", "b1c3", "g7g6"), "Pirc Defense"),
+    (("e2e4", "g8f6"), "Alekhine's Defense"),
+    (("e2e4", "g7g6"), "Modern Defense"),
+    (("e2e4", "e7e5"), "Open Game"),
+    (("e2e4",), "King's Pawn Opening"),
+    (("d2d4", "d7d5", "c2c4", "c7c6", "g1f3", "g8f6", "b1c3", "e7e6"), "Semi-Slav Defense"),
+    (("d2d4", "d7d5", "c2c4", "c7c6"), "Slav Defense"),
+    (("d2d4", "d7d5", "c2c4", "d5c4"), "Queen's Gambit Accepted"),
+    (("d2d4", "d7d5", "c2c4", "e7e6"), "Queen's Gambit Declined"),
+    (("d2d4", "d7d5", "c2c4"), "Queen's Gambit"),
+    (("d2d4", "d7d5", "c1f4"), "London System"),
+    (("d2d4", "g8f6", "c2c4", "e7e6", "g2g3"), "Catalan Opening"),
+    (("d2d4", "g8f6", "c2c4", "e7e6", "b1c3", "f8b4"), "Nimzo-Indian Defense"),
+    (("d2d4", "g8f6", "c2c4", "e7e6", "g1f3", "b7b6"), "Queen's Indian Defense"),
+    (("d2d4", "g8f6", "c2c4", "g7g6", "b1c3", "d7d5"), "Grunfeld Defense"),
+    (("d2d4", "g8f6", "c2c4", "g7g6", "b1c3", "f8g7", "e2e4"), "King's Indian Defense"),
+    (("d2d4", "g8f6", "c2c4", "c7c5", "d4d5"), "Benoni Defense"),
+    (("d2d4", "f7f5"), "Dutch Defense"),
+    (("d2d4", "g8f6"), "Indian Defense"),
+    (("d2d4", "d7d5"), "Closed Game"),
+    (("d2d4",), "Queen's Pawn Opening"),
+    (("c2c4", "e7e5"), "English: Reversed Sicilian"),
+    (("c2c4", "c7c5"), "English: Symmetrical"),
+    (("c2c4",), "English Opening"),
+    (("g1f3", "d7d5", "c2c4"), "Reti Opening"),
+    (("g1f3",), "Reti / Zukertort Opening"),
+    (("g2g3",), "King's Fianchetto / Benko"),
+    (("f2f4",), "Bird's Opening"),
+]
+OPENING_LINES.sort(key=lambda item: -len(item[0]))
+
+
+def detect_opening_name(move_history, initial_fen=STANDARD_START_FEN):
+    """Return the most specific known opening name matching move_history."""
+    if initial_fen and initial_fen != STANDARD_START_FEN:
+        return "Custom FEN Position"
+    if not move_history:
+        return "Starting Position"
+    seq = tuple(m[:4].lower() for m in move_history)
+    for prefix, name in OPENING_LINES:
+        if len(seq) >= len(prefix) and seq[:len(prefix)] == prefix:
+            return name
+    return "Unclassified Opening"
+
+
+def classify_cp_loss(cp_loss, is_best_move=False):
+    """Classify centipawn loss into (symbol, label) for Move History."""
+    loss = max(0, int(cp_loss))
+    if is_best_move or loss <= 10:
+        return ("!", "Best")
+    if loss <= 60:
+        return ("", "Good")
+    if loss <= 140:
+        return ("?!", "Inaccuracy")
+    if loss <= 299:
+        return ("?", "Mistake")
+    return ("??", "Blunder")
+
+
+def calculate_accuracy(cp_losses):
+    """Return a 0-100 accuracy score from a sequence of centipawn losses."""
+    if not cp_losses:
+        return 100.0
+    total = 0.0
+    for loss in cp_losses:
+        bounded = max(0.0, min(1000.0, float(loss)))
+        acc = 103.1668 * math.exp(-0.004 * bounded) - 3.1669
+        total += max(0.0, min(100.0, acc))
+    return round(total / len(cp_losses), 1)
 
 CAPTURE_ORDER = {"q": 0, "r": 1, "b": 2, "n": 3, "p": 4}
 SOLID_GLYPHS = {

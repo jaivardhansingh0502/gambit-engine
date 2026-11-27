@@ -316,6 +316,7 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 14 — Expanded 30+ Opening Repertoire, Slower AI Move Animation & Option B Pro UX
 
 - **Status:** Completed
+- **Commit:** `dbcd5c8`
 - **Changes Implemented:**
   - **Expanded ECO Opening Book (`Search.cpp`):**
     - Expanded `getOpeningBookMap()` to 42 theoretical lines covering 30+ distinct chess openings and variations (Ruy Lopez Morphy/Berlin/Exchange/Arkhangelsk, Italian Giuoco Piano/Evans Gambit/Two Knights/Fried Liver, Scotch, Petroff, Vienna, King's Gambit, Bishop's Opening, Philidor, Sicilian Najdorf/Dragon/Classical/Taimanov/Accelerated Dragon/Rossolimo/Alapin, French Classical/Winawer/Tarrasch/Advance, Caro-Kann Classical/Advance/Panov, Scandinavian, Pirc, Alekhine, Modern, QGD, Slav, Semi-Slav, QGA, London System, Catalan, Nimzo/Queen's/King's Indian, Grunfeld, Benoni, Dutch, English, Reti, and King's Indian Attack).
@@ -334,4 +335,31 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
   - `g++ -std=c++17 -O2 main.cpp Board.cpp Move.cpp Pawn.cpp Knight.cpp Bishop.cpp Rook.cpp Queen.cpp King.cpp Evaluation.cpp Search.cpp -o gambit.exe` — Compiled cleanly (exit code 0).
   - `python -m py_compile ai.py chess_utils.py evaluation.py ui.py tests/test_chess_utils.py tests/test_engine.py tests/test_ui_logic.py tests/test_ai.py tests/test_evaluation.py` — Passed.
   - `python -m unittest discover -s tests -v` — 39 tests passed in 6.869s (`OK`).
+  - `1280x680` sidebar layout verification (`theme_button` through `new_game_button` bottom <= 710px within 729px window height) — Passed (`ALL_FIT_OK`).
+
+---
+
+## Milestone 15 — Live ECO Opening Name Banner & Post-Game Blunder Review / Accuracy % (Option D)
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - **C++ Engine Analysis Protocol (`Search.h`, `Search.cpp`, `main.cpp`, `ai.py`):**
+    - Added `bool useBook = true` to `Search::findBestMove` and exposed `ANALYZE_MOVE <depth> <time_ms>` in `main.cpp` and `analyze_position_with_engine()` in `ai.py` to obtain unbiased engine evaluations and best moves across opening book positions too.
+  - **Opening Detection, Blunder Classification & Accuracy (`chess_utils.py`):**
+    - Added `detect_opening_name()` covering 60+ ECO move-prefix definitions (Sicilian Najdorf/Dragon/Classical/Taimanov/Rossolimo/Alapin, Ruy Lopez variations, Italian variations, French, Caro-Kann, Queen's Gambit/Slav, Indian Defenses, London, Catalan, English, Reti) updating dynamically during play and history review.
+    - Added `classify_cp_loss()` (`!`, `Good`, `?!`, `?`, `??`) and `calculate_accuracy()` exponential centipawn-loss accuracy scoring (`0–100%`).
+  - **Tkinter GUI Review Workflow (`ui.py`):**
+    - Added `opening_label` banner and `🔍 Review` (`review_game_button`) button in the Move History header.
+    - Runs non-blocking post-game scan in an isolated background `gambit.exe` instance, annotating Move History with `!`/`?!`/`?`/`??`, updating the Evaluation Swing Graph with engine evaluations, showing White/Black Accuracy % in the banner, and drawing a sky-blue missed best-move arrow (`review_best_move`) when inspecting suboptimal moves.
+  - **Tests (`tests/test_chess_utils.py`, `tests/test_engine.py`, `tests/test_ui_logic.py`):**
+    - Added tests for ECO opening detection, centipawn-loss classification, accuracy math, `ANALYZE_MOVE` protocol, and full `review_game()` workflow (`test_option_d_opening_banner_and_post_game_review`).
+- **Files Modified:**
+  - `Search.h`, `Search.cpp`, `main.cpp`
+  - `ai.py`, `chess_utils.py`, `ui.py`
+  - `tests/test_chess_utils.py`, `tests/test_engine.py`, `tests/test_ui_logic.py`
+  - `README.md`, `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `g++ -std=c++17 -O2 main.cpp Board.cpp Move.cpp Pawn.cpp Knight.cpp Bishop.cpp Rook.cpp Queen.cpp King.cpp Evaluation.cpp Search.cpp -o gambit.exe` — Compiled cleanly (exit code 0).
+  - `python -m py_compile` across all Python app and test modules — Passed.
+  - `python -m unittest discover -s tests -v` — 41 tests passed (`OK`).
   - `1280x680` sidebar layout verification (`theme_button` through `new_game_button` bottom <= 710px within 729px window height) — Passed (`ALL_FIT_OK`).

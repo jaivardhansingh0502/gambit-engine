@@ -8,6 +8,7 @@ if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 from ai import (
+    analyze_position_with_engine,
     get_cpp_best_move,
     get_engine_evaluation,
     get_fen,
@@ -251,6 +252,12 @@ class GambitEngineTests(unittest.TestCase):
         self.assertIn(kp_move, {"e5d6", "e5f6"})
         self.assertGreater(kp_score, 100)
         self.assertGreater(kp_nodes, 10)
+
+        # 4. ANALYZE_MOVE skips opening book and searches starting board directly
+        self.assertEqual(self.send_raw("NEW_GAME"), "NEW_GAME_OK")
+        amv, _, anodes = analyze_position_with_engine(self.engine, depth=3, time_limit_ms=500)
+        self.assertIsNotNone(amv)
+        self.assertGreater(anodes, 1)
 
 
 if __name__ == "__main__":

@@ -250,6 +250,24 @@ def get_cpp_best_move(engine, depth=5, time_limit_ms=1500):
     return move, score, nodes
 
 
+def analyze_position_with_engine(engine, depth=3, time_limit_ms=150):
+    engine.stdin.write(f"ANALYZE_MOVE {int(depth)} {int(time_limit_ms)}\n")
+    engine.stdin.flush()
+
+    line = engine.stdout.readline()
+    if line == "":
+        raise RuntimeError("C++ engine closed its output during ANALYZE_MOVE.")
+
+    parts = line.strip().split()
+    if len(parts) < 4 or parts[0] != "ANALYZE_MOVE":
+        raise RuntimeError(f"Unexpected ANALYZE_MOVE response: {line.strip()}")
+
+    move = None if parts[1] == "NONE" else parts[1]
+    score = int(parts[2])
+    nodes = int(parts[3])
+    return move, score, nodes
+
+
 def get_fen(engine):
     engine.stdin.write("GET_FEN\n")
     engine.stdin.flush()

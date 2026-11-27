@@ -1101,7 +1101,7 @@ struct SearchContext
 
 Search::Search() {}
 
-SearchResult Search::findBestMove(Board& board, int maxDepth, int timeLimitMs)
+SearchResult Search::findBestMove(Board& board, int maxDepth, int timeLimitMs, bool useBook)
 {
     SearchResult result{"", 0, 0};
     BoardState rootBackup = board.saveState();
@@ -1113,13 +1113,16 @@ SearchResult Search::findBestMove(Board& board, int maxDepth, int timeLimitMs)
         return result;
     }
 
-    string bookMove = tryOpeningBookMove(board, legalMoves);
-    if(!bookMove.empty())
+    if(useBook)
     {
-        result.bestMove = bookMove;
-        result.score = 0;
-        result.nodes = 1;
-        return result;
+        string bookMove = tryOpeningBookMove(board, legalMoves);
+        if(!bookMove.empty())
+        {
+            result.bestMove = bookMove;
+            result.score = 0;
+            result.nodes = 1;
+            return result;
+        }
     }
 
     SearchContext ctx;

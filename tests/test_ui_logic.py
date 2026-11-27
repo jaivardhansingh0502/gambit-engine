@@ -789,6 +789,85 @@ class GambitUIFlowTests(unittest.TestCase):
         self.assertEqual(results["history_after_premove"][2], "d2d4")
         self.assertTrue(results["premove_cleared"])
 
+    def test_option_d_opening_banner_and_post_game_review(self):
+        prev_cwd = os.getcwd()
+        os.chdir(ROOT_DIR)
+        root = tk.Tk()
+        root.withdraw()
+        app = ui.GambitUI(root, game_mode=ui.MODE_PVP, prompt_mode_on_start=False)
+        results = {}
+        moves_to_play = ["f2f3", "e7e5", "g2g4", "d8h4"]
+        move_step = {"idx": 0}
+
+        def step_init():
+            if app.engine_busy:
+                root.after(40, step_init)
+                return
+            results["init_opening"] = app.opening_label.cget("text")
+            step_play_next()
+
+        def step_play_next():
+            if app.engine_busy or app.animating:
+                root.after(30, step_play_next)
+                return
+            if move_step["idx"] < len(moves_to_play):
+                mv = moves_to_play[move_step["idx"]]
+                move_step["idx"] += 1
+                app.make_move(mv, animate=False)
+                root.after(30, step_play_next)
+                return
+            step_wait_mate()
+
+        def step_wait_mate():
+            if app.engine_busy or len(app.move_history) < 4:
+                root.after(40, step_wait_mate)
+                return
+            results["mate_status"] = app.game_status
+            results["review_btn_ready"] = str(app.review_game_button["state"])
+            app.review_game()
+            root.after(60, step_wait_review)
+
+        def step_wait_review():
+            if app.review_busy or not app.review_annotations:
+                root.after(50, step_wait_review)
+                return
+            results["annotations_len"] = len(app.review_annotations)
+            results["g4_symbol"] = app.review_annotations[2]["symbol"]
+            results["summary"] = dict(app.review_summary)
+            results["banner_after_review"] = app.opening_label.cget("text")
+            results["history_row1"] = app.history_list.get(0)
+            results["history_row2"] = app.history_list.get(1)
+            # Viewing blunder move 3 (g2g4) should populate best move recommendation
+            app._apply_view_index(3)
+            results["blunder_best_move"] = app.review_best_move
+            results["done"] = True
+            app.close()
+
+        try:
+            root.after(120, step_init)
+            root.after(10000, lambda: app.close() if not results.get("done") else None)
+            root.mainloop()
+        finally:
+            os.chdir(prev_cwd)
+            if app.engine.poll() is None:
+                app.engine.terminate()
+                app.engine.wait(timeout=2)
+            if app.engine.stdin:
+                app.engine.stdin.close()
+            if app.engine.stdout:
+                app.engine.stdout.close()
+
+        self.assertTrue(results.get("done"))
+        self.assertEqual(results["init_opening"], "Opening: Starting Position")
+        self.assertEqual(results["mate_status"], "CHECKMATE")
+        self.assertEqual(results["review_btn_ready"], "normal")
+        self.assertEqual(results["annotations_len"], 4)
+        self.assertEqual(results["g4_symbol"], "??")
+        self.assertIn("%", results["banner_after_review"])
+        self.assertIn("g4??", results["history_row2"])
+        self.assertIsNotNone(results["blunder_best_move"])
+        self.assertGreaterEqual(results["summary"]["blunders"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -15,7 +15,7 @@ class Search
 {
 public:
     Search();
-    SearchResult findBestMove(Board& board, int maxDepth, int timeLimitMs);
+    SearchResult findBestMove(Board& board, int maxDepth, int timeLimitMs, bool useBook = true);
 };
 
 #endif

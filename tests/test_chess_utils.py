@@ -9,6 +9,9 @@ if ROOT_DIR not in sys.path:
 from chess_utils import (
     STANDARD_START_FEN,
     build_pgn,
+    calculate_accuracy,
+    classify_cp_loss,
+    detect_opening_name,
     format_captured_tray,
     format_san_move,
     get_captured_piece,
@@ -129,6 +132,30 @@ class ChessUtilsTests(unittest.TestCase):
         play_sound("move", enabled=False)
         play_sound("capture", enabled=False)
         play_sound("unknown", enabled=False)
+
+    def test_opening_detection_cp_classification_and_accuracy(self):
+        self.assertEqual(detect_opening_name([]), "Starting Position")
+        self.assertEqual(detect_opening_name(["e2e4"]), "King's Pawn Opening")
+        self.assertEqual(
+            detect_opening_name(["e2e4", "c7c5", "g1f3", "d7d6", "d2d4", "c5d4", "f3d4", "g8f6", "b1c3", "a7a6"]),
+            "Sicilian Defense: Najdorf",
+        )
+        self.assertEqual(
+            detect_opening_name(["e2e4"], initial_fen="4k3/8/8/8/8/8/8/4K3 w - - 0 1"),
+            "Custom FEN Position",
+        )
+
+        self.assertEqual(classify_cp_loss(0, is_best_move=True), ("!", "Best"))
+        self.assertEqual(classify_cp_loss(35), ("", "Good"))
+        self.assertEqual(classify_cp_loss(95), ("?!", "Inaccuracy"))
+        self.assertEqual(classify_cp_loss(210), ("?", "Mistake"))
+        self.assertEqual(classify_cp_loss(450), ("??", "Blunder"))
+
+        self.assertEqual(calculate_accuracy([]), 100.0)
+        self.assertEqual(calculate_accuracy([0, 0]), 100.0)
+        mid_acc = calculate_accuracy([20, 80, 350])
+        self.assertGreater(mid_acc, 20.0)
+        self.assertLess(mid_acc, 95.0)
 
 
 if __name__ == "__main__":
