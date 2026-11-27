@@ -395,6 +395,7 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 17 — Perft Verification, Standard UCI Protocol, Cleanup & Coverage Expansion (Option C)
 
 - **Status:** Completed
+- **Commit:** `658a672`
 - **Changes Implemented:**
   - **C++ Perft Verification (`Search.h`, `Search.cpp`, `main.cpp`, `ai.py`):**
     - Added `Search::perft(Board&, int depth)` and `PERFT <depth>` protocol command (`get_perft()` in `ai.py`), preserving board state non-destructively via `saveState()`/`restoreState()`.
@@ -414,3 +415,20 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
   - `python -m py_compile` across all Python app and test modules — Passed.
   - `python -m unittest discover -s tests -v` — 47 tests passed (`OK`).
   - Python `trace` coverage across `47/47` tests: `78.0%` overall (`ai.py` `84.7%`, `chess_utils.py` `93.9%`, `evaluation.py` `97.9%`, `ui.py` `73.5%`).
+
+---
+
+## Milestone 18 — Fix Windows No-Console Engine Pipe Subprocess & Auto-Recovery (`[Errno 22] Invalid argument`)
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - `ui.py`:
+    - Centralized engine launching in `_spawn_engine_process()` using the resolved `gambit.exe` directory path, `stderr=subprocess.DEVNULL`, and `creationflags=CREATE_NO_WINDOW` (eliminating stray console windows and invalid handles when running under `pythonw.exe` / `Launch Gambit Chess.vbs`).
+    - Added `_ensure_engine_alive(replay_state=...)` and pipe cleanup (`_close_engine_pipes()`) + `OSError` recovery in `process_human_move()`, `process_ai_turn()`, `_process_hint()`, `load_initial_position()`, `_process_load_fen()`, and `send_new_game()` so an unexpectedly terminated engine process restarts seamlessly and restores the board position.
+  - `tests/test_ui_logic.py`: Added `test_engine_auto_recovers_after_process_termination` and verified detached `pythonw.exe` (`DETACHED_PROCESS`) execution.
+- **Files Modified:**
+  - `ui.py`, `tests/test_ui_logic.py`, `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `python -m py_compile` across modified Python files — Passed.
+  - Detached `pythonw.exe` (`DETACHED_PROCESS`) launch and move check — Passed (`OK hist=['e2e4', 'g7g6']`).
+  - `python -m unittest discover -s tests -v` — 48 tests passed (`OK`).

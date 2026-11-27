@@ -324,15 +324,7 @@ class GambitUI:
             else {}
         )
 
-        self.engine = subprocess.Popen(
-            ["gambit.exe"],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
-            bufsize=1
-        )
-
+        self.engine = self._spawn_engine_process()
         self.ai = AI(self.engine)
 
         self.prompt_mode_on_start = prompt_mode_on_start
@@ -1098,6 +1090,53 @@ class GambitUI:
 
     # ---------------- ENGINE POSITION ----------------
 
+    def _spawn_engine_process(self):
+        engine_dir = os.path.dirname(os.path.abspath(__file__))
+        engine_path = os.path.join(engine_dir, "gambit.exe")
+        if not os.path.exists(engine_path):
+            engine_path = "gambit.exe"
+        creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        return subprocess.Popen(
+            [engine_path],
+            cwd=engine_dir,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            encoding="utf-8",
+            bufsize=1,
+            creationflags=creation_flags,
+        )
+
+    def _close_engine_pipes(self, proc):
+        if proc is None:
+            return
+        try:
+            if proc.stdin:
+                proc.stdin.close()
+        except Exception:
+            pass
+        try:
+            if proc.stdout:
+                proc.stdout.close()
+        except Exception:
+            pass
+
+    def _ensure_engine_alive(self, replay_state=True):
+        if self.engine is not None and self.engine.poll() is None:
+            return
+        self._close_engine_pipes(self.engine)
+        self.engine = self._spawn_engine_process()
+        self.ai.engine = self.engine
+        if not replay_state:
+            return
+        if self.initial_fen and self.initial_fen != STANDARD_START_FEN:
+            set_fen(self.engine, self.initial_fen)
+        for past_move in list(self.move_history):
+            resp = send_move_to_engine(self.engine, past_move)
+            if resp != "MOVE_OK":
+                raise RuntimeError(f"Failed restoring engine state on {past_move}: {resp}")
+
     def initial_position(self):
         threading.Thread(
             target=self.load_initial_position,
@@ -1107,6 +1146,7 @@ class GambitUI:
     def load_initial_position(self):
         try:
             with self.engine_lock:
+                self._ensure_engine_alive(replay_state=False)
                 board, moves, status, turn = get_position(self.engine)
                 engine_eval = get_engine_evaluation(self.engine)
 
@@ -1807,6 +1847,7 @@ class GambitUI:
     def _process_load_fen(self, fen_str):
         try:
             with self.engine_lock:
+                self._ensure_engine_alive(replay_state=False)
                 ok = set_fen(self.engine, fen_str)
                 if not ok:
                     raise ValueError(f"Invalid FEN string:\n{fen_str}")
@@ -2780,9 +2821,19 @@ class GambitUI:
             captured_piece = get_captured_piece(board_before, move)
 
             with self.engine_lock:
-                response = send_move_to_engine(
-                    self.engine, move
-                )
+                self._ensure_engine_alive(replay_state=True)
+                try:
+                    response = send_move_to_engine(
+                        self.engine, move
+                    )
+                except OSError:
+                    # Recover once if underlying engine pipe closed unexpectedly
+                    self._close_engine_pipes(self.engine)
+                    self.engine = None
+                    self._ensure_engine_alive(replay_state=True)
+                    response = send_move_to_engine(
+                        self.engine, move
+                    )
 
                 if response != "MOVE_OK":
                     raise RuntimeError(
@@ -2864,6 +2915,7 @@ class GambitUI:
             t_start = time.monotonic()
 
             with self.engine_lock:
+                self._ensure_engine_alive(replay_state=True)
                 ai_move, _, _ = get_cpp_best_move(
                     self.engine,
                     depth=depth,
@@ -3029,6 +3081,7 @@ class GambitUI:
     def _process_hint(self):
         try:
             with self.engine_lock:
+                self._ensure_engine_alive(replay_state=True)
                 hint_move, _, _ = get_cpp_best_move(
                     self.engine,
                     depth=4,
@@ -3095,16 +3148,7 @@ class GambitUI:
         white_losses = []
         black_losses = []
         try:
-            creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-            proc = subprocess.Popen(
-                ["gambit.exe"],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                text=True,
-                encoding="utf-8",
-                bufsize=1,
-                creationflags=creation_flags,
-            )
+            proc = self._spawn_engine_process()
             if start_fen and start_fen != STANDARD_START_FEN:
                 set_fen(proc, start_fen)
 
@@ -3483,6 +3527,7 @@ class GambitUI:
 
         try:
             with self.engine_lock:
+                self._ensure_engine_alive(replay_state=False)
                 self.engine.stdin.write(
                     "NEW_GAME\n"
                 )

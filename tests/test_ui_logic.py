@@ -1041,6 +1041,57 @@ class GambitUIFlowTests(unittest.TestCase):
         self.assertEqual(results["fwd_no_anim_idx"], 1)
         self.assertTrue(results["shortcut_allowed"])
 
+    def test_engine_auto_recovers_after_process_termination(self):
+        prev_cwd = os.getcwd()
+        os.chdir(ROOT_DIR)
+        root = tk.Tk()
+        root.withdraw()
+        app = ui.GambitUI(root, game_mode=ui.MODE_PVP, prompt_mode_on_start=False)
+        results = {}
+
+        def step_init():
+            if app.engine_busy:
+                root.after(40, step_init)
+                return
+            app.make_move("e2e4", animate=False)
+            root.after(50, step_kill_engine)
+
+        def step_kill_engine():
+            if app.engine_busy or len(app.move_history) < 1:
+                root.after(40, step_kill_engine)
+                return
+            # Simulate engine process dying unexpectedly before next move
+            app.engine.terminate()
+            app.engine.wait(timeout=2)
+            app.make_move("e7e5", animate=False)
+            root.after(50, step_verify_recovery)
+
+        def step_verify_recovery():
+            if app.engine_busy or len(app.move_history) < 2:
+                root.after(40, step_verify_recovery)
+                return
+            results["history"] = list(app.move_history)
+            results["alive"] = app.engine.poll() is None
+            results["done"] = True
+            app.close()
+
+        try:
+            root.after(100, step_init)
+            root.mainloop()
+        finally:
+            os.chdir(prev_cwd)
+            if app.engine.poll() is None:
+                app.engine.terminate()
+                app.engine.wait(timeout=2)
+            if app.engine.stdin:
+                app.engine.stdin.close()
+            if app.engine.stdout:
+                app.engine.stdout.close()
+
+        self.assertTrue(results.get("done"))
+        self.assertEqual(results["history"], ["e2e4", "e7e5"])
+        self.assertTrue(results["alive"])
+
 
 if __name__ == "__main__":
     unittest.main()
