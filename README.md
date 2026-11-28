@@ -38,13 +38,13 @@ Gambit is a chess engine built from the ground up — combining a C++17 rules, m
 ### Python Tkinter Interface
 
 - [x] Interactive graphical chess board with algebraic coordinates, drag-and-drop, click-to-move, **Premoves**, right-click square highlights & analysis arrows, and slower smooth AI move animations
-- [x] Selectable board themes (`Classic Green`, `Walnut Wood`, `Slate Blue`, `Tournament Charcoal`) & keyboard shortcuts (`←`/`→`, `Home`/`End`, `F`, `H`, `M`, `Esc`)
+- [x] Selectable **Board Themes** (`Classic Green`, `Walnut Wood`, `Slate Blue`, `Tournament Charcoal`), **Sidebar Color Themes** (`Obsidian Emerald`, `Midnight Indigo`, `Warm Espresso`, `Arctic Light`), toggleable **Vertical Eval Bar Beside the Board**, and keyboard shortcuts (`←`/`→`, `Home`/`End`, `F`, `H`, `M`, `Esc`)
 - [x] Legal move, selected square, last move, king-in-check highlighting, and `💡 Hint` best-move arrow
-- [x] Clickable Standard Algebraic Notation (`SAN`) move history, **Live ECO Opening Name Banner**, **Post-Game Blunder Review (`!`, `?!`, `?`, `??`) & Accuracy %**, evaluation swing graph, captured pieces tray, and `🔊` sound toggle
-- [x] Player vs AI (`White`/`Black`/`Random`, 30+ built-in ECO openings) & Player vs Player modes with live chess clocks (`Bullet`/`Blitz`/`Rapid`), `⇅ Flip`, `Resign`, `½ Draw` offer, FEN import, and PGN export
+- [x] Clickable Standard Algebraic Notation (`SAN`) move history, **Live ECO Opening Name Banner**, **▶ Play Here** branching vs AI from any reviewed move, **Post-Game Blunder Review (`!`, `?!`, `?`, `??`) & Accuracy %**, evaluation swing graph, captured pieces tray with **Material Advantage Badges (`+3`)**, and cross-platform `🔊` sound toggle
+- [x] Player vs AI (`White`/`Black`/`Random`, 30+ built-in ECO openings) & Player vs Player modes with live chess clocks (`Bullet`/`Blitz`/`Rapid`), `⇅ Flip`, `Resign`, `½ Draw` offer, FEN import, **PGN Import & Export**, and **Auto-Saved Game Library & W-D-L Stats (`📚`)**
 - [x] Animated `Back` / `Next` / `Live` move review without unfair undo
-- [x] **Persistent User Preferences (`settings.json`)** for board theme, sound mute, AI difficulty, and time control (including **Custom `M+I` time controls** alongside `Bullet`/`Blitz`/`Rapid` presets)
-- [x] Custom Windows `.ico` app emblem (`assets/gambit.ico`), silent launcher (`Launch Gambit Chess.vbs`), and one-click Desktop shortcut installer (`install_desktop_shortcut.ps1`)
+- [x] **Persistent User Preferences (`settings.json`)** for board & sidebar themes, eval bar visibility, sound mute, AI difficulty, and time control (including **Custom `M+I` time controls** alongside `Bullet`/`Blitz`/`Rapid` presets)
+- [x] **Cross-Platform Standalone Desktop App Packaging (`build_app.py` + GitHub Actions):** Builds a zero-dependency Windows `GambitChess.exe` (with statically linked `gambit.exe`) and macOS `GambitChess.app` / `.dmg` (universal `arm64`/`x86_64` `gambit` engine + Aqua Tk & sound compatibility) alongside silent `.vbs` and desktop shortcut launchers
 - [x] Thread-safe background engine communication & clean shutdown
 
 ---
@@ -85,6 +85,8 @@ Chess/
 ├── chess_utils.py
 ├── evaluation.py
 ├── ui.py
+├── build_app.py
+├── .github/workflows/build-releases.yml
 ├── assets/
 │   └── gambit.ico
 ├── Launch Gambit Chess.vbs
@@ -101,23 +103,31 @@ Chess/
 
 ---
 
-## 🛠️ Build, Run & Test
+## 🛠️ Build, Run, Package & Test
 
-### 1. Build the C++ Engine
+### 1. Download Ready-to-Run Desktop Apps (Windows & macOS)
+
+- **GitHub Actions Builds:** Every push to `main` (and version tag `v*`) automatically builds `GambitChess-Windows.zip` (`GambitChess.exe`) and `GambitChess-macOS` (`GambitChess.app` + `.dmg`) in the repository's **Actions** / **Releases** tab — no Python or compiler needed on the target laptop.
+
+### 2. Build Standalone App Locally (Windows or macOS)
 
 ```bash
-g++ -std=c++17 -O2 main.cpp Board.cpp Move.cpp Pawn.cpp Knight.cpp Bishop.cpp Rook.cpp Queen.cpp King.cpp Evaluation.cpp Search.cpp -o gambit.exe
+pip install pyinstaller
+python build_app.py
 ```
 
-### 2. Launch the Desktop GUI
+Outputs `dist/GambitChess.exe` + `dist/GambitChess-Windows.zip` on Windows (with statically linked `gambit.exe`) or `dist/GambitChess.app` + `dist/GambitChess-macOS.zip` / `.dmg` on macOS.
+
+### 3. Build & Run From Source
 
 ```bash
+g++ -std=c++17 -O2 -static -static-libgcc -static-libstdc++ main.cpp Board.cpp Move.cpp Pawn.cpp Knight.cpp Bishop.cpp Rook.cpp Queen.cpp King.cpp Evaluation.cpp Search.cpp -o gambit.exe
 python ui.py
 ```
 
-Or double-click `Launch Gambit Chess.vbs` to run without a console window, or run `powershell -ExecutionPolicy Bypass -File install_desktop_shortcut.ps1` to create a Windows Desktop shortcut with Gambit's icon.
+Or on Windows, double-click `Launch Gambit Chess.vbs` to run without a console window, or run `powershell -ExecutionPolicy Bypass -File install_desktop_shortcut.ps1` to create a Windows Desktop shortcut with Gambit's icon.
 
-### 3. Run the Automated Test Suite
+### 4. Run the Automated Test Suite
 
 ```bash
 python -m unittest discover -s tests -v
@@ -127,6 +137,6 @@ python -m unittest discover -s tests -v
 
 ## 📌 Current Status
 
-Gambit is playable end-to-end as both Player vs AI (`White`/`Black`/`Random`) and Player vs Player desktop chess application powered by a Perft-verified, UCI-compatible C++17 search and rules engine, backed by a 47-test `unittest` suite covering C++ rules/Perft/UCI/search/openings/FEN/draws, SAN/PGN/review/settings/icon utilities, evaluation, AI, and Tkinter GUI workflows. See [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) for the milestone history.
+Gambit is playable end-to-end as both Player vs AI (`White`/`Black`/`Random`) and Player vs Player desktop chess application powered by a Perft-verified, UCI-compatible C++17 search and rules engine, backed by a 51-test `unittest` suite covering C++ rules/Perft/UCI/search/openings/FEN/draws, SAN/PGN import & export, game library stats, review/themes/settings/icon utilities, evaluation, AI, and Tkinter GUI workflows. See [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) for the milestone history.
 
 ♟️ One move at a time.

@@ -2,6 +2,7 @@
 import os
 import random
 import subprocess
+import sys
 import threading
 import time
 import tkinter as tk
@@ -19,21 +20,30 @@ from ai import (
 )
 from chess_utils import (
     DEFAULT_APP_ICON_PATH,
+    DEFAULT_GAMES_PATH,
     DEFAULT_SETTINGS_PATH,
     DEFAULT_TIME_CONTROLS,
     STANDARD_START_FEN,
     build_pgn,
     calculate_accuracy,
     classify_cp_loss,
+    compute_game_outcome,
+    compute_player_stats,
     detect_opening_name,
     format_captured_tray,
     format_san_move,
     generate_app_icon,
     get_captured_piece,
+    get_engine_path,
+    load_saved_games,
     load_user_settings,
     parse_custom_time_control,
+    parse_pgn_text,
+    pgn_result,
     play_sound,
     resolve_time_control_spec,
+    san_to_uci_move,
+    save_completed_game_record,
     save_user_settings,
 )
 from evaluation import (
@@ -83,26 +93,114 @@ AI_DIFFICULTY_TIME_LIMITS = {
     "Hard (Depth 6)": 2.5,
 }
 
-THEME = {
-    "bg": "#0D1012",
-    "sidebar": "#15191D",
-    "card": "#1D2329",
-    "border": "#2B333C",
-    "text": "#F3F4F6",
-    "muted": "#9CA3AF",
-    "accent_blue": "#0D9488",
-    "accent_primary_hover": "#0F766E",
-    "accent_soft": "#5EEAD4",
-    "accent_badge_bg": "#113832",
-    "accent_badge_fg": "#2DD4BF",
-    "accent_green": "#059669",
-    "accent_red": "#DC2626",
-    "btn_bg": "#262D35",
-    "btn_active": "#323B46",
-    "list_bg": "#101417",
-    "graph_top": "#1B2228",
-    "graph_bottom": "#0F1316",
+SIDEBAR_THEMES = {
+    "Obsidian Emerald": {
+        "bg": "#0D1012",
+        "sidebar": "#15191D",
+        "card": "#1D2329",
+        "border": "#2B333C",
+        "text": "#F3F4F6",
+        "muted": "#9CA3AF",
+        "accent_blue": "#0D9488",
+        "accent_primary_hover": "#0F766E",
+        "accent_soft": "#5EEAD4",
+        "accent_badge_bg": "#113832",
+        "accent_badge_fg": "#2DD4BF",
+        "accent_green": "#059669",
+        "accent_red": "#DC2626",
+        "btn_bg": "#262D35",
+        "btn_active": "#323B46",
+        "list_bg": "#101417",
+        "graph_top": "#1B2228",
+        "graph_bottom": "#0F1316",
+        "headline_white": "#4ADE80",
+        "headline_black": "#F87171",
+        "headline_equal": "#E5E7EB",
+        "ai_eval_fg": "#E2E8F0",
+        "mat_black_fg": "#CBD5E1",
+        "disabled_fg": "#6B7280",
+    },
+    "Midnight Indigo": {
+        "bg": "#0F1219",
+        "sidebar": "#171B26",
+        "card": "#202636",
+        "border": "#303952",
+        "text": "#F3F4F6",
+        "muted": "#9CA3AF",
+        "accent_blue": "#2563EB",
+        "accent_primary_hover": "#1D4ED8",
+        "accent_soft": "#93C5FD",
+        "accent_badge_bg": "#1E3A5F",
+        "accent_badge_fg": "#60A5FA",
+        "accent_green": "#059669",
+        "accent_red": "#DC2626",
+        "btn_bg": "#2A3144",
+        "btn_active": "#38415A",
+        "list_bg": "#121620",
+        "graph_top": "#1E293B",
+        "graph_bottom": "#0F172A",
+        "headline_white": "#4ADE80",
+        "headline_black": "#F87171",
+        "headline_equal": "#E5E7EB",
+        "ai_eval_fg": "#E2E8F0",
+        "mat_black_fg": "#CBD5E1",
+        "disabled_fg": "#6B7280",
+    },
+    "Warm Espresso": {
+        "bg": "#120E0C",
+        "sidebar": "#1C1613",
+        "card": "#261F1B",
+        "border": "#3B302A",
+        "text": "#F5F5F4",
+        "muted": "#A8A29E",
+        "accent_blue": "#D97706",
+        "accent_primary_hover": "#B45309",
+        "accent_soft": "#FCD34D",
+        "accent_badge_bg": "#45270A",
+        "accent_badge_fg": "#FBBF24",
+        "accent_green": "#15803D",
+        "accent_red": "#DC2626",
+        "btn_bg": "#322823",
+        "btn_active": "#443730",
+        "list_bg": "#15100E",
+        "graph_top": "#2A211C",
+        "graph_bottom": "#14100D",
+        "headline_white": "#4ADE80",
+        "headline_black": "#F87171",
+        "headline_equal": "#F5F5F4",
+        "ai_eval_fg": "#F5E6D3",
+        "mat_black_fg": "#D6C5B3",
+        "disabled_fg": "#78716C",
+    },
+    "Arctic Light": {
+        "bg": "#11161D",
+        "sidebar": "#F1F5F9",
+        "card": "#FFFFFF",
+        "border": "#CBD5E1",
+        "text": "#0F172A",
+        "muted": "#475569",
+        "accent_blue": "#0D9488",
+        "accent_primary_hover": "#0F766E",
+        "accent_soft": "#0F766E",
+        "accent_badge_bg": "#CCFBF1",
+        "accent_badge_fg": "#0F766E",
+        "accent_green": "#059669",
+        "accent_red": "#DC2626",
+        "btn_bg": "#E2E8F0",
+        "btn_active": "#CBD5E1",
+        "list_bg": "#F8FAFC",
+        "graph_top": "#E2E8F0",
+        "graph_bottom": "#CBD5E1",
+        "headline_white": "#15803D",
+        "headline_black": "#B91C1C",
+        "headline_equal": "#1E293B",
+        "ai_eval_fg": "#1E293B",
+        "mat_black_fg": "#334155",
+        "disabled_fg": "#94A3B8",
+    },
 }
+
+THEME = dict(SIDEBAR_THEMES["Obsidian Emerald"])
 
 BOARD_THEMES = {
     "Classic Green": {
@@ -304,31 +402,49 @@ class GambitUI:
         prompt_mode_on_start=True,
         human_color=HUMAN_COLOR_WHITE,
         time_control=None,
-        settings_path=SETTINGS_AUTO
+        settings_path=SETTINGS_AUTO,
+        games_path=SETTINGS_AUTO
     ):
         self.root = root
         self.root.title("Gambit Chess")
         self.root.minsize(880, 620)
-        self.root.configure(bg=THEME["bg"])
-
-        try:
-            if not os.path.exists(DEFAULT_APP_ICON_PATH):
-                generate_app_icon(DEFAULT_APP_ICON_PATH)
-            if os.path.exists(DEFAULT_APP_ICON_PATH):
-                self.root.iconbitmap(DEFAULT_APP_ICON_PATH)
-        except Exception:
-            pass
 
         if settings_path == SETTINGS_AUTO:
             self.settings_path = DEFAULT_SETTINGS_PATH if prompt_mode_on_start else None
         else:
             self.settings_path = settings_path
 
+        if games_path == SETTINGS_AUTO:
+            self.games_path = DEFAULT_GAMES_PATH if prompt_mode_on_start else None
+        else:
+            self.games_path = games_path
+
         saved_prefs = (
             load_user_settings(self.settings_path)
             if self.settings_path
             else {}
         )
+
+        pref_sidebar_theme = saved_prefs.get("sidebar_theme")
+        self.sidebar_theme_name = (
+            pref_sidebar_theme
+            if pref_sidebar_theme in SIDEBAR_THEMES
+            else "Obsidian Emerald"
+        )
+        self.theme = dict(SIDEBAR_THEMES[self.sidebar_theme_name])
+        self.show_eval_bar = bool(saved_prefs.get("show_eval_bar", True))
+        self.root.configure(bg=self.theme["bg"])
+
+        try:
+            if sys.platform.startswith("win"):
+                if not os.path.exists(DEFAULT_APP_ICON_PATH):
+                    generate_app_icon(DEFAULT_APP_ICON_PATH)
+                if os.path.exists(DEFAULT_APP_ICON_PATH):
+                    self.root.iconbitmap(DEFAULT_APP_ICON_PATH)
+        except Exception:
+            pass
+
+        self._game_saved = False
 
         self.engine = self._spawn_engine_process()
         self.ai = AI(self.engine)
@@ -416,49 +532,64 @@ class GambitUI:
         self.closing = False
         self.engine_lock = threading.Lock()
 
-        self.main_frame = tk.Frame(root, bg=THEME["bg"])
+        self.main_frame = tk.Frame(root, bg=self.theme["bg"])
         self.main_frame.pack(fill="both", expand=True)
 
+        self.board_area_frame = tk.Frame(self.main_frame, bg=self.theme["bg"])
+        self.board_area_frame.pack(side="left", fill="both", expand=True, padx=(14, 10), pady=12)
+
+        self.board_eval_bar = tk.Canvas(
+            self.board_area_frame,
+            width=18,
+            bg=self.theme["list_bg"],
+            highlightthickness=1,
+            highlightbackground=self.theme["border"]
+        )
+        if self.show_eval_bar:
+            self.board_eval_bar.pack(side="left", fill="y", padx=(0, 8), pady=(44, 12))
+        self.board_eval_bar.bind("<Configure>", lambda _e: self._draw_board_eval_bar(self.current_eval_score))
+
         self.canvas = tk.Canvas(
-            self.main_frame,
-            bg=THEME["bg"],
+            self.board_area_frame,
+            bg=self.theme["bg"],
             highlightthickness=0
         )
-        self.canvas.pack(side="left", fill="both", expand=True, padx=(14, 10), pady=12)
+        self.canvas.pack(side="left", fill="both", expand=True)
 
         self.history_frame = tk.Frame(
             self.main_frame,
             width=386,
-            bg=THEME["sidebar"],
+            bg=self.theme["sidebar"],
             highlightthickness=1,
-            highlightbackground=THEME["border"]
+            highlightbackground=self.theme["border"]
         )
         self.history_frame.pack(side="right", fill="y", padx=(0, 14), pady=12)
         self.history_frame.pack_propagate(False)
 
         # ---- Header & Mode Selector ----
-        self.header_frame = tk.Frame(self.history_frame, bg=THEME["sidebar"])
+        self.header_frame = tk.Frame(self.history_frame, bg=self.theme["sidebar"])
         self.header_frame.pack(fill="x", padx=16, pady=(8, 5))
 
-        self.title_row = tk.Frame(self.header_frame, bg=THEME["sidebar"])
+        self.title_row = tk.Frame(self.header_frame, bg=self.theme["sidebar"])
         self.title_row.pack(fill="x")
 
-        tk.Label(
+        self.title_label = tk.Label(
             self.title_row,
-            text="♟ GAMBIT CHESS",
+            text="♟ GAMBIT",
             font=("Segoe UI", 13, "bold"),
-            fg=THEME["text"],
-            bg=THEME["sidebar"],
+            fg=self.theme["text"],
+            bg=self.theme["sidebar"],
             anchor="w"
-        ).pack(side="left")
+        )
+        self.title_label.pack(side="left")
 
         self.fen_button = tk.Button(
             self.title_row,
             text="FEN",
             font=("Segoe UI", 8, "bold"),
-            bg=THEME["btn_bg"],
-            fg=THEME["text"],
-            activebackground=THEME["btn_active"],
+            bg=self.theme["btn_bg"],
+            fg=self.theme["text"],
+            activebackground=self.theme["btn_active"],
             activeforeground="#FFFFFF",
             relief="flat",
             bd=0,
@@ -469,30 +600,58 @@ class GambitUI:
         )
         self.fen_button.pack(side="right", padx=(3, 0))
 
-        self.pgn_button = tk.Button(
+        self.pgn_button = tk.Menubutton(
             self.title_row,
-            text="PGN",
+            text="PGN ▾",
             font=("Segoe UI", 8, "bold"),
-            bg=THEME["btn_bg"],
-            fg=THEME["text"],
-            activebackground=THEME["btn_active"],
+            bg=self.theme["btn_bg"],
+            fg=self.theme["text"],
+            activebackground=self.theme["btn_active"],
             activeforeground="#FFFFFF",
             relief="flat",
             bd=0,
             padx=6,
             pady=2,
             cursor="hand2",
-            command=self.export_pgn
+            direction="below"
         )
+        self.pgn_menu = tk.Menu(
+            self.pgn_button,
+            tearoff=0,
+            bg=self.theme["card"],
+            fg=self.theme["text"],
+            activebackground=self.theme["accent_blue"],
+            activeforeground="#FFFFFF"
+        )
+        self.pgn_menu.add_command(label="📥 Import PGN...", command=self.prompt_load_pgn)
+        self.pgn_menu.add_command(label="📤 Export PGN...", command=self.export_pgn)
+        self.pgn_button.config(menu=self.pgn_menu)
         self.pgn_button.pack(side="right", padx=(3, 0))
+
+        self.library_button = tk.Button(
+            self.title_row,
+            text="📚",
+            font=("Segoe UI", 9),
+            bg=self.theme["btn_bg"],
+            fg=self.theme["text"],
+            activebackground=self.theme["btn_active"],
+            activeforeground="#FFFFFF",
+            relief="flat",
+            bd=0,
+            padx=5,
+            pady=1,
+            cursor="hand2",
+            command=self.open_game_library
+        )
+        self.library_button.pack(side="right", padx=(3, 0))
 
         self.sound_button = tk.Button(
             self.title_row,
             text="🔊" if self.sound_enabled else "🔇",
             font=("Segoe UI", 9),
-            bg=THEME["btn_bg"],
-            fg=THEME["text"],
-            activebackground=THEME["btn_active"],
+            bg=self.theme["btn_bg"],
+            fg=self.theme["text"],
+            activebackground=self.theme["btn_active"],
             activeforeground="#FFFFFF",
             relief="flat",
             bd=0,
@@ -501,16 +660,18 @@ class GambitUI:
             cursor="hand2",
             command=self.toggle_sound
         )
-        self.sound_button.pack(side="right")
+        self.sound_button.pack(side="right", padx=(3, 0))
 
         self.theme_var = tk.StringVar(value=self.board_theme_name)
+        self.sidebar_theme_var = tk.StringVar(value=self.sidebar_theme_name)
+        self.show_eval_bar_var = tk.BooleanVar(value=self.show_eval_bar)
         self.theme_button = tk.Menubutton(
             self.title_row,
             text="🎨",
             font=("Segoe UI", 9),
-            bg=THEME["btn_bg"],
-            fg=THEME["text"],
-            activebackground=THEME["btn_active"],
+            bg=self.theme["btn_bg"],
+            fg=self.theme["text"],
+            activebackground=self.theme["btn_active"],
             activeforeground="#FFFFFF",
             relief="flat",
             bd=0,
@@ -522,9 +683,9 @@ class GambitUI:
         self.theme_menu = tk.Menu(
             self.theme_button,
             tearoff=0,
-            bg=THEME["card"],
-            fg=THEME["text"],
-            activebackground=THEME["accent_blue"],
+            bg=self.theme["card"],
+            fg=self.theme["text"],
+            activebackground=self.theme["accent_blue"],
             activeforeground="#FFFFFF"
         )
         for theme_name in BOARD_THEMES:
@@ -534,8 +695,30 @@ class GambitUI:
                 value=theme_name,
                 command=lambda t=theme_name: self.set_board_theme(t)
             )
+        self.theme_menu.add_separator()
+        self.sidebar_theme_submenu = tk.Menu(
+            self.theme_menu,
+            tearoff=0,
+            bg=self.theme["card"],
+            fg=self.theme["text"],
+            activebackground=self.theme["accent_blue"],
+            activeforeground="#FFFFFF"
+        )
+        for st_name in SIDEBAR_THEMES:
+            self.sidebar_theme_submenu.add_radiobutton(
+                label=st_name,
+                variable=self.sidebar_theme_var,
+                value=st_name,
+                command=lambda t=st_name: self.apply_sidebar_theme(t)
+            )
+        self.theme_menu.add_cascade(label="Sidebar Theme", menu=self.sidebar_theme_submenu)
+        self.theme_menu.add_checkbutton(
+            label="Board Eval Bar",
+            variable=self.show_eval_bar_var,
+            command=self.toggle_board_eval_bar
+        )
         self.theme_button.config(menu=self.theme_menu)
-        self.theme_button.pack(side="right", padx=(0, 3))
+        self.theme_button.pack(side="right", padx=(0, 0))
 
         self.mode_label = tk.Label(
             self.header_frame,
@@ -585,25 +768,38 @@ class GambitUI:
         )
         self.clock_frame.pack(fill="x", padx=16, pady=(0, 6))
 
-        self.top_clock_box = tk.Frame(self.clock_frame, bg=THEME["list_bg"], padx=10, pady=3)
+        self.top_clock_box = tk.Frame(self.clock_frame, bg=self.theme["list_bg"], padx=10, pady=3)
         self.top_clock_box.pack(side="left", fill="x", expand=True, padx=(0, 4))
 
+        self.top_clock_hdr = tk.Frame(self.top_clock_box, bg=self.theme["list_bg"])
+        self.top_clock_hdr.pack(fill="x")
+
         self.top_clock_name = tk.Label(
-            self.top_clock_box,
+            self.top_clock_hdr,
             text="Black",
             font=("Segoe UI", 9, "bold"),
-            fg=THEME["muted"],
-            bg=THEME["list_bg"],
+            fg=self.theme["muted"],
+            bg=self.theme["list_bg"],
             anchor="w"
         )
-        self.top_clock_name.pack(fill="x")
+        self.top_clock_name.pack(side="left")
+
+        self.top_advantage_label = tk.Label(
+            self.top_clock_hdr,
+            text="",
+            font=("Segoe UI", 8, "bold"),
+            fg=self.theme["accent_badge_fg"],
+            bg=self.theme["list_bg"],
+            anchor="e"
+        )
+        self.top_advantage_label.pack(side="right")
 
         self.top_clock_time = tk.Label(
             self.top_clock_box,
             text="∞",
             font=("Consolas", 12, "bold"),
-            fg=THEME["text"],
-            bg=THEME["list_bg"],
+            fg=self.theme["text"],
+            bg=self.theme["list_bg"],
             anchor="w"
         )
         self.top_clock_time.pack(fill="x")
@@ -613,30 +809,43 @@ class GambitUI:
             text="—",
             font=("Segoe UI Symbol", 9),
             fg="#CBD5E1",
-            bg=THEME["list_bg"],
+            bg=self.theme["list_bg"],
             anchor="w"
         )
         self.top_captured_label.pack(fill="x")
 
-        self.bottom_clock_box = tk.Frame(self.clock_frame, bg=THEME["list_bg"], padx=10, pady=3)
+        self.bottom_clock_box = tk.Frame(self.clock_frame, bg=self.theme["list_bg"], padx=10, pady=3)
         self.bottom_clock_box.pack(side="left", fill="x", expand=True, padx=(4, 0))
 
+        self.bottom_clock_hdr = tk.Frame(self.bottom_clock_box, bg=self.theme["list_bg"])
+        self.bottom_clock_hdr.pack(fill="x")
+
         self.bottom_clock_name = tk.Label(
-            self.bottom_clock_box,
+            self.bottom_clock_hdr,
             text="White",
             font=("Segoe UI", 9, "bold"),
-            fg=THEME["muted"],
-            bg=THEME["list_bg"],
+            fg=self.theme["muted"],
+            bg=self.theme["list_bg"],
             anchor="w"
         )
-        self.bottom_clock_name.pack(fill="x")
+        self.bottom_clock_name.pack(side="left")
+
+        self.bottom_advantage_label = tk.Label(
+            self.bottom_clock_hdr,
+            text="",
+            font=("Segoe UI", 8, "bold"),
+            fg=self.theme["accent_badge_fg"],
+            bg=self.theme["list_bg"],
+            anchor="e"
+        )
+        self.bottom_advantage_label.pack(side="right")
 
         self.bottom_clock_time = tk.Label(
             self.bottom_clock_box,
             text="∞",
             font=("Consolas", 12, "bold"),
-            fg=THEME["text"],
-            bg=THEME["list_bg"],
+            fg=self.theme["text"],
+            bg=self.theme["list_bg"],
             anchor="w"
         )
         self.bottom_clock_time.pack(fill="x")
@@ -646,7 +855,7 @@ class GambitUI:
             text="—",
             font=("Segoe UI Symbol", 9),
             fg="#CBD5E1",
-            bg=THEME["list_bg"],
+            bg=self.theme["list_bg"],
             anchor="w"
         )
         self.bottom_captured_label.pack(fill="x")
@@ -1065,15 +1274,37 @@ class GambitUI:
         )
         self.review_game_button.pack(side="right")
 
+        self.opening_row = tk.Frame(self.history_frame, bg=self.theme["sidebar"])
+        self.opening_row.pack(fill="x", padx=16, pady=(0, 4))
+
         self.opening_label = tk.Label(
-            self.history_frame,
+            self.opening_row,
             text="Opening: Starting Position",
             font=("Segoe UI", 8, "bold"),
-            fg=THEME["accent_soft"],
-            bg=THEME["sidebar"],
+            fg=self.theme["accent_soft"],
+            bg=self.theme["sidebar"],
             anchor="w"
         )
-        self.opening_label.pack(fill="x", padx=16, pady=(0, 4))
+        self.opening_label.pack(side="left", fill="x", expand=True)
+
+        self.play_from_here_button = tk.Button(
+            self.opening_row,
+            text="▶ Play Here",
+            font=("Segoe UI", 7, "bold"),
+            bg=self.theme["accent_badge_bg"],
+            fg=self.theme["accent_badge_fg"],
+            activebackground=self.theme["accent_blue"],
+            activeforeground="#FFFFFF",
+            disabledforeground=self.theme["disabled_fg"],
+            relief="flat",
+            bd=0,
+            padx=6,
+            pady=1,
+            cursor="hand2",
+            command=self.play_from_here,
+            state="disabled"
+        )
+        self.play_from_here_button.pack(side="right", padx=(4, 0))
 
         self.history_list_frame = tk.Frame(
             self.history_frame,
@@ -1107,22 +1338,41 @@ class GambitUI:
         self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
         self.canvas.bind("<ButtonPress-3>", self.on_right_down)
         self.canvas.bind("<ButtonRelease-3>", self.on_right_up)
+        if sys.platform == "darwin":
+            self.canvas.bind("<ButtonPress-2>", self.on_right_down)
+            self.canvas.bind("<ButtonRelease-2>", self.on_right_up)
         self.history_list.bind("<ButtonRelease-1>", self.on_history_click)
         self._bind_shortcuts()
 
         self._reset_clocks(self.time_control_name)
         self._refresh_mode_buttons()
-        self.root.state("zoomed")
+        self.apply_sidebar_theme(self.sidebar_theme_name, save=False)
+        self._maximize_window()
 
         self.root.after(100, self.initial_position)
+
+    def _maximize_window(self):
+        try:
+            self.root.state("zoomed")
+        except Exception:
+            try:
+                self.root.attributes("-zoomed", True)
+            except Exception:
+                pass
 
     # ---------------- ENGINE POSITION ----------------
 
     def _spawn_engine_process(self):
-        engine_dir = os.path.dirname(os.path.abspath(__file__))
-        engine_path = os.path.join(engine_dir, "gambit.exe")
+        engine_path = get_engine_path()
+        engine_dir = os.path.dirname(os.path.abspath(engine_path))
         if not os.path.exists(engine_path):
-            engine_path = "gambit.exe"
+            engine_path = "gambit.exe" if sys.platform.startswith("win") else "gambit"
+            engine_dir = os.path.dirname(os.path.abspath(__file__))
+        if not sys.platform.startswith("win") and os.path.exists(engine_path):
+            try:
+                os.chmod(engine_path, os.stat(engine_path).st_mode | 0o111)
+            except Exception:
+                pass
         creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
         return subprocess.Popen(
             [engine_path],
@@ -1265,6 +1515,8 @@ class GambitUI:
         save_user_settings(
             {
                 "board_theme": self.board_theme_name,
+                "sidebar_theme": self.sidebar_theme_name,
+                "show_eval_bar": bool(self.show_eval_bar),
                 "sound_enabled": bool(self.sound_enabled),
                 "difficulty": self.difficulty_var.get(),
                 "time_control": self.time_control_name,
@@ -1567,6 +1819,7 @@ class GambitUI:
         self.game_status = "TIMEOUT_WHITE" if white_flagged else "TIMEOUT_BLACK"
         if self.position_history:
             self.position_history[-1]["status"] = self.game_status
+        self._maybe_autosave_completed_game()
         self._refresh_clocks()
         self._update_controls()
         if self.is_viewing_live():
@@ -1602,24 +1855,26 @@ class GambitUI:
             and (self.white_turn != top_is_white)
         )
 
+        t = self.theme
+        active_time_fg = t["text"] if self.sidebar_theme_name == "Arctic Light" else "#FFFFFF"
         self.top_clock_name.config(
             text=top_name,
-            fg=THEME["accent_soft"] if top_active else THEME["muted"]
+            fg=t["accent_soft"] if top_active else t["muted"]
         )
         self.top_clock_time.config(
             text=format_clock_time(top_val),
             fg="#F87171" if (top_val is not None and top_val < 15.0) else (
-                "#FFFFFF" if top_active else THEME["text"]
+                active_time_fg if top_active else t["text"]
             )
         )
         self.bottom_clock_name.config(
             text=bottom_name,
-            fg=THEME["accent_soft"] if bottom_active else THEME["muted"]
+            fg=t["accent_soft"] if bottom_active else t["muted"]
         )
         self.bottom_clock_time.config(
             text=format_clock_time(bottom_val),
             fg="#F87171" if (bottom_val is not None and bottom_val < 15.0) else (
-                "#FFFFFF" if bottom_active else THEME["text"]
+                active_time_fg if bottom_active else t["text"]
             )
         )
 
@@ -1627,6 +1882,13 @@ class GambitUI:
         bottom_caps = self.captured_by_black if top_is_white else self.captured_by_white
         self.top_captured_label.config(text=format_captured_tray(top_caps))
         self.bottom_captured_label.config(text=format_captured_tray(bottom_caps))
+
+        if hasattr(self, "top_advantage_label") and hasattr(self, "bottom_advantage_label"):
+            mat_score = int(round(analyze_material(self.board)["score"])) if self.board else 0
+            top_adv = mat_score if top_is_white else -mat_score
+            bottom_adv = -top_adv
+            self.top_advantage_label.config(text=f"+{top_adv}" if top_adv > 0 else "")
+            self.bottom_advantage_label.config(text=f"+{bottom_adv}" if bottom_adv > 0 else "")
 
     def toggle_sound(self):
         self.sound_enabled = not self.sound_enabled
@@ -1641,6 +1903,144 @@ class GambitUI:
             self.theme_var.set(theme_name)
         self._save_preferences()
         self.draw_board()
+
+    def toggle_board_eval_bar(self):
+        self.set_show_board_eval_bar(not self.show_eval_bar)
+
+    def set_show_board_eval_bar(self, enabled, save=True):
+        self.show_eval_bar = bool(enabled)
+        if hasattr(self, "show_eval_bar_var"):
+            self.show_eval_bar_var.set(self.show_eval_bar)
+        if hasattr(self, "board_eval_bar"):
+            self.board_eval_bar.pack_forget()
+            if self.show_eval_bar:
+                self.board_eval_bar.pack(
+                    side="left", fill="y", padx=(0, 8), pady=(44, 12), before=self.canvas
+                )
+                self._draw_board_eval_bar(self.current_eval_score)
+        if save:
+            self._save_preferences()
+        self.draw_board()
+
+    def apply_sidebar_theme(self, theme_name, save=True):
+        if theme_name not in SIDEBAR_THEMES:
+            return
+        self.sidebar_theme_name = theme_name
+        self.theme = dict(SIDEBAR_THEMES[theme_name])
+        if hasattr(self, "sidebar_theme_var"):
+            self.sidebar_theme_var.set(theme_name)
+
+        t = self.theme
+        self.root.configure(bg=t["bg"])
+        self.main_frame.configure(bg=t["bg"])
+        self.board_area_frame.configure(bg=t["bg"])
+        self.canvas.configure(bg=t["bg"])
+        self.board_eval_bar.configure(bg=t["list_bg"], highlightbackground=t["border"])
+
+        self.history_frame.configure(bg=t["sidebar"], highlightbackground=t["border"])
+        for frame in (
+            self.header_frame,
+            self.title_row,
+            self.mode_switch_frame,
+            self.action_frame,
+            self.review_frame,
+            self.settings_frame,
+            self.options_row,
+            self.difficulty_frame,
+            self.history_header_frame,
+            self.opening_row,
+        ):
+            frame.configure(bg=t["sidebar"])
+
+        for w in self.options_row.winfo_children() + self.difficulty_frame.winfo_children():
+            if isinstance(w, tk.Label):
+                w.configure(bg=t["sidebar"], fg=t["text"])
+        self.title_label.configure(bg=t["sidebar"], fg=t["text"])
+        self.mode_label.configure(bg=t["sidebar"], fg=t["accent_soft"])
+        self.history_title.configure(bg=t["sidebar"], fg=t["muted"])
+        self.opening_label.configure(bg=t["sidebar"], fg=t["accent_soft"])
+
+        self.clock_frame.configure(bg=t["card"], highlightbackground=t["border"])
+        self.eval_frame.configure(bg=t["card"], highlightbackground=t["border"])
+        self.eval_header_row.configure(bg=t["card"])
+        for w in self.eval_header_row.winfo_children():
+            if w is not self.eval_live_badge:
+                w.configure(bg=t["card"], fg=t["muted"])
+        self.eval_live_badge.configure(bg=t["accent_badge_bg"], fg=t["accent_badge_fg"])
+        self.eval_headline_label.configure(bg=t["card"])
+        self.eval_bar.configure(bg=t["list_bg"])
+        self.eval_graph.configure(bg=t["list_bg"])
+        self.ai_eval_label.configure(bg=t["card"], fg=t["ai_eval_fg"])
+        self.engine_eval_label.configure(bg=t["card"], fg=t["muted"])
+        self.material_row.configure(bg=t["card"])
+        self.white_material_label.configure(bg=t["card"], fg=t["text"])
+        self.black_material_label.configure(bg=t["card"], fg=t["mat_black_fg"])
+        self.material_diff_label.configure(bg=t["card"], fg=t["accent_soft"])
+
+        for box in (self.top_clock_box, self.bottom_clock_box):
+            box.configure(bg=t["list_bg"])
+        for hdr in (self.top_clock_hdr, self.bottom_clock_hdr):
+            hdr.configure(bg=t["list_bg"])
+        for lbl in (self.top_captured_label, self.bottom_captured_label):
+            lbl.configure(bg=t["list_bg"], fg=t["mat_black_fg"])
+        self.top_advantage_label.configure(bg=t["list_bg"], fg=t["accent_badge_fg"])
+        self.bottom_advantage_label.configure(bg=t["list_bg"], fg=t["accent_badge_fg"])
+
+        self.history_list_frame.configure(bg=t["list_bg"], highlightbackground=t["border"])
+        self.history_list.configure(bg=t["list_bg"], fg=t["text"], selectbackground=t["accent_blue"])
+
+        for btn in (
+            self.fen_button,
+            self.pgn_button,
+            self.library_button,
+            self.sound_button,
+            self.theme_button,
+            self.back_button,
+            self.forward_button,
+            self.live_button,
+            self.flip_button,
+            self.draw_button,
+        ):
+            btn.configure(bg=t["btn_bg"], fg=t["text"], activebackground=t["btn_active"])
+
+        self.hint_button.configure(
+            bg=t["btn_bg"],
+            fg="#B45309" if theme_name == "Arctic Light" else "#FDE047",
+            activebackground=t["btn_active"],
+            disabledforeground=t["disabled_fg"],
+        )
+        self.review_game_button.configure(
+            bg=t["btn_bg"],
+            fg=t["accent_badge_fg"],
+            activebackground=t["btn_active"],
+            disabledforeground=t["disabled_fg"],
+        )
+        self.play_from_here_button.configure(
+            bg=t["accent_badge_bg"],
+            fg=t["accent_badge_fg"],
+            activebackground=t["accent_blue"],
+            disabledforeground=t["disabled_fg"],
+        )
+        self.new_game_button.configure(
+            bg=t["accent_blue"],
+            activebackground=t["accent_primary_hover"],
+        )
+        self.resign_button.configure(bg=t["accent_red"])
+
+        for menu_btn in (self.time_menu, self.side_menu, self.difficulty_menu):
+            menu_btn.configure(bg=t["btn_bg"], fg=t["text"], activebackground=t["btn_active"])
+            menu_btn["menu"].configure(bg=t["card"], fg=t["text"], activebackground=t["accent_blue"])
+        for menu_obj in (self.pgn_menu, self.theme_menu, self.sidebar_theme_submenu):
+            menu_obj.configure(bg=t["card"], fg=t["text"], activebackground=t["accent_blue"])
+
+        self._refresh_mode_buttons()
+        self._refresh_clocks()
+        if self.board:
+            self.update_evaluation_panel(self.board)
+        self._draw_eval_graph()
+        self._draw_board_eval_bar(self.current_eval_score)
+        if save:
+            self._save_preferences()
 
     def _shortcut_allowed(self):
         if self.closing or self._in_modal:
@@ -1710,10 +2110,11 @@ class GambitUI:
             return
 
         self.eval_graph.delete("all")
+        t = self.theme
         mid_y = gh / 2.0
-        self.eval_graph.create_rectangle(0, 0, gw, mid_y, fill=THEME["graph_top"], outline="")
-        self.eval_graph.create_rectangle(0, mid_y, gw, gh, fill=THEME["graph_bottom"], outline="")
-        self.eval_graph.create_line(0, mid_y, gw, mid_y, fill=THEME["border"], width=1)
+        self.eval_graph.create_rectangle(0, 0, gw, mid_y, fill=t["graph_top"], outline="")
+        self.eval_graph.create_rectangle(0, mid_y, gw, gh, fill=t["graph_bottom"], outline="")
+        self.eval_graph.create_line(0, mid_y, gw, mid_y, fill=t["border"], width=1)
 
         n = len(self.eval_history)
         if n == 0:
@@ -1728,7 +2129,8 @@ class GambitUI:
             if clamped >= 0:
                 self.eval_graph.create_rectangle(
                     x1, mid_y - bar_h, x2, mid_y,
-                    fill="#E2E8F0", outline=""
+                    fill="#E2E8F0" if self.sidebar_theme_name != "Arctic Light" else "#0F766E",
+                    outline=""
                 )
             else:
                 self.eval_graph.create_rectangle(
@@ -1738,7 +2140,7 @@ class GambitUI:
 
         if 0 <= self.view_index < n:
             mx = (self.view_index + 0.5) * col_w
-            self.eval_graph.create_line(mx, 0, mx, gh, fill=THEME["accent_badge_fg"], width=2)
+            self.eval_graph.create_line(mx, 0, mx, gh, fill=t["accent_badge_fg"], width=2)
 
     def on_eval_graph_click(self, event):
         if self.engine_busy or not self.position_history or not self.eval_history:
@@ -1749,7 +2151,7 @@ class GambitUI:
         self._cancel_animation()
         self._apply_view_index(idx)
 
-    def export_pgn(self, save_dialog=True):
+    def export_pgn(self, save_dialog=True, copy_clipboard=True):
         white_name = (
             "Human"
             if (self.game_mode == MODE_PVP or self.human_color == HUMAN_COLOR_WHITE)
@@ -1768,11 +2170,12 @@ class GambitUI:
             black_name=black_name,
             initial_fen=self.initial_fen,
         )
-        try:
-            self.root.clipboard_clear()
-            self.root.clipboard_append(pgn_text)
-        except Exception:
-            pass
+        if copy_clipboard:
+            try:
+                self.root.clipboard_clear()
+                self.root.clipboard_append(pgn_text)
+            except Exception:
+                pass
 
         if save_dialog and not self.closing:
             path = filedialog.asksaveasfilename(
@@ -1789,6 +2192,560 @@ class GambitUI:
             else:
                 messagebox.showinfo("PGN Copied", "PGN copied to clipboard.")
         return pgn_text
+
+    def prompt_load_pgn(self):
+        if self.engine_busy or self.animating or self.review_busy:
+            return
+        self._in_modal = True
+        self._stop_clock()
+        pgn_result_box = {"value": None}
+        t = self.theme
+        try:
+            dialog = tk.Toplevel(self.root)
+            dialog.title("Import PGN Game")
+            dialog.resizable(False, False)
+            dialog.configure(bg=t["sidebar"])
+            dialog.transient(self.root)
+            dialog.grab_set()
+
+            tk.Label(
+                dialog,
+                text="Paste PGN or Open .pgn File",
+                font=("Segoe UI", 13, "bold"),
+                fg=t["text"],
+                bg=t["sidebar"],
+                padx=20
+            ).pack(pady=(14, 6))
+
+            text_box = tk.Text(
+                dialog,
+                width=60,
+                height=10,
+                font=("Consolas", 9),
+                bg=t["list_bg"],
+                fg=t["text"],
+                insertbackground=t["text"],
+                relief="flat",
+                bd=6
+            )
+            text_box.pack(padx=20, pady=(0, 10))
+            text_box.focus_set()
+
+            def browse_file():
+                path = filedialog.askopenfilename(
+                    parent=dialog,
+                    title="Select PGN File",
+                    filetypes=[("PGN Files", "*.pgn"), ("All Files", "*.*")],
+                )
+                if path:
+                    with open(path, "r", encoding="utf-8", errors="replace") as f:
+                        content = f.read()
+                    text_box.delete("1.0", tk.END)
+                    text_box.insert("1.0", content)
+
+            btn_row = tk.Frame(dialog, bg=t["sidebar"], padx=20)
+            btn_row.pack(fill="x", pady=(0, 14))
+
+            def on_load():
+                raw = text_box.get("1.0", tk.END).strip()
+                if raw:
+                    pgn_result_box["value"] = raw
+                    dialog.destroy()
+
+            tk.Button(
+                btn_row,
+                text="📂 Open File...",
+                font=("Segoe UI", 9, "bold"),
+                bg=t["btn_bg"],
+                fg=t["text"],
+                relief="flat",
+                bd=0,
+                pady=6,
+                padx=10,
+                cursor="hand2",
+                command=browse_file
+            ).pack(side="left", padx=(0, 6))
+
+            tk.Button(
+                btn_row,
+                text="Load PGN",
+                font=("Segoe UI", 10, "bold"),
+                bg=t["accent_blue"],
+                fg="#FFFFFF",
+                relief="flat",
+                bd=0,
+                pady=6,
+                padx=14,
+                cursor="hand2",
+                command=on_load
+            ).pack(side="left", expand=True, fill="x", padx=(0, 4))
+
+            tk.Button(
+                btn_row,
+                text="Cancel",
+                font=("Segoe UI", 10),
+                bg=t["btn_bg"],
+                fg=t["text"],
+                relief="flat",
+                bd=0,
+                pady=6,
+                padx=12,
+                cursor="hand2",
+                command=dialog.destroy
+            ).pack(side="left", padx=(4, 0))
+
+            dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
+            dialog.update_idletasks()
+            x = self.root.winfo_rootx() + (self.root.winfo_width() - dialog.winfo_width()) // 2
+            y = self.root.winfo_rooty() + (self.root.winfo_height() - dialog.winfo_height()) // 2
+            dialog.geometry(f"+{max(0, x)}+{max(0, y)}")
+            dialog.lift()
+            self.root.wait_window(dialog)
+        finally:
+            self._in_modal = False
+
+        if pgn_result_box["value"]:
+            self.load_pgn(pgn_result_box["value"])
+        else:
+            self._start_clock()
+
+    def load_pgn(self, pgn_text):
+        if self.engine_busy or self.animating or self.review_busy:
+            return
+        self._stop_clock()
+        self.engine_busy = True
+        self._update_controls()
+        threading.Thread(
+            target=self._process_load_pgn,
+            args=(pgn_text,),
+            daemon=True
+        ).start()
+
+    def _process_load_pgn(self, pgn_text):
+        try:
+            parsed = parse_pgn_text(pgn_text)
+            start_fen = parsed["initial_fen"] or STANDARD_START_FEN
+            san_tokens = parsed["san_tokens"]
+
+            snapshots = []
+            move_history = []
+            san_history = []
+            eval_history = []
+            caps_w = []
+            caps_b = []
+
+            with self.engine_lock:
+                self._ensure_engine_alive(replay_state=False)
+                self.engine.stdin.write("NEW_GAME\n")
+                self.engine.stdin.flush()
+                resp = self.engine.stdout.readline().strip()
+                if resp != "NEW_GAME_OK":
+                    raise RuntimeError(f"Engine reset failed: {resp}")
+                if start_fen != STANDARD_START_FEN:
+                    if not set_fen(self.engine, start_fen):
+                        raise ValueError(f"Invalid PGN FEN header:\n{start_fen}")
+                    loaded_fen = get_fen(self.engine)
+                else:
+                    loaded_fen = STANDARD_START_FEN
+
+                board, legal, status, turn = get_position(self.engine)
+                engine_eval = get_engine_evaluation(self.engine)
+                ai_eval = self._compute_live_ai_eval(status, turn)
+                snapshots.append({
+                    "board": [r[:] for r in board],
+                    "status": status,
+                    "white_turn": (turn == "WHITE"),
+                    "last_move": None,
+                    "engine_eval": engine_eval,
+                    "ai_eval": ai_eval,
+                    "captured_by_white": [],
+                    "captured_by_black": [],
+                })
+                eval_history.append(max(-8.0, min(8.0, ai_eval / 100.0)))
+
+                for tok in san_tokens:
+                    uci = san_to_uci_move(board, legal, tok)
+                    if uci is None:
+                        raise ValueError(f"Illegal or unrecognized SAN move in PGN: '{tok}'")
+                    cap = get_captured_piece(board, uci)
+                    move_resp = send_move_to_engine(self.engine, uci)
+                    if move_resp != "MOVE_OK":
+                        raise RuntimeError(f"Engine rejected PGN move {tok} ({uci}): {move_resp}")
+                    next_board, next_legal, next_status, next_turn = get_position(self.engine)
+                    next_engine_eval = get_engine_evaluation(self.engine)
+                    if next_status == "CHECKMATE":
+                        next_ai_eval = -100000 if next_turn == "WHITE" else 100000
+                    elif next_status in GAME_OVER_STATUSES:
+                        next_ai_eval = 0
+                    else:
+                        _, next_ai_eval, _ = analyze_position_with_engine(
+                            self.engine, depth=2, time_limit_ms=60
+                        )
+                    san_fmt = format_san_move(board, legal, uci, next_status=next_status)
+                    if cap is not None:
+                        if cap.islower():
+                            caps_w.append(cap)
+                        else:
+                            caps_b.append(cap)
+                    move_history.append(uci)
+                    san_history.append(san_fmt)
+                    snapshots.append({
+                        "board": [r[:] for r in next_board],
+                        "status": next_status,
+                        "white_turn": (next_turn == "WHITE"),
+                        "last_move": uci,
+                        "engine_eval": next_engine_eval,
+                        "ai_eval": int(next_ai_eval),
+                        "captured_by_white": list(caps_w),
+                        "captured_by_black": list(caps_b),
+                    })
+                    eval_history.append(max(-8.0, min(8.0, next_ai_eval / 100.0)))
+                    board, legal, status, turn = next_board, next_legal, next_status, next_turn
+
+            if not self.closing:
+                self.root.after(
+                    0,
+                    lambda: self._apply_loaded_pgn(
+                        loaded_fen,
+                        move_history,
+                        san_history,
+                        snapshots,
+                        eval_history,
+                        board,
+                        legal,
+                        status,
+                        turn,
+                    )
+                )
+        except Exception as e:
+            if not self.closing:
+                self.root.after(
+                    0,
+                    lambda err=str(e): self._handle_move_error("PGN Import Error", err)
+                )
+
+    def _apply_loaded_pgn(
+        self,
+        loaded_fen,
+        move_history,
+        san_history,
+        snapshots,
+        eval_history,
+        final_board,
+        final_legal,
+        final_status,
+        final_turn,
+    ):
+        if self.closing:
+            return
+        self._cancel_animation()
+        self._game_saved = True  # Imported PGN shouldn't re-create duplicate history entries
+        self.game_mode = MODE_PVP
+        self.board_flipped = False
+        side_label = GAME_MODE_LABELS[self.game_mode]
+        self.mode_label.config(text=f"Mode: {side_label}")
+        self._refresh_mode_buttons()
+
+        self.initial_fen = loaded_fen
+        self.selected_square = None
+        self.selected_moves = []
+        self.premove = None
+        self._premove_selected = None
+        self.user_arrows.clear()
+        self.highlighted_squares.clear()
+        self.hint_move = None
+        self.review_annotations = []
+        self.review_summary = None
+        self.review_best_move = None
+
+        self.move_history = list(move_history)
+        self.san_history = list(san_history)
+        self.position_history = list(snapshots)
+        self.eval_history = list(eval_history)
+        self.legal_moves = list(final_legal)
+        self.board = [r[:] for r in final_board]
+        self.game_status = final_status
+        self.white_turn = (final_turn == "WHITE")
+
+        self.engine_busy = False
+        self._reset_clocks(self.time_control_name)
+        self.update_move_history()
+        self._apply_view_index(len(self.position_history) - 1)
+
+    def play_from_here(self, human_color=None):
+        """Truncate history at current view_index and continue live PvAI from that board."""
+        if (
+            self.engine_busy
+            or self.animating
+            or self.review_busy
+            or not self.position_history
+            or not (0 <= self.view_index < len(self.position_history))
+        ):
+            return
+        target_ply = self.view_index
+        snap = self.position_history[target_ply]
+        if snap["status"] in GAME_OVER_STATUSES and target_ply == len(self.position_history) - 1:
+            return
+
+        chosen_color = (
+            human_color
+            if human_color in (HUMAN_COLOR_WHITE, HUMAN_COLOR_BLACK)
+            else (HUMAN_COLOR_WHITE if snap["white_turn"] else HUMAN_COLOR_BLACK)
+        )
+        self._stop_clock()
+        self.engine_busy = True
+        self._update_controls()
+        threading.Thread(
+            target=self._process_play_from_here,
+            args=(target_ply, chosen_color),
+            daemon=True
+        ).start()
+
+    def _process_play_from_here(self, target_ply, chosen_color):
+        try:
+            kept_moves = list(self.move_history[:target_ply])
+            start_fen = self.initial_fen or STANDARD_START_FEN
+            with self.engine_lock:
+                self._ensure_engine_alive(replay_state=False)
+                self.engine.stdin.write("NEW_GAME\n")
+                self.engine.stdin.flush()
+                resp = self.engine.stdout.readline().strip()
+                if resp != "NEW_GAME_OK":
+                    raise RuntimeError(f"Engine reset failed: {resp}")
+                if start_fen != STANDARD_START_FEN:
+                    set_fen(self.engine, start_fen)
+                for mv in kept_moves:
+                    mresp = send_move_to_engine(self.engine, mv)
+                    if mresp != "MOVE_OK":
+                        raise RuntimeError(f"Failed replaying {mv}: {mresp}")
+                board, moves, status, turn = get_position(self.engine)
+                engine_eval = get_engine_evaluation(self.engine)
+                ai_eval = self._compute_live_ai_eval(status, turn)
+
+            if not self.closing:
+                self.root.after(
+                    0,
+                    lambda: self._apply_play_from_here(
+                        target_ply, chosen_color, board, moves, status, turn, engine_eval, ai_eval
+                    )
+                )
+        except Exception as e:
+            if not self.closing:
+                self.root.after(
+                    0,
+                    lambda err=str(e): self._handle_move_error("Play From Here Error", err)
+                )
+
+    def _apply_play_from_here(
+        self, target_ply, chosen_color, board, moves, status, turn, engine_eval, ai_eval
+    ):
+        if self.closing:
+            return
+        self._cancel_animation()
+        self._game_saved = False
+        self.move_history = list(self.move_history[:target_ply])
+        self.san_history = list(self.san_history[:target_ply])
+        self.position_history = list(self.position_history[: target_ply + 1])
+        self.eval_history = list(self.eval_history[: target_ply + 1])
+
+        last_snap = self.position_history[-1]
+        last_snap["status"] = status
+        last_snap["engine_eval"] = engine_eval
+        last_snap["ai_eval"] = ai_eval
+
+        self.board = [r[:] for r in board]
+        self.legal_moves = list(moves)
+        self.game_status = status
+        self.white_turn = (turn == "WHITE")
+        self.last_move = last_snap.get("last_move")
+        self.captured_by_white = list(last_snap.get("captured_by_white", []))
+        self.captured_by_black = list(last_snap.get("captured_by_black", []))
+        self.review_annotations = []
+        self.review_summary = None
+        self.review_best_move = None
+        self.hint_move = None
+        self.selected_square = None
+        self.selected_moves = []
+        self.user_arrows.clear()
+        self.highlighted_squares.clear()
+        self.premove = None
+        self._premove_selected = None
+        self.view_index = len(self.position_history) - 1
+
+        self.engine_busy = False
+        self._apply_game_config(MODE_PVAI, chosen_color, self.time_control_name)
+        self._reset_clocks(self.time_control_name)
+        self.update_move_history()
+        self.update_evaluation_panel(self.board, engine_eval=engine_eval, ai_eval=ai_eval)
+        self._update_opening_banner(self.view_index)
+        self._draw_eval_graph()
+        self._highlight_history_for_view(self.view_index)
+        self._update_controls()
+        self._start_clock()
+        self.draw_board()
+        if should_ai_move_for_turn(self.game_mode, self.game_status, turn, self.human_color):
+            self.engine_busy = True
+            self._update_controls()
+            threading.Thread(
+                target=self.process_ai_turn,
+                args=([r[:] for r in board], list(moves), status, turn),
+                daemon=True
+            ).start()
+
+    def _maybe_autosave_completed_game(self):
+        if (
+            self._game_saved
+            or not self.games_path
+            or self.game_status not in GAME_OVER_STATUSES
+            or len(self.move_history) < 2
+        ):
+            return
+        result = pgn_result(self.game_status, self.white_turn)
+        outcome = compute_game_outcome(result, self.game_mode, self.human_color)
+        opening = detect_opening_name(self.move_history, self.initial_fen)
+        pgn_text = self.export_pgn(save_dialog=False, copy_clipboard=False)
+        record = {
+            "mode": self.game_mode,
+            "human_color": self.human_color,
+            "result": result,
+            "outcome": outcome,
+            "status": self.game_status,
+            "opening": opening,
+            "moves_count": len(self.move_history),
+            "pgn": pgn_text,
+        }
+        if save_completed_game_record(record, path=self.games_path):
+            self._game_saved = True
+
+    def open_game_library(self):
+        if self.engine_busy or self.animating or self.review_busy:
+            return
+        games = load_saved_games(self.games_path) if self.games_path else []
+        stats = compute_player_stats(games)
+        t = self.theme
+        self._in_modal = True
+        self._stop_clock()
+        chosen_pgn = {"value": None}
+        try:
+            dialog = tk.Toplevel(self.root)
+            dialog.title("Saved Games & Player Stats")
+            dialog.resizable(False, False)
+            dialog.configure(bg=t["sidebar"])
+            dialog.transient(self.root)
+            dialog.grab_set()
+
+            tk.Label(
+                dialog,
+                text="Game Library & Stats",
+                font=("Segoe UI", 13, "bold"),
+                fg=t["text"],
+                bg=t["sidebar"],
+                padx=20
+            ).pack(pady=(14, 6))
+
+            stats_card = tk.Frame(
+                dialog, bg=t["card"], highlightthickness=1, highlightbackground=t["border"], padx=14, pady=8
+            )
+            stats_card.pack(fill="x", padx=20, pady=(0, 10))
+            tk.Label(
+                stats_card,
+                text=(
+                    f"Total Saved: {stats['total']}   |   "
+                    f"PvAI W-D-L: {stats['wins']}-{stats['draws']}-{stats['losses']}   |   "
+                    f"Win Rate: {stats['win_rate']:.1f}%"
+                ),
+                font=("Segoe UI", 9, "bold"),
+                fg=t["accent_soft"],
+                bg=t["card"]
+            ).pack(fill="x")
+
+            list_frame = tk.Frame(dialog, bg=t["list_bg"], highlightthickness=1, highlightbackground=t["border"])
+            list_frame.pack(fill="both", expand=True, padx=20, pady=(0, 10))
+            scroll = tk.Scrollbar(list_frame)
+            scroll.pack(side="right", fill="y")
+            listbox = tk.Listbox(
+                list_frame,
+                width=64,
+                height=10,
+                font=("Consolas", 9),
+                bg=t["list_bg"],
+                fg=t["text"],
+                selectbackground=t["accent_blue"],
+                selectforeground="#FFFFFF",
+                bd=0,
+                highlightthickness=0,
+                yscrollcommand=scroll.set
+            )
+            listbox.pack(side="left", fill="both", expand=True, padx=6, pady=4)
+            scroll.config(command=listbox.yview)
+
+            if not games:
+                listbox.insert(tk.END, "  No completed games saved yet. Finish a game to log it here.")
+            else:
+                for g in games:
+                    ts = g.get("timestamp", "")
+                    res = g.get("result", "*")
+                    out = g.get("outcome", "")
+                    op = g.get("opening", "Chess")
+                    mc = g.get("moves_count", 0)
+                    md = g.get("mode", "PvAI")
+                    listbox.insert(tk.END, f"{ts} | {md:<4} | {res:<7} ({out:<4}) | {mc:>2} plies | {op}")
+
+            btn_row = tk.Frame(dialog, bg=t["sidebar"], padx=20)
+            btn_row.pack(fill="x", pady=(0, 14))
+
+            def on_load_selected():
+                sel = listbox.curselection()
+                if not sel or not games:
+                    return
+                idx = sel[0]
+                if 0 <= idx < len(games) and games[idx].get("pgn"):
+                    chosen_pgn["value"] = games[idx]["pgn"]
+                    dialog.destroy()
+
+            tk.Button(
+                btn_row,
+                text="Load Selected Game",
+                font=("Segoe UI", 10, "bold"),
+                bg=t["accent_blue"],
+                fg="#FFFFFF",
+                relief="flat",
+                bd=0,
+                pady=6,
+                padx=14,
+                cursor="hand2",
+                state="normal" if games else "disabled",
+                command=on_load_selected
+            ).pack(side="left", expand=True, fill="x", padx=(0, 4))
+
+            tk.Button(
+                btn_row,
+                text="Close",
+                font=("Segoe UI", 10),
+                bg=t["btn_bg"],
+                fg=t["text"],
+                relief="flat",
+                bd=0,
+                pady=6,
+                padx=14,
+                cursor="hand2",
+                command=dialog.destroy
+            ).pack(side="left", padx=(4, 0))
+
+            dialog.protocol("WM_DELETE_WINDOW", dialog.destroy)
+            dialog.update_idletasks()
+            x = self.root.winfo_rootx() + (self.root.winfo_width() - dialog.winfo_width()) // 2
+            y = self.root.winfo_rooty() + (self.root.winfo_height() - dialog.winfo_height()) // 2
+            dialog.geometry(f"+{max(0, x)}+{max(0, y)}")
+            dialog.lift()
+            self.root.wait_window(dialog)
+        finally:
+            self._in_modal = False
+
+        if chosen_pgn["value"]:
+            self.load_pgn(chosen_pgn["value"])
+        else:
+            self._start_clock()
 
     def prompt_load_fen(self):
         if self.engine_busy or self.animating:
@@ -1921,6 +2878,7 @@ class GambitUI:
         if self.closing:
             return
         self._cancel_animation()
+        self._game_saved = False
         self.initial_fen = loaded_fen
         self.selected_square = None
         self.selected_moves = []
@@ -1961,24 +2919,26 @@ class GambitUI:
             self._cancel_animation()
         self.board_flipped = not self.board_flipped
         self._refresh_clocks()
+        self._draw_board_eval_bar(self.current_eval_score)
         self.draw_board()
 
     def _refresh_mode_buttons(self):
         if self.closing:
             return
+        t = self.theme
         if self.game_mode == MODE_PVAI:
             self.pvai_mode_btn.config(
-                bg=THEME["accent_blue"], fg="#FFFFFF"
+                bg=t["accent_blue"], fg="#FFFFFF"
             )
             self.pvp_mode_btn.config(
-                bg=THEME["btn_bg"], fg=THEME["muted"]
+                bg=t["btn_bg"], fg=t["muted"]
             )
         else:
             self.pvai_mode_btn.config(
-                bg=THEME["btn_bg"], fg=THEME["muted"]
+                bg=t["btn_bg"], fg=t["muted"]
             )
             self.pvp_mode_btn.config(
-                bg=THEME["accent_green"], fg="#FFFFFF"
+                bg=t["accent_green"], fg="#FFFFFF"
             )
 
     def select_mode_from_sidebar(self, mode):
@@ -2210,6 +3170,8 @@ class GambitUI:
         self.pvp_mode_btn.config(state=state)
         self.time_menu.config(state=state)
         self.fen_button.config(state=state)
+        self.pgn_button.config(state=state)
+        self.library_button.config(state=state)
         ai_state = (
             "normal"
             if (not self.engine_busy and self.game_mode == MODE_PVAI)
@@ -2271,6 +3233,21 @@ class GambitUI:
             text="🔍 Reviewing..." if self.review_busy else "🔍 Review",
             state="normal" if can_review else "disabled"
         )
+        can_play_here = (
+            not self.engine_busy
+            and not self.review_busy
+            and not self.animating
+            and len(self.position_history) > 1
+            and 0 <= self.view_index < len(self.position_history)
+            and self.position_history[self.view_index]["status"] not in GAME_OVER_STATUSES
+            and (
+                (not self.is_viewing_live())
+                or self.game_mode == MODE_PVP
+            )
+        )
+        self.play_from_here_button.config(
+            state="normal" if can_play_here else "disabled"
+        )
 
     def _draw_eval_bar(self, score):
         bar_width = self.eval_bar.winfo_width()
@@ -2289,7 +3266,7 @@ class GambitUI:
         )
         self.eval_bar.create_rectangle(
             split_x, 0, bar_width, bar_height,
-            fill=THEME["list_bg"],
+            fill=self.theme["list_bg"],
             outline=""
         )
         mid_x = bar_width // 2
@@ -2297,6 +3274,45 @@ class GambitUI:
             mid_x, 0, mid_x, bar_height,
             fill="#64748B",
             width=1
+        )
+
+    def _draw_board_eval_bar(self, score):
+        if not hasattr(self, "board_eval_bar") or not self.show_eval_bar:
+            return
+        bw = self.board_eval_bar.winfo_width()
+        bh = self.board_eval_bar.winfo_height()
+        if bw <= 1 or bh <= 1:
+            return
+
+        self.board_eval_bar.delete("all")
+        ratio = compute_advantage_ratio(score)
+        white_fill = "#F8FAFC"
+        black_fill = "#0F172A"
+
+        if self.board_flipped:
+            split_y = int(bh * ratio)
+            self.board_eval_bar.create_rectangle(0, 0, bw, split_y, fill=white_fill, outline="")
+            self.board_eval_bar.create_rectangle(0, split_y, bw, bh, fill=black_fill, outline="")
+        else:
+            split_y = int(bh * (1.0 - ratio))
+            self.board_eval_bar.create_rectangle(0, 0, bw, split_y, fill=black_fill, outline="")
+            self.board_eval_bar.create_rectangle(0, split_y, bw, bh, fill=white_fill, outline="")
+
+        mid_y = bh // 2
+        self.board_eval_bar.create_line(0, mid_y, bw, mid_y, fill="#64748B", width=1)
+
+        if abs(self.ai_eval_cp) >= 90000:
+            mate_in = max(1, (100000 - abs(self.ai_eval_cp) + 1) // 2)
+            badge_txt = f"M{mate_in}" if abs(self.ai_eval_cp) < 100000 else "M"
+        else:
+            badge_txt = f"{abs(score):.1f}"
+        white_ahead = score >= 0
+        white_at_bottom = not self.board_flipped
+        put_bottom = (white_ahead == white_at_bottom)
+        txt_y = bh - 10 if put_bottom else 10
+        txt_fg = "#0F172A" if white_ahead else "#E2E8F0"
+        self.board_eval_bar.create_text(
+            bw / 2, txt_y, text=badge_txt, font=("Consolas", 7, "bold"), fill=txt_fg
         )
 
     def _format_live_ai_display(self, ai_cp):
@@ -2333,16 +3349,18 @@ class GambitUI:
         headline, side, bar_score, ai_display = self._format_live_ai_display(self.ai_eval_cp)
         self.current_eval_score = bar_score
 
+        t = self.theme
         dark_colors = {
-            "WHITE": "#4ADE80",
-            "BLACK": "#F87171",
-            "EQUAL": "#E5E7EB",
+            "WHITE": t["headline_white"],
+            "BLACK": t["headline_black"],
+            "EQUAL": t["headline_equal"],
         }
         self.eval_headline_label.config(
             text=headline,
-            fg=dark_colors.get(side, "#E5E7EB")
+            fg=dark_colors.get(side, t["headline_equal"])
         )
         self._draw_eval_bar(bar_score)
+        self._draw_board_eval_bar(bar_score)
 
         self.ai_eval_label.config(
             text=f"AI Positional Eval (Search AI+): {ai_display}"
@@ -2471,6 +3489,7 @@ class GambitUI:
             self.premove = None
             self._premove_selected = None
             self._stop_clock()
+            self._maybe_autosave_completed_game()
 
         self.update_evaluation_panel(board, engine_eval=engine_eval, ai_eval=resolved_ai_cp)
         self._update_opening_banner(self.view_index)
@@ -3103,6 +4122,7 @@ class GambitUI:
         )
         if self.position_history:
             self.position_history[-1]["status"] = self.game_status
+        self._maybe_autosave_completed_game()
         play_sound("gameover", self.sound_enabled)
         self._refresh_clocks()
         self._update_controls()
@@ -3136,6 +4156,7 @@ class GambitUI:
         self.game_status = "DRAW_AGREED"
         if self.position_history:
             self.position_history[-1]["status"] = self.game_status
+        self._maybe_autosave_completed_game()
         play_sound("gameover", self.sound_enabled)
         self._refresh_clocks()
         self._update_controls()
@@ -3669,6 +4690,7 @@ class GambitUI:
             self._reset_clocks(self.time_control_name)
 
         self._cancel_animation()
+        self._game_saved = False
         self.selected_square = None
         self.selected_moves = []
         self.premove = None

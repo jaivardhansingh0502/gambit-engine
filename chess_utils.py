@@ -1,8 +1,11 @@
+from datetime import datetime
 import json
 import math
 import os
 import re
 import struct
+import subprocess
+import sys
 import threading
 
 try:
@@ -13,15 +16,68 @@ except ImportError:
 
 STANDARD_START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
+
+def is_frozen_app():
+    return bool(getattr(sys, "frozen", False))
+
+
+def get_resource_dir():
+    if is_frozen_app():
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass and os.path.exists(meipass):
+            return meipass
+        return os.path.dirname(os.path.abspath(sys.executable))
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def get_resource_path(*parts):
+    return os.path.join(get_resource_dir(), *parts)
+
+
+def get_engine_executable_name():
+    return "gambit.exe" if sys.platform.startswith("win") else "gambit"
+
+
+def get_engine_path():
+    candidate = get_resource_path(get_engine_executable_name())
+    if os.path.exists(candidate):
+        return candidate
+    if is_frozen_app():
+        exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+        alt = os.path.join(exe_dir, get_engine_executable_name())
+        if os.path.exists(alt):
+            return alt
+        if sys.platform == "darwin":
+            res_alt = os.path.normpath(
+                os.path.join(exe_dir, "..", "Resources", get_engine_executable_name())
+            )
+            if os.path.exists(res_alt):
+                return res_alt
+    return candidate
+
+
+def get_user_data_dir():
+    if not is_frozen_app():
+        return os.path.dirname(os.path.abspath(__file__))
+    if sys.platform.startswith("win"):
+        base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+        return os.path.join(base, "GambitChess")
+    if sys.platform == "darwin":
+        return os.path.expanduser("~/Library/Application Support/GambitChess")
+    base = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+    return os.path.join(base, "GambitChess")
+
+
 DEFAULT_SETTINGS_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
+    get_user_data_dir(),
     "settings.json",
 )
-DEFAULT_APP_ICON_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "assets",
-    "gambit.ico",
+DEFAULT_GAMES_PATH = os.path.join(
+    get_user_data_dir(),
+    "games",
+    "saved_games.json",
 )
+DEFAULT_APP_ICON_PATH = get_resource_path("assets", "gambit.ico")
 
 DEFAULT_TIME_CONTROLS = {
     "Untimed": None,
@@ -34,6 +90,8 @@ DEFAULT_TIME_CONTROLS = {
 
 DEFAULT_USER_SETTINGS = {
     "board_theme": "Classic Green",
+    "sidebar_theme": "Obsidian Emerald",
+    "show_eval_bar": True,
     "sound_enabled": True,
     "difficulty": "Medium (Depth 4)",
     "time_control": "Untimed",
@@ -298,26 +356,226 @@ def build_pgn(
     return "\n".join(headers) + "\n\n" + " ".join(tokens)
 
 
+def _strip_pgn_comments_and_variations(movetext):
+    """Remove {...} comments, ; line comments, and nested (...) variations."""
+    out = []
+    paren_depth = 0
+    in_brace = False
+    in_line_comment = False
+    for ch in movetext:
+        if in_line_comment:
+            if ch in ("\r", "\n"):
+                in_line_comment = False
+                out.append(" ")
+            continue
+        if in_brace:
+            if ch == "}":
+                in_brace = False
+                out.append(" ")
+            continue
+        if ch == "{":
+            in_brace = True
+            out.append(" ")
+            continue
+        if ch == ";" and paren_depth == 0:
+            in_line_comment = True
+            continue
+        if ch == "(":
+            paren_depth += 1
+            out.append(" ")
+            continue
+        if ch == ")":
+            if paren_depth > 0:
+                paren_depth -= 1
+            out.append(" ")
+            continue
+        if paren_depth == 0:
+            out.append(ch)
+    return "".join(out)
+
+
+def parse_pgn_text(pgn_text):
+    """Parse PGN headers, optional SetUp FEN, and mainline SAN move tokens."""
+    text = (pgn_text or "").strip()
+    if not text:
+        raise ValueError("PGN text is empty.")
+
+    headers = {}
+    body_lines = []
+    in_headers = True
+    for line in text.splitlines():
+        stripped = line.strip()
+        if in_headers and stripped.startswith("[") and stripped.endswith("]"):
+            m = re.match(r'^\[(\w+)\s+"(.*)"\]$', stripped)
+            if m:
+                headers[m.group(1)] = m.group(2)
+            continue
+        if stripped or body_lines:
+            in_headers = False
+            body_lines.append(line)
+
+    if not body_lines:
+        body_text = re.sub(r'^\s*(?:\[\w+\s+"[^"]*"\]\s*)+', "", text)
+    else:
+        body_text = "\n".join(body_lines)
+
+    cleaned = _strip_pgn_comments_and_variations(body_text)
+    raw_tokens = cleaned.split()
+    san_tokens = []
+    results_set = {"1-0", "0-1", "1/2-1/2", "*"}
+
+    for tok in raw_tokens:
+        if tok in results_set:
+            break
+        if tok.startswith("$"):
+            continue
+        if re.fullmatch(r"\d+\.+", tok):
+            continue
+        tok = re.sub(r"^\d+\.+", "", tok).strip()
+        if not tok or tok in results_set:
+            continue
+        san_tokens.append(tok)
+
+    if not san_tokens:
+        raise ValueError("No chess moves found in PGN text.")
+
+    initial_fen = headers.get("FEN") or None
+    return {
+        "headers": headers,
+        "initial_fen": initial_fen,
+        "san_tokens": san_tokens,
+    }
+
+
+def san_to_uci_move(board_before, legal_moves, token):
+    """Match a SAN (or UCI) token against legal_moves using FIDE SAN formatting."""
+    if not token or not legal_moves:
+        return None
+    raw = token.strip()
+    norm = raw.rstrip("+#!?")
+    norm_upper_castle = norm.replace("0-0-0", "O-O-O").replace("0-0", "O-O")
+
+    for lm in legal_moves:
+        if raw.lower() == lm.lower() or norm.lower() == lm.lower():
+            return lm
+        cand_san = format_san_move(board_before, legal_moves, lm).rstrip("+#")
+        if cand_san == norm_upper_castle:
+            return lm
+        if cand_san.replace("=", "") == norm_upper_castle.replace("=", ""):
+            return lm
+    return None
+
+
+def compute_game_outcome(result, game_mode, human_color):
+    """Classify finished game outcome relative to the human in PvAI, or PVP."""
+    if game_mode != "PvAI":
+        return "PVP"
+    if result == "1/2-1/2":
+        return "DRAW"
+    if result == "1-0":
+        return "WIN" if human_color == "WHITE" else "LOSS"
+    if result == "0-1":
+        return "WIN" if human_color == "BLACK" else "LOSS"
+    return "OTHER"
+
+
+def load_saved_games(path=DEFAULT_GAMES_PATH):
+    """Load saved game records list (newest first)."""
+    if not path or not os.path.exists(path):
+        return []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, list):
+            return [item for item in data if isinstance(item, dict)]
+    except Exception:
+        pass
+    return []
+
+
+def save_completed_game_record(record, path=DEFAULT_GAMES_PATH, max_games=200):
+    """Append a completed game record (newest first) to saved games JSON."""
+    if not path or not isinstance(record, dict):
+        return False
+    entry = dict(record)
+    entry.setdefault("timestamp", datetime.now().strftime("%Y-%m-%d %H:%M"))
+    games = load_saved_games(path)
+    games.insert(0, entry)
+    games = games[:max_games]
+    try:
+        parent = os.path.dirname(os.path.abspath(path))
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(games, f, indent=2)
+        return True
+    except Exception:
+        return False
+
+
+def compute_player_stats(games):
+    """Summarize total games and PvAI W/D/L win rate from saved game records."""
+    total = len(games)
+    pvai_games = [g for g in games if g.get("mode") == "PvAI"]
+    wins = sum(1 for g in pvai_games if g.get("outcome") == "WIN")
+    losses = sum(1 for g in pvai_games if g.get("outcome") == "LOSS")
+    draws = sum(1 for g in pvai_games if g.get("outcome") == "DRAW")
+    pvai_total = len(pvai_games)
+    win_rate = round((wins / pvai_total) * 100.0, 1) if pvai_total else 0.0
+    return {
+        "total": total,
+        "pvai_total": pvai_total,
+        "wins": wins,
+        "losses": losses,
+        "draws": draws,
+        "win_rate": win_rate,
+    }
+
+
 def play_sound(kind, enabled=True):
-    if not enabled or winsound is None:
+    if not enabled:
         return
 
-    tones = {
-        "move": (520, 35),
-        "capture": (680, 50),
-        "castle": (580, 45),
-        "check": (880, 70),
-        "gameover": (420, 110),
-    }
-    freq, dur = tones.get(kind, (500, 35))
+    if winsound is not None:
+        tones = {
+            "move": (520, 35),
+            "capture": (680, 50),
+            "castle": (580, 45),
+            "check": (880, 70),
+            "gameover": (420, 110),
+        }
+        freq, dur = tones.get(kind, (500, 35))
 
-    def _beep():
-        try:
-            winsound.Beep(freq, dur)
-        except Exception:
-            pass
+        def _beep():
+            try:
+                winsound.Beep(freq, dur)
+            except Exception:
+                pass
 
-    threading.Thread(target=_beep, daemon=True).start()
+        threading.Thread(target=_beep, daemon=True).start()
+        return
+
+    if sys.platform == "darwin":
+        mac_sounds = {
+            "move": "/System/Library/Sounds/Pop.aiff",
+            "capture": "/System/Library/Sounds/Tink.aiff",
+            "castle": "/System/Library/Sounds/Pop.aiff",
+            "check": "/System/Library/Sounds/Glass.aiff",
+            "gameover": "/System/Library/Sounds/Hero.aiff",
+        }
+        sound_file = mac_sounds.get(kind, "/System/Library/Sounds/Pop.aiff")
+        if os.path.exists(sound_file):
+            def _afplay():
+                try:
+                    subprocess.Popen(
+                        ["afplay", sound_file],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
+                except Exception:
+                    pass
+
+            threading.Thread(target=_afplay, daemon=True).start()
 
 
 def parse_custom_time_control(minutes, increment):

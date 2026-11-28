@@ -12,16 +12,24 @@ from chess_utils import (
     build_pgn,
     calculate_accuracy,
     classify_cp_loss,
+    compute_game_outcome,
+    compute_player_stats,
     detect_opening_name,
     format_captured_tray,
     format_san_move,
     generate_app_icon,
     get_captured_piece,
+    get_engine_executable_name,
+    get_resource_path,
+    load_saved_games,
     load_user_settings,
     parse_custom_time_control,
+    parse_pgn_text,
     pgn_result,
     play_sound,
     resolve_time_control_spec,
+    san_to_uci_move,
+    save_completed_game_record,
     save_user_settings,
 )
 
@@ -180,6 +188,8 @@ class ChessUtilsTests(unittest.TestCase):
                 save_user_settings(
                     {
                         "board_theme": "Slate Blue",
+                        "sidebar_theme": "Midnight Indigo",
+                        "show_eval_bar": False,
                         "sound_enabled": False,
                         "difficulty": "Hard (Depth 6)",
                         "time_control": "Custom (7+5)",
@@ -189,6 +199,8 @@ class ChessUtilsTests(unittest.TestCase):
             )
             loaded = load_user_settings(cfg_path)
             self.assertEqual(loaded["board_theme"], "Slate Blue")
+            self.assertEqual(loaded["sidebar_theme"], "Midnight Indigo")
+            self.assertFalse(loaded["show_eval_bar"])
             self.assertFalse(loaded["sound_enabled"])
             self.assertEqual(loaded["difficulty"], "Hard (Depth 6)")
             self.assertEqual(loaded["time_control"], "Custom (7+5)")
@@ -199,6 +211,50 @@ class ChessUtilsTests(unittest.TestCase):
                 data = f.read()
             self.assertGreater(len(data), 4000)
             self.assertEqual(data[:4], b"\x00\x00\x01\x00")
+
+    def test_pgn_parsing_san_matching_stats_and_cross_platform_helpers(self):
+        sample_pgn = (
+            '[Event "Casual"]\n'
+            '[White "Alice"]\n'
+            '[Black "Bob"]\n\n'
+            '1. e4 {King pawn} e5 2. Nf3 (2. f4 exf4) Nc6 3. Bb5! a6 1-0'
+        )
+        parsed = parse_pgn_text(sample_pgn)
+        self.assertEqual(parsed["headers"]["White"], "Alice")
+        self.assertIsNone(parsed["initial_fen"])
+        self.assertEqual(parsed["san_tokens"], ["e4", "e5", "Nf3", "Nc6", "Bb5!", "a6"])
+
+        board = initial_board()
+        uci_e4 = san_to_uci_move(board, ["e2e4", "d2d4", "g1f3"], "e4")
+        self.assertEqual(uci_e4, "e2e4")
+        self.assertEqual(san_to_uci_move(board, ["g1f3", "b1c3"], "Nf3+"), "g1f3")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            games_file = os.path.join(tmpdir, "saved_games.json")
+            self.assertEqual(load_saved_games(games_file), [])
+            save_completed_game_record(
+                {"mode": "PvAI", "result": "1-0", "outcome": compute_game_outcome("1-0", "PvAI", "WHITE"), "moves_count": 10},
+                path=games_file,
+            )
+            save_completed_game_record(
+                {"mode": "PvAI", "result": "0-1", "outcome": compute_game_outcome("0-1", "PvAI", "WHITE"), "moves_count": 14},
+                path=games_file,
+            )
+            save_completed_game_record(
+                {"mode": "PvP", "result": "1/2-1/2", "outcome": compute_game_outcome("1/2-1/2", "PvP", "WHITE"), "moves_count": 20},
+                path=games_file,
+            )
+            loaded_games = load_saved_games(games_file)
+            self.assertEqual(len(loaded_games), 3)
+            stats = compute_player_stats(loaded_games)
+            self.assertEqual(stats["total"], 3)
+            self.assertEqual(stats["pvai_total"], 2)
+            self.assertEqual(stats["wins"], 1)
+            self.assertEqual(stats["losses"], 1)
+            self.assertEqual(stats["win_rate"], 50.0)
+
+        self.assertIn("gambit", get_engine_executable_name())
+        self.assertTrue(get_resource_path("assets", "gambit.ico").endswith("gambit.ico"))
 
 
 if __name__ == "__main__":

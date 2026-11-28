@@ -439,12 +439,13 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
 ## Milestone 19 — Real-Time C++ AI+ Position Evaluation & Cleaner Sidebar UI
 
 - **Status:** Completed
+- **Commit:** `71d3a63` (plus `d324e20` sidebar Obsidian Carbon & Emerald Teal color update)
 - **Changes Implemented:**
   - **Real-Time AI+ Search Evaluation (`ui.py`):**
     - Added `_compute_live_ai_eval(status, turn)` querying `analyze_position_with_engine(self.engine, depth=4, time_limit_ms=160)` (`ANALYZE_MOVE`) inside `with self.engine_lock:` on initial startup, FEN load, New Game, every human move, and every AI move (with exact mate-distance handling `White has Mate in M1` / `White wins (Mate)` / draws -> `0`).
     - Replaced static material-only headline/bar updates with real-time White-perspective AI+ search scores in `update_evaluation_panel()` and `_format_live_ai_display()`, storing `ai_eval` in each `position_history` snapshot and plotting `eval_history` momentum live across every move and replay (`Back`/`Next`/History click/`Live`).
   - **Cleaner, More Spacious Sidebar UI (`ui.py`):**
-    - Refined dark slate palette (`THEME`), widened sidebar (`width=386`) and outer spacing (`padx=16` inner rhythm), and replaced the congested `tk.LabelFrame` box with a flat modern `eval_frame` card featuring a `POSITION EVALUATION` + `AI+ LIVE` pill header, sleek borderless advantage bar/graph, concise AI+ Search & C++ material readouts, and a single-row side-by-side `White` / `Black` material balance (`W: Q1 R2 B2 N2 P8` / `B: q1 r2 b2 n2 p8`).
+    - Refined palette (`THEME` updated in `d324e20` to Obsidian Carbon & Emerald Teal), widened sidebar (`width=386`) and outer spacing (`padx=16` inner rhythm), and replaced the congested `tk.LabelFrame` box with a flat modern `eval_frame` card featuring a `POSITION EVALUATION` + `AI+ LIVE` pill header, sleek borderless advantage bar/graph, concise AI+ Search & C++ material readouts, and a single-row side-by-side `White` / `Black` material balance (`W: Q1 R2 B2 N2 P8` / `B: q1 r2 b2 n2 p8`).
   - **Tests (`tests/test_ui_logic.py`):**
     - Updated `test_pvp_mode_replay_eval_and_resign_both_sides` for real-time AI+ score progression & equal replay restoration, and added `test_realtime_ai_plus_evaluation_mate_and_replay` verifying live AI+ mate detection (`+M1`, `+M0`, `current_eval_score == 20.0`) on equal-material tactical FENs and history replay.
 - **Files Modified:**
@@ -453,3 +454,32 @@ Baseline Commit: `b070b5e` (*Temporary Move Removed*)
   - `python -m py_compile ui.py tests/test_ui_logic.py` — Passed.
   - `1280x680` sidebar geometry check (`sidebar=386x705`, `abs_action_bottom=706 <= 729`, `fit_ok=True`, `mat_gap=110px`) — Passed.
   - `python -m unittest discover -s tests -v` — 49 tests passed in 10.946s (`OK`).
+
+---
+
+## Milestone 20 — PGN Import, Branch-to-AI, Game Library Stats, Board Eval Bar, Selectable Sidebar Themes & Cross-Platform App Packaging (Options A + D + Windows/macOS Distribution)
+
+- **Status:** Completed
+- **Changes Implemented:**
+  - **Option A — PGN Import, Play From Here & Auto-Saved Game Library (`chess_utils.py`, `ui.py`):**
+    - Added `parse_pgn_text()`, `san_to_uci_move()` (reusing FIDE `format_san_move()`), `compute_game_outcome()`, `load_saved_games()`, `save_completed_game_record()`, and `compute_player_stats()`.
+    - Added `PGN ▾` menu (`Import PGN...` paste or `.pgn` file browser + `Export PGN...`), `▶ Play Here` branching from any reviewed position directly into live PvAI (`play_from_here()`), automatic completed-game saving to `games/saved_games.json`, and the `📚` **Game Library & Stats** modal (`open_game_library()`).
+  - **Option D — Board Eval Bar, Selectable Sidebar Themes & Clock Advantage Badges (`ui.py`, `chess_utils.py`):**
+    - Added a vertical board-adjacent evaluation bar (`board_eval_bar`, `_draw_board_eval_bar()`, flip-aware & toggleable via `🎨` → `Board Eval Bar`).
+    - Added 4 live-switchable `SIDEBAR_THEMES` (`Obsidian Emerald`, `Midnight Indigo`, `Warm Espresso`, `Arctic Light`) via `apply_sidebar_theme()`, persisted in `settings.json`.
+    - Added net material advantage badges (`+3`, `+5`) in each clock header box (`top_advantage_label`, `bottom_advantage_label`).
+  - **Cross-Platform Windows & macOS Standalone Packaging (`chess_utils.py`, `ui.py`, `build_app.py`, `.github/workflows/build-releases.yml`):**
+    - Added frozen-bundle & OS-aware path resolution (`get_resource_path()`, `get_engine_path()`, `get_user_data_dir()` storing `settings.json` / `saved_games.json` in `%LOCALAPPDATA%\GambitChess` on Windows and `~/Library/Application Support/GambitChess` on macOS when packaged).
+    - Added macOS Aqua Tk zoom fallback (`_maximize_window()`), guarded `.ico` loading, trackpad right-click `<ButtonPress-2>`/`<ButtonRelease-2>` bindings, and macOS `afplay` sound support.
+    - Compiled static C++ `gambit.exe` (`-static -static-libgcc -static-libstdc++`) and built standalone 13.0 MB `dist/GambitChess.exe` + `dist/GambitChess-Windows.zip` via `build_app.py`, alongside a dual-OS GitHub Actions workflow (`build-releases.yml`) that builds & publishes both Windows `.zip` and macOS `.app`/`.dmg` bundles automatically.
+- **Files Created / Modified:**
+  - `build_app.py`, `.github/workflows/build-releases.yml`
+  - `chess_utils.py`, `ui.py`, `.gitignore`
+  - `tests/test_chess_utils.py`, `tests/test_ui_logic.py`
+  - `README.md`, `DEVELOPMENT_LOG.md`
+- **Tests Performed:**
+  - `python -m py_compile ui.py chess_utils.py build_app.py tests/test_ui_logic.py tests/test_chess_utils.py` — Passed.
+  - `python build_app.py` — Built static `gambit.exe` and standalone `dist/GambitChess.exe` + `dist/GambitChess-Windows.zip` cleanly.
+  - Isolated `dist/GambitChess.exe` launch test from an empty temp directory — Passed (`EXE_ALIVE_ISOLATED: True`, `13.0 MB`).
+  - `1280x680` geometry check (`fit_ok=True`, `eval_bar_mapped=1`, `hdr_end=352`, `sidebar_w=386`) — Passed.
+  - `python -m unittest discover -s tests -v` — **51 / 51 tests passed (`OK`)**.

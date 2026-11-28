@@ -1158,6 +1158,120 @@ class GambitUIFlowTests(unittest.TestCase):
         self.assertEqual(results["eval_history_len"], 2)
         self.assertEqual(results["back_mate1_headline"], "White has Mate in M1")
 
+    def test_option_a_and_d_pgn_import_play_here_library_themes_and_eval_bar(self):
+        prev_cwd = os.getcwd()
+        os.chdir(ROOT_DIR)
+        tmpdir = tempfile.TemporaryDirectory()
+        settings_file = os.path.join(tmpdir.name, "prefs.json")
+        games_file = os.path.join(tmpdir.name, "saved_games.json")
+        root = tk.Tk()
+        root.geometry("1280x680")
+        app = ui.GambitUI(
+            root,
+            game_mode=ui.MODE_PVP,
+            prompt_mode_on_start=False,
+            settings_path=settings_file,
+            games_path=games_file,
+        )
+        results = {}
+
+        def step_init():
+            if app.engine_busy:
+                root.after(40, step_init)
+                return
+            # 1. Option D: switch sidebar theme, toggle board eval bar off/on, verify preference persistence
+            app.apply_sidebar_theme("Arctic Light")
+            results["arctic_bg"] = app.history_frame.cget("bg")
+            app.set_show_board_eval_bar(False)
+            results["eval_bar_hidden"] = bool(app.board_eval_bar.winfo_ismapped())
+            app.set_show_board_eval_bar(True)
+
+            # 2. Option A: import a PGN game with Scholar's Mate, verify move history + opening + eval graph
+            pgn = (
+                '[Event "Scholar"]\n'
+                '1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6 4. Qxf7# 1-0'
+            )
+            app.load_pgn(pgn)
+            root.after(60, step_after_pgn)
+
+        def step_after_pgn():
+            if app.engine_busy:
+                root.after(40, step_after_pgn)
+                return
+            results["pgn_moves"] = list(app.move_history)
+            results["pgn_san"] = list(app.san_history)
+            results["pgn_status"] = app.game_status
+            results["pgn_eval_len"] = len(app.eval_history)
+            # Step back before Qxf7# and verify Play From Here turns live PvAI on at ply 6
+            app.step_back(animate=False)
+            results["play_here_state_at_back"] = str(app.play_from_here_button["state"])
+            app.play_from_here(human_color=ui.HUMAN_COLOR_WHITE)
+            root.after(60, step_after_play_here)
+
+        def step_after_play_here():
+            if app.engine_busy:
+                root.after(40, step_after_play_here)
+                return
+            results["branch_len"] = len(app.move_history)
+            results["branch_mode"] = app.game_mode
+            results["branch_status"] = app.game_status
+            # Play h5f7 checkmate -> triggers auto-save into saved_games.json!
+            app.make_move("h5f7", animate=False)
+            root.after(60, step_after_checkmate)
+
+        def step_after_checkmate():
+            if app.engine_busy:
+                root.after(40, step_after_checkmate)
+                return
+            results["final_status"] = app.game_status
+            saved = ui.load_saved_games(games_file)
+            results["saved_count"] = len(saved)
+            results["saved_outcome"] = saved[0]["outcome"] if saved else None
+            # Verify material advantage badge when playing capture
+            app.load_fen("rnbqkbn1/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            root.after(60, step_after_adv_fen)
+
+        def step_after_adv_fen():
+            if app.engine_busy:
+                root.after(40, step_after_adv_fen)
+                return
+            results["bottom_adv_badge"] = app.bottom_advantage_label.cget("text")
+            results["done"] = True
+            app.close()
+
+        try:
+            root.after(100, step_init)
+            root.mainloop()
+        finally:
+            os.chdir(prev_cwd)
+            tmpdir.cleanup()
+            if app.engine.poll() is None:
+                app.engine.terminate()
+                app.engine.wait(timeout=2)
+            if app.engine.stdin:
+                app.engine.stdin.close()
+            if app.engine.stdout:
+                app.engine.stdout.close()
+
+        self.assertTrue(results.get("done"))
+        self.assertEqual(results["arctic_bg"], ui.SIDEBAR_THEMES["Arctic Light"]["sidebar"])
+        self.assertFalse(results["eval_bar_hidden"])
+        self.assertEqual(
+            results["pgn_moves"],
+            ["e2e4", "e7e5", "d1h5", "b8c6", "f1c4", "g8f6", "h5f7"],
+        )
+        self.assertEqual(results["pgn_san"][-1], "Qxf7#")
+        self.assertEqual(results["pgn_status"], "CHECKMATE")
+        self.assertEqual(results["pgn_eval_len"], 8)
+        self.assertEqual(results["play_here_state_at_back"], "normal")
+        self.assertEqual(results["branch_len"], 6)
+        self.assertEqual(results["branch_mode"], ui.MODE_PVAI)
+        self.assertEqual(results["branch_status"], "NORMAL")
+        self.assertEqual(results["final_status"], "CHECKMATE")
+        self.assertEqual(results["saved_count"], 1)
+        self.assertEqual(results["saved_outcome"], "WIN")
+        self.assertEqual(results["bottom_adv_badge"], "+5")
+
 
 if __name__ == "__main__":
     unittest.main()
