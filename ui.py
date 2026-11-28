@@ -667,16 +667,16 @@ class GambitUI:
         self.show_eval_bar_var = tk.BooleanVar(value=self.show_eval_bar)
         self.theme_button = tk.Menubutton(
             self.title_row,
-            text="🎨",
-            font=("Segoe UI", 9),
+            text="🎨 Theme ▾",
+            font=("Segoe UI", 8, "bold"),
             bg=self.theme["btn_bg"],
             fg=self.theme["text"],
             activebackground=self.theme["btn_active"],
             activeforeground="#FFFFFF",
             relief="flat",
             bd=0,
-            padx=5,
-            pady=1,
+            padx=6,
+            pady=2,
             cursor="hand2",
             direction="below"
         )
@@ -688,6 +688,7 @@ class GambitUI:
             activebackground=self.theme["accent_blue"],
             activeforeground="#FFFFFF"
         )
+        self.theme_menu.add_command(label="── Board Theme ──", state="disabled")
         for theme_name in BOARD_THEMES:
             self.theme_menu.add_radiobutton(
                 label=theme_name,
@@ -696,22 +697,15 @@ class GambitUI:
                 command=lambda t=theme_name: self.set_board_theme(t)
             )
         self.theme_menu.add_separator()
-        self.sidebar_theme_submenu = tk.Menu(
-            self.theme_menu,
-            tearoff=0,
-            bg=self.theme["card"],
-            fg=self.theme["text"],
-            activebackground=self.theme["accent_blue"],
-            activeforeground="#FFFFFF"
-        )
+        self.theme_menu.add_command(label="── Sidebar Theme ──", state="disabled")
         for st_name in SIDEBAR_THEMES:
-            self.sidebar_theme_submenu.add_radiobutton(
+            self.theme_menu.add_radiobutton(
                 label=st_name,
                 variable=self.sidebar_theme_var,
                 value=st_name,
                 command=lambda t=st_name: self.apply_sidebar_theme(t)
             )
-        self.theme_menu.add_cascade(label="Sidebar Theme", menu=self.sidebar_theme_submenu)
+        self.theme_menu.add_separator()
         self.theme_menu.add_checkbutton(
             label="Board Eval Bar",
             variable=self.show_eval_bar_var,
@@ -2030,7 +2024,7 @@ class GambitUI:
         for menu_btn in (self.time_menu, self.side_menu, self.difficulty_menu):
             menu_btn.configure(bg=t["btn_bg"], fg=t["text"], activebackground=t["btn_active"])
             menu_btn["menu"].configure(bg=t["card"], fg=t["text"], activebackground=t["accent_blue"])
-        for menu_obj in (self.pgn_menu, self.theme_menu, self.sidebar_theme_submenu):
+        for menu_obj in (self.pgn_menu, self.theme_menu):
             menu_obj.configure(bg=t["card"], fg=t["text"], activebackground=t["accent_blue"])
 
         self._refresh_mode_buttons()
